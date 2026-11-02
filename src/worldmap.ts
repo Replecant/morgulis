@@ -83,7 +83,14 @@ const RIVERS: number[][][] = [
   [[-1430, 470], [-1380, 560], [-1340, 700], [-1290, 820], [-1210, 920], [-1180, 1080], [-1120, 1280]], // из озера на юго-восток
   [[-1880, 470], [-2000, 540], [-2120, 500], [-2300, 560], [-2500, 520]],                  // из озера на запад
 ];
-const RAIL: number[][] = [[-2080, 700], [-1800, 760], [-1450, 830], [-1150, 880], [-900, 870], [-500, 885], [0, 900], [300, 890], [440, 880], [700, 910], [1000, 950], [1300, 940], [1550, 910], [1730, 880]];
+/** y железной дороги на долготе x (по ломаной RAIL). */
+function railY(x: number) {
+  for (let i = 1; i < RAIL.length; i++) { const [x0, y0] = RAIL[i - 1], [x1, y1] = RAIL[i]; if (x <= x1) return y0 + (y1 - y0) * clamp((x - x0) / (x1 - x0), 0, 1); }
+  return RAIL[RAIL.length - 1][1];
+}
+const RAIL: number[][] = [[-2080, 700], [-1800, 760], [-1450, 830], [-1150, 880], [-900, 870], [-500, 885], [0, 875], [200, 840], [330, 806], [430, 798], [540, 806], [700, 848], [850, 905], [1000, 950], [1300, 940], [1550, 910], [1730, 880]];
+/** Разъезд Эшфорд: второй путь параллельно главному, со съездами на концах. */
+const SIDING: number[][] = [[290, 0], [345, 16], [380, 16], [430, 16], [480, 16], [520, 16], [575, 0]].map(([x, d]) => [x, Math.round(railY(x) + d)]);
 
 // патрули барона: первый ходит от Фенмора через Эшфорд по тракту до форта, второй — от форта к Ричморду
 // братья свободы: один ходит по северному тракту, второй — между Эйнбоу и Хоули, третий — от Вудхэма через форт к Тарвеллу
@@ -651,7 +658,7 @@ export const World = {
     // подписи (чёткий текст поверх пиксельного слоя)
     for (const l of LOCS) {
       if (!this.known(l)) continue;
-      const x = l.x - cx, y = l.y - cy + (l.kind === 'fort' ? 110 : l.id === 'richmord' ? 70 : l.id === 'hawley' ? 56 : l.kind === 'village' ? 44 : 30);
+      const x = l.x - cx, y = l.y - cy + (l.kind === 'fort' ? 110 : l.id === 'richmord' ? 70 : l.id === 'hawley' ? 56 : l.id === 'ashford' ? 78 : l.kind === 'village' ? 44 : 30);
       if (x < -100 || x > VW + 100 || y < -40 || y > VH + 40) continue;
       const hv = this.hover === l || this.pending === l;
       c.font = l.kind === 'poi' ? 'italic 13px "Old Standard TT", serif' : `bold ${l.kind === 'fort' ? 20 : 16}px "Playfair Display SC", serif`;
@@ -871,15 +878,16 @@ function renderBackground(): HTMLCanvasElement {
   // север: густой лес бывших земель барона Сильвера
   drawForest(c);
   // железная дорога: насыпь, шпалы, рельсы
-  const rail = pts(RAIL);
-  thick(rail, '#2a2620', 6);
-  {
+  const track = (poly: number[][]) => {
+    const rail = pts(poly);
+    thick(rail, '#2a2620', 6);
     for (let i = 1; i < rail.length; i++) {
       const [x0, y0] = rail[i - 1], [x1, y1] = rail[i], len = Math.hypot(x1 - x0, y1 - y0), nx = -(y1 - y0) / len, ny = (x1 - x0) / len;
       for (let k = 0; k < len; k += 3) { const x = x0 + (x1 - x0) * (k / len), y = y0 + (y1 - y0) * (k / len); pline(c, x - nx * 3, y - ny * 3, x + nx * 3, y + ny * 3, '#4a3a28'); }
       for (const o of [-1.6, 1.6]) pline(c, x0 + nx * o, y0 + ny * o, x1 + nx * o, y1 + ny * o, '#8a8a80');
     }
-  }
+  };
+  track(SIDING); track(RAIL);
   // дороги
   for (const rd of ROADS) { const pr = pts(rd); thick(pr, '#26221a', 6); thick(pr, '#6a604a', 4); thick(pr, '#7e7458', 2, [2, 5]); }
   // атмосферные руины — без подписей и событий
@@ -944,7 +952,7 @@ const RUINS: { kind: string; x: number; y: number }[] = [
   { kind: 'factory', x: 300, y: 1010 },
   { kind: 'hamlet', x: 1250, y: 1120 },
   { kind: 'tower', x: 1610, y: 650 },
-  { kind: 'railcar', x: 560, y: 935 },
+  { kind: 'railcar', x: 760, y: 895 },
   { kind: 'wall', x: 980, y: 210 },
   { kind: 'farm', x: 130, y: 460 },
   { kind: 'wall', x: 860, y: 1110 },

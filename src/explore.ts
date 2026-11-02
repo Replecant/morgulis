@@ -6,7 +6,7 @@
 import { G } from './state';
 import { bfs, pathTo, DIRS4, lerp, seeded, TAU, Pt, clamp } from './util';
 import { flicker } from './gfx';
-import { PixelView, applyLight, PLight, T, LW, LH, PS, ppx } from './px';
+import { PixelView, applyLight, PLight, T, LW, LH, PS, ppx, pline } from './px';
 import { drawSprite, beetleSprite } from './sprites';
 import { paintTile, paintRail, objSprite, drawPumpjack, drawCampfire } from './pxworld';
 import { FOLK, FolkDef } from './folk';
@@ -99,6 +99,7 @@ function drawSteam(c: CanvasRenderingContext2D, x: number, y: number, t: number)
 export const Explore = {
   ground: [] as Ground[][],
   rail: [] as number[][],          // 0 — нет, 1 — рельсы
+  switches: [] as { x0: number; y0: number; x1: number; y1: number }[], // косые съезды между путями (от левого края клетки x0 до левого края x1)
   block: [] as boolean[][],
   objs: [] as Obj[],
   npcs: [] as Npc[],
@@ -196,11 +197,12 @@ export const Explore = {
 
     // железная дорога: главный путь и запасной у разъезда
     for (let x = 0; x <= 102; x++) this.rail[61][x] = 1;
-    for (let x = 10; x <= 34; x++) this.rail[59][x] = 1;
+    for (let x = 12; x <= 32; x++) this.rail[59][x] = 1;
     for (let x = 317; x <= 357; x++) this.rail[24][x] = 1;   // ветка к цехам особого лагеря
     for (let x = 380; x <= 409; x++) this.rail[61][x] = 1;   // конечная в форте баронессы
     for (let y = 22; y <= 40; y++) this.rail[y][250] = 1;    // узкоколейка от шахты Хейлстоуна
-    this.rail[60][9] = 1; this.rail[60][35] = 1;
+    // стрелки разъезда: косые съезды с главного пути (ряд 61) на запасной (ряд 59) и обратно
+    this.switches = [{ x0: 9, y0: 61, x1: 12, y1: 59 }, { x0: 33, y0: 59, x1: 36, y1: 61 }];
     fill('k', 11, 58, 23, 1); // перрон
 
     // ---------------- объекты
@@ -1074,6 +1076,14 @@ export const Explore = {
       const g = this.ground[y][x];
       paintTile(c, X, Y, g, r, this.ground[y][x - 1] === 'r' || this.ground[y][x + 1] === 'r');
       if (this.rail[y][x]) paintRail(c, X, Y);
+    }
+    // стрелки — поверх земли, после всех клеток чанка: шпалы поперёк, два рельса
+    for (const sw of this.switches) {
+      const ax = (sw.x0 - gx * CSZ) * T, ay = (sw.y0 - gy * CSZ) * T, bx = (sw.x1 - gx * CSZ) * T, by = (sw.y1 - gy * CSZ) * T;
+      if (Math.max(ax, bx) < 0 || Math.min(ax, bx) > CSZ * T || Math.max(ay, by) < -T || Math.min(ay, by) > CSZ * T) continue;
+      const len = Math.hypot(bx - ax, by - ay), ux = (bx - ax) / len, uy = (by - ay) / len;
+      for (let k = 2; k < len; k += 5) { const x = ax + ux * k, y = ay + uy * k + 10; pline(c, x - 1, y - 6, x + 1, y + 6, '#3a2c1e', 2); }
+      for (const [o, col] of [[6, '#8a8a82'], [7, '#4a4a44'], [13, '#8a8a82'], [14, '#4a4a44']] as [number, string][]) pline(c, ax, ay + o, bx, by + o, col);
     }
     this.chunks.set(key, cv);
     return cv;
