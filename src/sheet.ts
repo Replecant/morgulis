@@ -7,6 +7,7 @@ import { G } from './state';
 import { ATTRS, ATTR_ORDER, SKILLS, SKILL_ORDER, PROFESSIONS, TALENTS, LEVEL_XP, MAX_LEVEL, mastery, trainedSkills, skillBonus, initiative, meleeDamage, fullName } from './rules';
 import { memberStats } from './inventory';
 import { woundsOf } from './wounds';
+import { LIMB_ORDER, LIMB_NAMES, limbState, limbSkill, modsText, lostModsText } from './prosthetics';
 import { drawFigure } from './gfx';
 import { h } from './book';
 import { $ } from './util';
@@ -74,7 +75,7 @@ export const Sheet = {
     const skills = SKILL_ORDER.map((k) => {
       const t = trained.includes(k);
       return tip(h('div', { class: 'sh-skill' + (t ? ' on' : '') },
-        h('i', {}, t ? '◆' : '◇'), h('span', {}, SKILLS[k].name), h('em', {}, ATTRS[SKILLS[k].attr].short), h('b', {}, sg(skillBonus(c, k)))),
+        h('i', {}, t ? '◆' : '◇'), h('span', {}, SKILLS[k].name), h('em', {}, ATTRS[SKILLS[k].attr].short), h('b', {}, sg(skillBonus(c, k) + limbSkill(b, k)))),
         `${SKILLS[k].name} (${ATTRS[SKILLS[k].attr].name}${t ? `, обучен: +${mb}` : ', не обучен'}). ${SKILLS[k].desc} Проверка: d20 + бонус против сложности.`);
     });
 
@@ -83,6 +84,13 @@ export const Sheet = {
     const wounds = ws.length
       ? ws.map((w) => tip(h('div', { class: 'sh-wound' + (w.heavy ? ' heavy' : '') }, w.name), `${w.name}: ${w.desc} ${w.heavy ? 'Нужна операция.' : 'Пройдёт после привала.'}`))
       : [h('div', { class: 'sh-none' }, 'Ранений нет')];
+    // утраченные конечности и протезы
+    const limbs = LIMB_ORDER.filter((l) => b.limbs?.[l]).map((l) => {
+      const st = limbState(b, l);
+      const eff = st.prost ? modsText(st.prost.mods) : lostModsText(l.startsWith('arm') ? 'arm' : 'leg');
+      return tip(h('div', { class: 'sh-wound' + (st.lost ? ' heavy' : ' prost') }, `${LIMB_NAMES[l]}: ${st.text}`),
+        st.prost ? `${st.prost.name}. ${st.prost.desc} Поправки: ${eff}.` : `${LIMB_NAMES[l]} утрачена. ${eff}. Протез поставит протезист в Среднем городе форта.`);
+    });
 
     const talent = TALENTS[c.talent];
     $('sheet').replaceChildren(h('div', { class: 'sh-box' },
@@ -90,6 +98,7 @@ export const Sheet = {
         h('div', { class: 'sh-photo-wrap' }, ph),
         h('div', { class: 'sh-age' }, `${c.gender === 'f' ? 'Женщина' : 'Мужчина'}, ${c.age} ${years(c.age)}`),
         h('div', { class: 'sh-h' }, 'Раны'), ...wounds,
+        ...(limbs.length ? [h('div', { class: 'sh-h' }, 'Тело'), ...limbs] : []),
         h('div', { class: 'sh-money' }, 'Шиллинги: ', h('b', {}, String(G.money)))),
       h('div', { class: 'sh-col b' },
         h('div', { class: 'sh-name' }, fullName(c) || b.name),

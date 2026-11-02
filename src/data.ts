@@ -78,6 +78,7 @@ export interface UnitBase {
   horror?: number;       // бонус к спасброску против ужаса
   med?: number;          // бонус Медицины (перевязка, операции)
   wounds?: string[];     // ранения (см. wounds.ts)
+  limbs?: Partial<Record<'armR' | 'armL' | 'legR' | 'legL', string>>; // утраченные конечности и протезы (см. prosthetics.ts)
   equip?: Equip;         // снаряжение (см. items.ts) — у бойцов отряда
   look?: string;         // ключ стиля фигурки с учётом снаряжения
   abil?: Record<string, number>;

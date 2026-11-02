@@ -467,6 +467,7 @@ body { font-family: 'Old Standard TT', Georgia, serif; color: var(--text); }
 .sh-h span { font-family: inherit; letter-spacing: 0; font-size: 11px; color: var(--dim); }
 .sh-wound { font-size: 12px; color: #e0a060; padding: 1px 0; cursor: default; }
 .sh-wound.heavy { color: #e07060; }
+.sh-wound.prost { color: #b8b8a8; }
 .sh-none { font-size: 12px; color: var(--dim); font-style: italic; }
 .sh-money { margin-top: auto; font-size: 13px; color: var(--brass); }
 .sh-money b { font-size: 16px; }

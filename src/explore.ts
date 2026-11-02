@@ -247,6 +247,7 @@ export const Explore = {
     B('workshop', 148, 52, 3, 2, { name: 'Кузня', talk: 'workshop' });
     B('workshop', 175, 52, 3, 2, { name: 'Скорняжная мастерская', talk: 'workshop' });
     for (const [x, y] of [[153, 48], [161, 51], [170, 48], [178, 51]]) B('lamp', x, y, 1, 1, { name: 'Фонарь', talk: 'lamp' });
+    B('clinic', 166, 57, 5, 3, { name: 'Клиника протезирования', talk: 'clinic' });
     for (const row of [34, 38, 42, 57, 61]) {
       for (let x = 147; x < 181;) {
         const w = 3;
@@ -291,6 +292,7 @@ export const Explore = {
     NPC('guard1', 'Стражник', 'guard', 99, 48, 'guard');
     NPC('guard2', 'Стражник', 'guard', 99, 52, 'guard');
     NPC('sutler', 'Маркитант', 'sutler', 94, 45, 'sutler');
+    NPC('prosthetist', 'Протезист', 'medic_civ', 167, 56, 'prosthetist');
     NPC('upper1', 'Стража Верхнего города', 'guard', 179, 46, 'upper_guard');
     NPC('upper2', 'Стража Верхнего города', 'guard', 179, 52, 'upper_guard');
 

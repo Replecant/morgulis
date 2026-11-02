@@ -2,6 +2,7 @@ import { makeSquad, UnitBase } from './data';
 import { Character, newCharacter } from './rules';
 import { START_STASH, PROF_START, CONS_ORDER, ConsId } from './items';
 import type { SkillKey } from './rules';
+import { limbSkill } from './prosthetics';
 
 export type Mode = 'title' | 'create' | 'world' | 'explore' | 'combat' | 'end';
 
@@ -57,8 +58,9 @@ export const hasTool = (id: string) => G.stash.includes(id) || G.squad.some((b) 
 
 /** Бонус спецснаряжения к проверке навыка. */
 export function gearBonus(skill: SkillKey): number {
-  if (skill === 'mechanics' && hasTool('tools')) return 2;
-  if (skill === 'stealth' && hasTool('lockpicks')) return 2;
-  if (skill === 'medicine' && hasTool('surgerykit')) return 2;
-  return 0;
+  let b = limbSkill(G.squad[0], skill); // утраченные конечности и протезы героя
+  if (skill === 'mechanics' && hasTool('tools')) b += 2;
+  if (skill === 'stealth' && hasTool('lockpicks')) b += 2;
+  if (skill === 'medicine' && hasTool('surgerykit')) b += 2;
+  return b;
 }

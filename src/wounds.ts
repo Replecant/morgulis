@@ -8,6 +8,7 @@ import { G, hasTool, gearBonus } from './state';
 import { UnitBase } from './data';
 import { check, CheckResult } from './rules';
 import { pick } from './util';
+import { limbMods, loseLimb, Limb, LIMB_NAMES } from './prosthetics';
 
 export interface WoundMods { atkM?: number; atkR?: number; def?: number; move?: number; horror?: number; maxHp?: number }
 export interface Wound {
@@ -40,6 +41,8 @@ export const woundsOf = (b: UnitBase) => (b.wounds ?? []).map((id) => WOUNDS[id]
 export function woundMods(b: UnitBase): Required<WoundMods> {
   const m = { atkM: 0, atkR: 0, def: 0, move: 0, horror: 0, maxHp: 0 };
   for (const w of woundsOf(b)) for (const k in w.mods) (m as any)[k] += (w.mods as any)[k];
+  // утраченные конечности и протезы — постоянные поправки
+  const l = limbMods(b); m.atkM += l.atkM; m.atkR += l.atkR; m.def += l.def; m.move += l.move;
   return m;
 }
 /** Максимум ОЗ с учётом ранений. */
@@ -133,6 +136,15 @@ export function surgery(b: UnitBase, woundId: string): { text: string; roll?: Ch
     if (!b.wounds.includes('stitches')) b.wounds.push('stitches');
     b.hp = Math.min(b.hp, effMaxHp(b));
     return { text: `${healer.name} оперирует: «${w.name}» вылечена, остались свежие швы. [${rollTxt}]`, roll: r };
+  }
+  // тяжёлый провал (на 5 и больше) при ране конечности — спасти её не удаётся: ампутация
+  const limb: Limb | null = woundId === 'bullet' ? 'armR' : woundId === 'thigh' ? (Math.random() < 0.5 ? 'legR' : 'legL') : null;
+  if (limb && (r.fumble || r.total <= 8) && !b.limbs?.[limb]) {
+    b.wounds = (b.wounds ?? []).filter((id) => id !== woundId);
+    loseLimb(b, limb);
+    if (!b.wounds.includes('stitches')) b.wounds.push('stitches');
+    b.hp = Math.max(1, Math.min(b.hp - 2, effMaxHp(b)));
+    return { text: `Операция не удалась: конечность не спасти, приходится ампутировать — ${LIMB_NAMES[limb].toLowerCase()} утрачена навсегда. Протез можно поставить у протезиста в Среднем городе форта. [${rollTxt}]`, roll: r };
   }
   b.hp = Math.max(1, b.hp - 2);
   return { text: `Операция не удалась: «${w.name}» осталась, ${b.name} теряет 2 ОЗ. [${rollTxt}]`, roll: r };

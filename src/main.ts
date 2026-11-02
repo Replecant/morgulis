@@ -13,6 +13,8 @@ import { Inventory } from './inventory';
 import { Sheet } from './sheet';
 import { Music } from './music';
 import { Pause } from './pause';
+import { PROSTHESES, LIMB_NAMES, install, modsText, Limb } from './prosthetics';
+import { setProsthNote } from './dialogs';
 import { frameReady, whenFrameReady, frameUrl } from './frames';
 import { Trade, resetShops } from './trade';
 import { drawMenuBg, showMainMenu, showAbout, openRules } from './menu';
@@ -113,6 +115,15 @@ World.onDay = () => { // раз в сутки отряд ест
 Dialog.onClose = () => { refreshHud(); if (G.mode === 'explore' || G.mode === 'world') hint(); };
 Dialog.onAction = (act) => {
   if (act.startsWith('enter:')) toScene(act.slice(6));
+  else if (act.startsWith('prosth:')) {
+    const [, limb, id] = act.split(':') as [string, Limb, string];
+    const p = PROSTHESES[id], b = G.squad[0];
+    if (G.money >= p.price) {
+      G.money -= p.price; install(b, limb, id);
+      setProsthNote(`Протезист подгоняет ремни и затягивает винты. ${LIMB_NAMES[limb]}: ${p.name}. (−${p.price} ш.) ${p.desc} Поправки: ${modsText(p.mods)}.`);
+      Dialog.start('prosth_done'); refreshHud();
+    }
+  }
   else if (act.startsWith('goto:')) { const [, id, x, y] = act.split(':'); toScene(id, { x: +x, y: +y }); }
   else if (act === 'rest') { toast(rest()); refreshHud(); }
   else if (act.startsWith('trade:')) { G.keys.clear(); Trade.show(act.slice(6), () => { refreshHud(); hint(); }); }

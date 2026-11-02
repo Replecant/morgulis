@@ -51,6 +51,7 @@ export const STYLES: Record<string, Style> = {
   dead_rifle: { coat: '#45473a', legs: '#28281f', belt: '#3a2a1a', hat: 'cap', hatC: '#2e3024', skin: '#90a080', undead: true, weapon: 'rifle' },
   dead_gas: { coat: '#3a3e34', legs: '#24261f', hat: 'helmet', hatC: '#33372b', skin: '#8a9a78', mask: true, tanks: true, undead: true },
   dead_sapper: { coat: '#3a3a34', legs: '#222220', hat: 'helmet', hatC: '#55585a', skin: '#7e8e6e', cuirass: true, undead: true, weapon: 'shovel', scale: 1.15 },
+  medic_civ: { coat: '#d0ccc0', legs: '#2a2826', apron: '#a8a498', hair: '#5a5a56', skin: '#c8b096', goggles: true, weapon: 'wrench' },
   // фоновые жители деревень
   townsman: { coat: '#4a4438', legs: '#2a2620', hat: 'flatcap', hatC: '#2e2a22', skin: '#c4a888', beard: '#5a4a3a' },
   townswoman: { coat: '#4a3e44', dress: true, apron: '#6a6050', hat: 'bonnet', hatC: '#3a3034', skin: '#d0b49a', hair: '#6a4a2a', longHair: true },

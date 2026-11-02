@@ -71,7 +71,7 @@ const TOP: Record<string, number> = {
   house: 16, ruin: 16, farm: 16, station: 20, pumphouse: 28, slaughter: 16, barn: 14, hut: 16,
   tank: 18, watertower: 44, wagon: 14, lamp: 30, tree: 26, rock: 6, barrel: 6, fence: 10, feed: 8, chitin: 6,
   cellar: 10, adit: 26, shroombed: 6, bigshroom: 18, rack: 14, wall: 30, gate: 40, railgate: 36, tower: 56,
-  sign: 16, shack: 18, factory: 64, tenement: 30, stall: 18, workshop: 26, crater: 0, bones: 0, wallruin: 14, skeleton: 14, milestone: 14, lorry: 12,
+  sign: 16, clinic: 30, shack: 18, factory: 64, tenement: 30, stall: 18, workshop: 26, crater: 0, bones: 0, wallruin: 14, skeleton: 14, milestone: 14, lorry: 12,
 };
 
 export interface ObjLike { kind: string; x: number; y: number; w: number; h: number; seed: number; ruinKind?: string; boarded?: boolean }
@@ -334,6 +334,21 @@ export function objSprite(o: ObjLike, neighbors?: { horizFence: boolean }) {
     }
     case 'sign': R(9, H - 16, 2, 16, '#3a2c1e'); R(2, H - 18, 16, 6, '#4a3a26'); for (let x = 4; x < 16; x += 3) R(x, H - 16, 2, 1, '#c8b88a'); break;
 
+    case 'clinic': { // клиника: беленая кирпичная стена, высокие окна, вывеска с механической кистью
+      const wallH = 40, wy = H - wallH, wall = '#8a8270';
+      R(1, H, W, 2, 'rgba(0,0,0,0.5)');
+      R(0, wy, W, wallH, wall);
+      for (let y = wy + 2; y < H; y += 4) for (let x = ((y / 4) | 0) % 2 ? 0 : 4; x < W; x += 8) R(x, y, 7, 1, shade(wall, -0.12));
+      R(0, wy, 1, wallH, shade(wall, 0.15)); R(W - 2, wy, 2, wallH, shade(wall, -0.3));
+      for (const wx of [8, 22, W - 30, W - 16]) { R(wx, wy + 8, 8, 14, '#d8c890'); R(wx + 1, wy + 9, 6, 12, '#f0e0a8'); R(wx + 3, wy + 8, 1, 14, '#5a4a32'); lights.push({ x: wx + 4, y: wy + 15, r: 24, color: '#f0e0b0', a: 0.6 }); }
+      const dx = Math.round(W / 2);
+      R(dx - 5, H - 16, 10, 16, '#2a2018'); R(dx - 5, H - 16, 10, 1, '#5a4430'); P(dx + 3, H - 8, BRASS);
+      R(dx - 9, wy - 14, 18, 12, '#3a2c1e'); R(dx - 8, wy - 13, 16, 10, '#d8d0b8');               // вывеска
+      R(dx - 3, wy - 11, 6, 5, '#7a7a72'); for (let k = 0; k < 4; k++) R(dx - 3 + k * 2, wy - 13, 1, 3, '#7a7a72'); P(dx, wy - 9, BRASS); // механическая кисть
+      for (let x = -2; x < W + 3; x++) R(x, wy - 4, 1, 4, (x % 3) ? '#4a4844' : '#5a5854');
+      R(W - 12, wy - 16, 4, 12, '#4a4844');
+      break;
+    }
     // ---------------- форт: Нижний и Средний город
     case 'shack': { // лачуга из ржавого железа и досок, кривая крыша, печная труба
       const wy = H - 16;
