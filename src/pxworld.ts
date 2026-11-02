@@ -77,7 +77,7 @@ const TOP: Record<string, number> = {
   house: 16, ruin: 16, farm: 16, station: 20, pumphouse: 28, slaughter: 16, barn: 14, hut: 16,
   tank: 18, watertower: 44, wagon: 14, lamp: 30, tree: 26, rock: 6, barrel: 6, fence: 10, feed: 8, chitin: 6,
   cellar: 10, adit: 26, shroombed: 6, bigshroom: 18, rack: 14, wall: 30, gate: 40, railgate: 36, tower: 56,
-  sign: 16, fountain: 34, sandbags: 8, wire: 8, cell: 16, orecart: 8, boat: 4, nets: 20, scrapheap: 16, banner: 46, poster: 24, statue: 44, horn: 40, keep: 76, barracks: 22, laundry: 22, handcart: 12, crates: 14, coalheap: 8, standpipe: 18, noticeboard: 22, sacks: 8, vent: 4, clinic: 30, shack: 18, factory: 64, tenement: 30, stall: 18, workshop: 26, gallows: 56, gibbet: 84, burnt: 26, pine: 46, logs: 8, stump: 2, rbanner: 46, rposter: 24, sawpit: 14, crater: 0, bones: 0, wallruin: 14, skeleton: 14, milestone: 14, lorry: 12,
+  sign: 16, fountain: 34, sandbags: 8, wire: 8, cell: 16, orecart: 8, boat: 4, nets: 20, scrapheap: 16, banner: 46, poster: 24, statue: 44, horn: 40, keep: 76, barracks: 22, laundry: 22, handcart: 12, crates: 14, coalheap: 8, standpipe: 18, noticeboard: 22, sacks: 8, vent: 4, clinic: 30, shack: 18, factory: 64, tenement: 30, stall: 18, workshop: 26, sawdust: 10, gallows: 56, gibbet: 84, burnt: 26, pine: 46, logs: 8, stump: 2, rbanner: 46, rposter: 24, sawpit: 14, crater: 0, bones: 0, wallruin: 14, skeleton: 14, milestone: 14, lorry: 12,
 };
 
 export interface ObjLike { kind: string; x: number; y: number; w: number; h: number; seed: number; ruinKind?: string; boarded?: boolean }
@@ -481,6 +481,12 @@ export function objSprite(o: ObjLike, neighbors?: { horizFence: boolean }) {
         if (k > 0.7 && hw > 2) { P(cx - hw - 1, y + 1, '#2a4024'); P(cx + hw + 1, y + 1, '#142016'); } // кончики лап свисают
       }
       P(cx, top - 1, '#3e5a32');
+      break;
+    }
+    case 'sawdust': { // куча опилок со щепой
+      R(2, H - 3, W - 4, 3, 'rgba(0,0,0,0.4)');
+      for (let i = 0; i < 46; i++) { const a = r() * TAU, d = r() * 14; pellipse(c, W / 2 + Math.cos(a) * d, H - 9 + Math.sin(a) * d * 0.5 - (14 - d) * 0.5, 2, 1, ['#b89a6a', '#a0845a', '#c8ac7a', '#8a704a'][Math.floor(r() * 4)]); }
+      for (let i = 0; i < 4; i++) { const x = 6 + r() * (W - 12), y = H - 6 - r() * 8; L(x, y, x + 3, y - 1, '#7a5a38'); }
       break;
     }
     case 'stump': R(4, H - 4, 10, 2, 'rgba(0,0,0,0.4)'); R(5, H - 8, 9, 5, '#4a3622'); R(5, H - 8, 9, 2, '#a07a4a'); P(8, H - 8, '#7a5a38'); P(11, H - 7, '#7a5a38'); break;

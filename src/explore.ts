@@ -527,11 +527,23 @@ export const Explore = {
     for (const [x, y] of [[598, 39], [622, 39], [596, 15], [624, 15], [588, 36], [632, 36], [604, 40], [615, 21]]) B('rposter', x, y, 1, 1, { name: 'Плакат Собрания', talk: 'rposter' });
     for (const [x, y] of [[602, 37], [618, 22], [607, 40], [613, 40]]) B('lamp', x, y, 1, 1, { name: 'Фонарь', talk: 'lamp' });
     B('standpipe', 596, 31, 1, 1, { name: 'Колонка', talk: 'standpipe' });
+    // справа от ворот — лесной двор: паровая лесопилка, сушильный навес, брёвна и шпалы
+    B('factory', 617, 42, 9, 4, { name: 'Паровая лесопилка', talk: 'svob_sawmill' });
+    B('barn', 628, 42, 7, 3, { name: 'Сушильный навес', talk: 'svob_drying' });
+    for (const [x, y] of [[617, 49], [621, 49], [629, 49], [617, 52], [621, 52], [629, 52]]) B('logs', x, y, 3, 1, { name: 'Штабель брёвен', talk: 'svob_logs' });
+    for (const [x, y] of [[617, 57], [621, 57], [617, 60], [621, 60]]) B('logs', x, y, 3, 1, { name: 'Штабель шпал', talk: 'svob_sleepers' });
+    B('sawpit', 626, 50, 2, 1, { name: 'Козлы с пилой', talk: 'sawpit' });
+    for (const [x, y] of [[633, 49], [626, 58]]) B('sawdust', x, y, 2, 2, { name: 'Опилки', talk: 'svob_sawdust' });
+    B('handcart', 629, 56, 2, 1, { name: 'Тачка с брёвнами', talk: 'handcart' });
+    B('crates', 634, 53, 1, 1, { name: 'Ящики с гвоздями', talk: 'crates' });
+    B('noticeboard', 630, 60, 2, 1, { name: 'Норма выработки', talk: 'svob_norm' });
+    B('rposter', 615, 47, 1, 1, { name: 'Плакат Собрания', talk: 'rposter' });
+    B('lamp', 627, 47, 1, 1, { name: 'Фонарь', talk: 'lamp' });
     // тесные дома с закрытыми ставнями
     for (const row of [8, 16, 19, 41, 45, 49, 53, 57, 61]) {
       for (let x = 586; x < 636;) {
         const w = 3;
-        if (!taken(x, row, w, 3) && x + w <= 636 && !(x + w > 602 && x < 617 && row < 22) && !(x + w > 603 && x < 616 && row > 40)) {
+        if (!taken(x, row, w, 3) && x + w <= 636 && !(x + w > 602 && x < 617 && row < 22) && !(x + w > 603 && x < 616 && row > 40) && !(x + w > 616 && row > 40)) {
           const k = r();
           if (k < 0.08) B('laundry', x, row + 2, w, 1, { name: 'Бельевая верёвка', talk: 'laundry' });
           else if (k < 0.16) B('burnt', x, row, w, 3, { name: 'Сгоревший дом', talk: 'svob_burnt' });
