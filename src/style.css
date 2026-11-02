@@ -1,0 +1,106 @@
+:root {
+  --bg: #080a07;
+  --panel: rgba(13, 17, 11, 0.93);
+  --line: #4b5838;
+  --text: #cfd0b8;
+  --dim: #8b8d76;
+  --green: #9fd36a;
+  --brass: #c09a52;
+  --red: #c4513f;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: var(--bg); overflow: hidden; }
+body { font-family: 'Old Standard TT', Georgia, serif; color: var(--text); }
+
+#game {
+  position: absolute; left: 50%; top: 50%;
+  width: 960px; height: 640px;
+  transform-origin: center center;
+  transform: translate(-50%, -50%);
+  user-select: none;
+}
+#cv { display: block; width: 960px; height: 640px; image-rendering: auto; background: #000; }
+.hidden { display: none !important; }
+
+/* ---------- HUD ---------- */
+#hud { position: absolute; inset: 0; pointer-events: none; }
+#objective {
+  position: absolute; left: 10px; top: 8px; max-width: 470px;
+  padding: 6px 10px; background: rgba(8, 12, 7, 0.72); border-left: 3px solid var(--brass);
+  font-size: 14px; line-height: 1.3;
+}
+#objective b { color: var(--brass); font-weight: 700; letter-spacing: 1px; font-size: 11px; display: block; text-transform: uppercase; }
+#squadbar { position: absolute; right: 10px; top: 8px; display: flex; gap: 6px; }
+.sq { background: rgba(8, 12, 7, 0.72); padding: 4px 7px; font-size: 12px; min-width: 92px; border-top: 2px solid var(--line); }
+.sq .hp { height: 4px; background: #2a1512; margin-top: 3px; }
+.sq .hp span { display: block; height: 100%; background: var(--red); }
+#hint {
+  position: absolute; left: 0; right: 0; bottom: 4px; text-align: center; pointer-events: none;
+  font-size: 12px; color: var(--dim); text-shadow: 0 1px 2px #000;
+}
+
+/* ---------- Диалоги ---------- */
+#dialog {
+  position: absolute; left: 30px; right: 30px; bottom: 24px; min-height: 150px;
+  display: flex; gap: 14px; padding: 14px 16px;
+  background: var(--panel); border: 1px solid var(--line); box-shadow: 0 0 0 1px #000, 0 8px 30px #000c;
+}
+#portrait { width: 96px; height: 96px; flex: none; border: 1px solid var(--line); background: #10140d; }
+.dbody { flex: 1; min-width: 0; }
+#dname { color: var(--brass); font-weight: 700; font-size: 15px; letter-spacing: 1px; margin-bottom: 6px; min-height: 18px; }
+#dtext { font-size: 17px; line-height: 1.4; min-height: 48px; }
+#dtext.nar { font-style: italic; color: #b9bca2; }
+#dchoices { margin-top: 10px; display: flex; flex-direction: column; gap: 4px; }
+.choice {
+  text-align: left; background: none; border: none; color: var(--text); font: inherit; font-size: 15px;
+  padding: 3px 8px; cursor: pointer; border-left: 2px solid transparent;
+}
+.choice:hover, .choice:focus { color: var(--green); border-left-color: var(--green); background: rgba(159, 211, 106, 0.06); outline: none; }
+.choice .n { color: var(--dim); margin-right: 6px; }
+.cont { color: var(--dim); font-size: 13px; margin-top: 8px; }
+
+/* ---------- Бой ---------- */
+#cpanel {
+  position: absolute; left: 0; right: 0; bottom: 0; height: 80px;
+  display: flex; align-items: center; gap: 12px; padding: 0 12px;
+  background: linear-gradient(#141a10, #0b0e09); border-top: 1px solid var(--line);
+}
+#cunit { display: flex; gap: 8px; align-items: center; width: 230px; flex: none; font-size: 13px; }
+#cunit canvas { border: 1px solid var(--line); background: #10140d; }
+#cunit b { color: var(--brass); font-size: 14px; }
+.hpbar { height: 5px; background: #2a1512; margin: 3px 0; width: 150px; }
+.hpbar span { display: block; height: 100%; background: var(--red); }
+#cactions { flex: 1; display: flex; gap: 6px; flex-wrap: wrap; }
+.btn {
+  background: #1b2216; color: var(--text); border: 1px solid var(--line); font: inherit; font-size: 13px;
+  padding: 6px 9px; cursor: pointer;
+}
+.btn:hover:not(:disabled) { border-color: var(--green); color: var(--green); }
+.btn.active { border-color: var(--brass); color: var(--brass); background: #2a2616; }
+.btn:disabled { opacity: 0.4; cursor: default; }
+.btn .k { color: var(--dim); font-size: 11px; margin-right: 4px; }
+#cend { flex: none; font-weight: 700; }
+#clog {
+  position: absolute; right: 8px; top: 8px; width: 330px; max-height: 150px; overflow: hidden;
+  background: rgba(8, 12, 7, 0.7); padding: 6px 8px; font-size: 12px; line-height: 1.35; pointer-events: none;
+}
+#clog div:last-child { color: #e6e3c8; }
+#toast {
+  position: absolute; left: 50%; top: 40%; transform: translateX(-50%);
+  background: rgba(10, 12, 8, 0.9); border: 1px solid var(--line); padding: 6px 12px; font-size: 14px;
+  opacity: 0; transition: opacity 0.3s; pointer-events: none;
+}
+#toast.on { opacity: 1; }
+
+/* ---------- Экраны ---------- */
+#screen {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  background: radial-gradient(ellipse at 50% 40%, rgba(20, 30, 16, 0.55), rgba(0, 0, 0, 0.88));
+}
+#screen:empty { display: none; }
+.scr { text-align: center; max-width: 560px; padding: 20px; }
+.scr h1 { font-size: 64px; margin: 0; letter-spacing: 10px; color: var(--green); text-shadow: 0 0 24px rgba(159, 211, 106, 0.45); }
+.scr h2 { font-size: 22px; margin: 4px 0 18px; color: var(--brass); font-weight: 400; font-style: italic; }
+.scr p { font-size: 16px; line-height: 1.5; color: #b9bca2; }
+.scr .btn { font-size: 18px; padding: 10px 28px; margin: 14px 6px 0; }
+.scr .small { font-size: 12px; color: var(--dim); margin-top: 18px; line-height: 1.6; }

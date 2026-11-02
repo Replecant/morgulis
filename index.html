@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Моргулис: Пепел Эшфорда</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Old+Standard+TT:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet" />
+</head>
+<body>
+<div id="game">
+  <canvas id="cv" width="960" height="640"></canvas>
+
+  <div id="hud" class="hidden">
+    <div id="objective"></div>
+    <div id="squadbar"></div>
+  </div>
+  <div id="hint"></div>
+
+  <div id="dialog" class="hidden">
+    <canvas id="portrait" width="96" height="96"></canvas>
+    <div class="dbody">
+      <div id="dname"></div>
+      <div id="dtext"></div>
+      <div id="dchoices"></div>
+    </div>
+  </div>
+
+  <div id="cpanel" class="hidden">
+    <div id="cunit"></div>
+    <div id="cactions"></div>
+    <button id="cend" class="btn">Конец хода ⏎</button>
+  </div>
+  <div id="clog" class="hidden"></div>
+  <div id="toast"></div>
+
+  <div id="screen"></div>
+</div>
+<script type="module" src="./src/main.ts"></script>
+</body>
+</html>
