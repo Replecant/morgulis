@@ -125,13 +125,13 @@ function showTitle() {
   $('hint').textContent = '';
   showMainMenu(layer, {
     onNew: () => { G.mode = 'create'; openCreation(layer, newGame, showTitle); },
-    onQuick: (prof) => newGame(quickCharacter(prof)),
+    onQuick: (prof) => newGame(quickCharacter(prof), false),
     onRules: () => openRules(layer, showTitle),
     onAbout: () => showAbout(layer, showTitle),
   });
 }
 
-function newGame(pc: Character) {
+function newGame(pc: Character, intro = true) {
   layer.replaceChildren();
   resetGame(pc);
   resetShops();
@@ -143,7 +143,7 @@ function newGame(pc: Character) {
   hideScreen();
   $('hud').classList.remove('hidden');
   toScene('ashford', { x: 24, y: 58 }); // начинаем на разъезде Эшфорда
-  Dialog.start('intro');
+  if (intro) Dialog.start('intro');
 }
 
 // ---------------------------------------------------------------- ввод
@@ -233,7 +233,7 @@ function frame(now: number) {
 
 // быстрый старт для тестов: ?quick (солдат) или ?quick=medic
 const quick = new URLSearchParams(location.search).get('quick');
-if (quick !== null) newGame(quickCharacter(PROF_ORDER.includes(quick as ProfId) ? (quick as ProfId) : 'soldier'));
+if (quick !== null) newGame(quickCharacter(PROF_ORDER.includes(quick as ProfId) ? (quick as ProfId) : 'soldier'), false);
 else showTitle();
 requestAnimationFrame(frame);
 
