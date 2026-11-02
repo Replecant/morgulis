@@ -42,6 +42,7 @@ export const WEAPONS: Record<string, Weapon> = {
   musket:    { name: 'Старое ружьё', type: 'ranged', range: 7, opt: 3, atk: -1, dmg: [2, 4] },
   buttstock: { name: 'Приклад', type: 'melee', atk: -1, dmg: [1, 3] },
   // оружие траншейных мертвецов
+  cudgel:    { name: 'Дубина', type: 'melee', atk: 0, dmg: [1, 3] },
   rustbayonet: { name: 'Ржавый штык', type: 'melee', atk: 0, dmg: [2, 4] },
   oldrifle:  { name: 'Гнилая винтовка', type: 'ranged', range: 9, opt: 5, atk: -1, dmg: [3, 5] },
   gasbreath: { name: 'Газовый выдох', type: 'ranged', range: 3, opt: 3, atk: 1, dmg: [2, 3], ignoreCover: true, splash: [1, 2] },
@@ -123,6 +124,9 @@ export const ENEMIES: Record<string, UnitBase> = {
   imp:         E('imp', 'Бес', 'imp', 5, 6, ['claws'], 'melee', 3, 13, { demonic: true }),
   scav_gun:    E('scav_gun', 'Мародёр с ружьём', 'militia_gun', 6, 4, ['musket'], 'ranged', 2, 10),
   scav_knife:  E('scav_knife', 'Мародёр с ножом', 'militia', 7, 4, ['knife'], 'melee', 2, 10),
+  // голодные бандиты: слабые, измождённые
+  hungry:  E('hungry', 'Голодный бандит', 'hungry', 5, 4, ['knife'], 'melee', 0, 9),
+  hungry2: E('hungry2', 'Голодный бандит', 'hungry2', 5, 4, ['cudgel'], 'melee', 0, 9),
   // траншейные мертвецы: медленные, упрямые, бьют больно
   dead_soldier: E('dead_soldier', 'Окопный мертвец', 'dead_soldier', 9, 3, ['rustbayonet'], 'melee', 2, 9),
   dead_rifle:   E('dead_rifle', 'Мертвец-стрелок', 'dead_rifle', 7, 3, ['oldrifle', 'rustbayonet'], 'ranged', 1, 9),
@@ -152,6 +156,11 @@ export interface BattleDef {
  */
 export function battleDef(id: string, _flags: Record<string, boolean | undefined>): BattleDef {
   if (id.startsWith('trench')) return trenchBattle(id);
+  if (id.startsWith('hungry')) { // голодные бандиты — на карте засады в пустоши
+    const w = battleDef('waste', _flags), n = +(id.slice(6) || 2);
+    const pos = [{ x: 19, y: 5 }, { x: 18, y: 9 }, { x: 21, y: 7 }];
+    return { ...w, id, title: 'Голодные бандиты', enemies: pos.slice(0, n).map((q, i) => ({ t: i % 2 ? 'hungry2' : 'hungry', ...q })) };
+  }
   switch (id) {
     case 'waste':
       return {

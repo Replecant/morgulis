@@ -64,6 +64,7 @@ Combat.hooks = {
     hint();
     if (id === 'ruins') { G.flags.scavDone = true; Dialog.start('after_scav'); }
     if (id === 'waste') { World.killBand(); Dialog.start('after_band'); }
+    if (id.startsWith('hungry')) { World.killHungry(); Dialog.start('after_hungry'); }
     if (id.startsWith('trench')) { World.killDead(); World.deadHit = null; Dialog.start('after_dead'); }
     refreshHud();
   },
@@ -76,6 +77,7 @@ Combat.hooks = {
           hideScreen(); restoreSnapshot();
           G.squad.forEach((s) => (s.hp = Math.max(1, Math.ceil(s.hp / 2))));
           if (id === 'waste') World.calmBand(24);
+          if (id.startsWith('hungry')) World.calmHungry(24);
           if (id.startsWith('trench')) World.calmDead(12);
           combatShow(false); G.mode = returnMode; hint(); refreshHud();
         } },
@@ -123,6 +125,7 @@ Debug.onTeleport = (id) => {
 World.onPatrol = (owner) => Dialog.start(owner === 'baroness' ? 'enc_bpatrol' : 'enc_patrol');
 World.onDiscover = (l) => toast(`Замечено: ${l.name}`);
 World.onDead = () => Dialog.start('enc_dead');
+World.onHungry = () => Dialog.start('enc_hungry');
 World.onGas = (msg) => { toast(msg); refreshHud(); };
 /** Плотяная рука: раз в 3 дня нужен тканевый раствор, иначе отторжение. */
 function fleshCare() {
@@ -157,6 +160,9 @@ Dialog.onAction = (act) => {
   else if (act === 'battle_dead') startBattle(World.deadHit?.id ?? 'trench1');
   else if (act === 'battle_trench_poi') { World.deadHit = null; startBattle('trench2'); }
   else if (act === 'dead_lose') World.calmDead(8);
+  else if (act === 'battle_hungry') startBattle('hungry' + (World.hungryHit?.kinds.length ?? 2));
+  else if (act === 'hungry_calm') World.calmHungry(48);
+  else if (act === 'hungry_lose') World.calmHungry(6);
 };
 
 $('cend').onclick = () => Combat.endPlayerTurn();

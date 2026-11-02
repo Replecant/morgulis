@@ -207,6 +207,12 @@ export const Explore = {
     B('watertower', 30, 55, 2, 2, { name: 'Водонапорная башня', talk: 'watertower' });
     for (const x of [13, 17, 21]) B('wagon', x, 59, 4, 1, { name: 'Цистерна', talk: 'wagon' });
     B('sign', 24, 57, 1, 1, { name: 'Табличка разъезда', talk: 'station_sign' });
+    // застава барона на западном въезде — дорога с поля сражений и от баронессы
+    B('tower', 3, 38, 3, 3, { name: 'Сторожевая вышка', talk: 'ashtower' });
+    B('tower', 3, 46, 3, 3, { name: 'Сторожевая вышка', talk: 'ashtower' });
+    B('tower', 35, 46, 3, 3, { name: 'Сторожевая вышка', talk: 'ashtower' });
+    for (const [x, y] of [[6, 41], [6, 46], [5, 41], [5, 46]]) B('sandbags', x, y, 1, 1, { name: 'Мешки с песком', talk: 'sandbags' });
+    B('lamp', 8, 45, 1, 1, { name: 'Фонарь заставы', talk: 'lamp' });
     // фонари Эшфорда
     for (const [x, y] of [[12, 42], [20, 42], [28, 45], [21, 50], [24, 56], [10, 56], [34, 45]]) B('lamp', x, y, 1, 1, { name: 'Фонарь', talk: 'lamp' });
     for (const [x, y] of [[21, 39], [11, 45], [24, 51], [17, 52], [34, 49]]) B('barrel', x, y, 1, 1);
@@ -440,6 +446,8 @@ export const Explore = {
     // ---------------- жители
     const NPC = (id: string, name: string, kind: string, x: number, y: number, talk: string, cond?: () => boolean) => this.npcs.push({ id, name, kind, x, y, talk, cond, seed: this.npcs.length * 1.7 });
     NPC('oldos', 'Олдос, смотритель', 'elder', 21, 58, 'oldos');
+    NPC('ash_sgt', 'Сержант заставы', 'ashsoldier', 7, 42, 'ash_sgt');
+    NPC('ash_sol1', 'Часовой', 'ashsoldier', 7, 45, 'ash_sgt');
     NPC('ida', 'Ида Кроу', 'foreman', 27, 41, 'ida');
     NPC('burk', 'Бёрк, нефтяник', 'oilworker', 34, 36, 'burk');
     NPC('nell', 'Нелл', 'widow', 26, 50, 'nell');

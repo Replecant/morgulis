@@ -76,7 +76,7 @@ const TOP: Record<string, number> = {
   house: 16, ruin: 16, farm: 16, station: 20, pumphouse: 28, slaughter: 16, barn: 14, hut: 16,
   tank: 18, watertower: 44, wagon: 14, lamp: 30, tree: 26, rock: 6, barrel: 6, fence: 10, feed: 8, chitin: 6,
   cellar: 10, adit: 26, shroombed: 6, bigshroom: 18, rack: 14, wall: 30, gate: 40, railgate: 36, tower: 56,
-  sign: 16, wire: 8, cell: 16, orecart: 8, boat: 4, nets: 20, scrapheap: 16, banner: 46, poster: 24, statue: 44, horn: 40, keep: 76, barracks: 22, laundry: 22, handcart: 12, crates: 14, coalheap: 8, standpipe: 18, noticeboard: 22, sacks: 8, vent: 4, clinic: 30, shack: 18, factory: 64, tenement: 30, stall: 18, workshop: 26, crater: 0, bones: 0, wallruin: 14, skeleton: 14, milestone: 14, lorry: 12,
+  sign: 16, sandbags: 8, wire: 8, cell: 16, orecart: 8, boat: 4, nets: 20, scrapheap: 16, banner: 46, poster: 24, statue: 44, horn: 40, keep: 76, barracks: 22, laundry: 22, handcart: 12, crates: 14, coalheap: 8, standpipe: 18, noticeboard: 22, sacks: 8, vent: 4, clinic: 30, shack: 18, factory: 64, tenement: 30, stall: 18, workshop: 26, crater: 0, bones: 0, wallruin: 14, skeleton: 14, milestone: 14, lorry: 12,
 };
 
 export interface ObjLike { kind: string; x: number; y: number; w: number; h: number; seed: number; ruinKind?: string; boarded?: boolean }
@@ -339,6 +339,15 @@ export function objSprite(o: ObjLike, neighbors?: { horizFence: boolean }) {
     }
     case 'sign': R(9, H - 16, 2, 16, '#3a2c1e'); R(2, H - 18, 16, 6, '#4a3a26'); for (let x = 4; x < 16; x += 3) R(x, H - 16, 2, 1, '#c8b88a'); break;
 
+    case 'sandbags': { // мешки с песком в два ряда
+      for (let row = 0; row < 2; row++) for (let k = -1; k < 3; k++) {
+        const bx = k * 8 + (row % 2 ? 4 : 0), by = H - 12 + row * 6;
+        if (bx + 7 <= 0 || bx >= W) continue;
+        const x0 = Math.max(0, bx), w = Math.min(7, W - x0);
+        R(x0, by, w, 5, row % 2 ? '#7a6a4a' : '#6e5e42'); R(x0, by, w, 1, '#8a7a58');
+      }
+      break;
+    }
     case 'wire': { // колючая проволока на кольях — спираль в два ряда
       for (const kx of [2, 15]) { R(kx, H - 18, 2, 18, '#3a2c1e'); P(kx, H - 19, '#5a4430'); }
       for (let k = 0; k < W; k++) { P(k, H - 14 + Math.round(Math.sin(k * 1.3) * 2), '#8a8a80'); P(k, H - 7 + Math.round(Math.cos(k * 1.1) * 2), '#7a7a70'); }

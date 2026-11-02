@@ -87,6 +87,10 @@ const DEAD_START: [string, string[], number, number][] = [
   ['trench2', ['dead_gas', 'dead_soldier', 'dead_rifle'], -330, 860],
   ['trench3', ['dead_sapper', 'dead_soldier', 'dead_gas'], -760, 950],
 ];
+// голодные бандиты: оборванцы бродят вглубь земли барона — слабые и медленные
+interface Hungry { id: number; kinds: string[]; x: number; y: number; tx: number; ty: number; alive: boolean; respawn: number; calm: number; seen: boolean }
+const HUNGRY_START: [number, number][] = [[700, 650], [1350, 560], [950, 1100]];
+const inBaronLand = (q: Pt) => q.x > 200 && q.x < 1650 && q.y > 120 && q.y < WH - 120;
 const inFront = (q: Pt) => q.x > FRONT_W0 + 40 && q.x < FRONT_X - 20 && q.y > 80 && q.y < WH - 80;
 // едкие облака: плывут над пустошью по ветру; без противогаза газ обжигает лёгкие
 interface Cloud { x: number; y: number; r: number; vx: number; vy: number; seed: number }
@@ -120,6 +124,9 @@ export const World = {
   inGas: false, gasDose: 0, filterUse: 0,
   pendingPatrol: null as Patrol | null,
   dead: [] as DeadGroup[],
+  hungry: [] as Hungry[],
+  hungryHit: null as Hungry | null,
+  onHungry: () => {},
   deadHit: null as DeadGroup | null,
   patrols: [] as Patrol[],
   onDay: () => {},
@@ -133,6 +140,7 @@ export const World = {
     this.clouds = [[200, 300], [760, 1080], [1250, 560], [-300, 420], [-650, 900], [1560, 1120], [900, 180]].map(([x, y], i) => ({
       x, y, r: 70 + ((i * 37) % 50), vx: 9 + (i % 3) * 3, vy: ((i % 2) * 2 - 1) * 2, seed: i * 1.9 }));
     this.inGas = false; this.gasDose = 0; this.filterUse = 0;
+    this.hungry = HUNGRY_START.map(([x, y], i) => ({ id: i, kinds: i % 2 ? ['hungry2', 'hungry', 'hungry'] : ['hungry', 'hungry2'], x, y, tx: x, ty: y, alive: true, respawn: 0, calm: 0, seen: false }));
     this.dead = DEAD_START.map(([id, kinds, x, y]) => ({ id, kinds, x, y, tx: x, ty: y, alive: true, respawn: 0, calm: 0, seen: false }));
     this.patrols = PATROL_PATHS.map((path, i) => { const len = polyLen(path); return { path, len, s: i ? 0 : len * 0.2, dir: 1 as const, wait: 0, speed: i ? PATROL_SPEED * 1.15 : PATROL_SPEED * 0.9, owner: PATROL_OWNER[i] }; });
   },
@@ -235,6 +243,7 @@ export const World = {
       this.updateDead(dt);
       this.updateClouds(dt);
       this.updateBand(dt);
+      this.updateHungry(dt);
     }
   },
 
@@ -272,6 +281,41 @@ export const World = {
     if (dd > 0.5) { b.x += ((b.tx - b.x) / dd) * Math.min(sp, dd); b.y += ((b.ty - b.y) / dd) * Math.min(sp, dd); }
     if (chase && dist(b, p) < 20) { p.moving = false; this.pending = null; G.keys.clear(); this.onEncounter(); }
   },
+  /** Голодные бандиты: бродят по земле барона, держатся подальше от деревень, форта и патрулей; заметив отряд — плетутся к нему. */
+  updateHungry(dt: number) {
+    const p = this.party, hours = dt * HOURS_PER_SEC;
+    for (const g of this.hungry) {
+      if (!g.alive) {
+        if (G.clock >= g.respawn) {
+          const s0 = HUNGRY_START[g.id];
+          if (dist({ x: s0[0], y: s0[1] }, p) > 400) { g.alive = true; g.x = g.tx = s0[0]; g.y = g.ty = s0[1]; }
+        }
+        continue;
+      }
+      const d = dist(g, p), patrolNear = this.nearPatrol(g, 180);
+      g.seen = d < 300;
+      const chase = !Debug.invisible && d < 170 && G.clock >= g.calm && !patrolNear && !this.nearPatrol(p, 200) && inBaronLand(p) && !LOCS.some((l) => l.kind !== 'poi' && dist(l, p) < 100);
+      if (chase) { g.tx = p.x; g.ty = p.y; }
+      else if (patrolNear || dist(g, { x: g.tx, y: g.ty }) < 4) {
+        for (let k = 0; k < 8; k++) {
+          const a = Math.random() * TAU, t = { x: g.x + Math.cos(a) * 180, y: g.y + Math.sin(a) * 180 };
+          if (inBaronLand(t) && !LOCS.some((l) => l.kind !== 'poi' && dist(l, t) < 140)) { g.tx = t.x; g.ty = t.y; break; }
+        }
+      }
+      const sp = (chase ? 36 : 20) * hours, dd = dist(g, { x: g.tx, y: g.ty });   // медленнее отряда
+      if (dd > 0.5) { g.x += ((g.tx - g.x) / dd) * Math.min(sp, dd); g.y += ((g.ty - g.y) / dd) * Math.min(sp, dd); }
+      if (chase && d < 20) { p.moving = false; this.pending = null; G.keys.clear(); this.hungryHit = g; this.onHungry(); return; }
+    }
+  },
+  killHungry() { const g = this.hungryHit; if (g) { g.alive = false; g.respawn = G.clock + 36; } this.hungryHit = null; },
+  calmHungry(hours: number) {
+    const g = this.hungryHit, p = this.party; if (!g) return;
+    g.calm = G.clock + hours;
+    const a = Math.atan2(g.y - p.y, g.x - p.x);
+    g.tx = clamp(g.x + Math.cos(a) * 220, 220, 1630); g.ty = clamp(g.y + Math.sin(a) * 220, 140, WH - 140);
+    this.hungryHit = null;
+  },
+
   /** Мертвецы бредут по фронту; заметив отряд, идут на него, но за пределы фронта не выходят. */
   updateDead(dt: number) {
     const p = this.party, hours = dt * HOURS_PER_SEC;
@@ -393,6 +437,12 @@ export const World = {
       mini('militia', X(b.x) + 4, Y(b.y) + 2, b.tx < b.x, fr(bm, 2));
     }
     const pm0 = p.moving || ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'KeyA', 'KeyD', 'KeyW', 'KeyS'].some((kk) => G.keys.has(kk));
+    // голодные бандиты — плетутся кучкой
+    for (const g of this.hungry) {
+      if (!g.alive || !g.seen) continue;
+      const fl = g.tx < g.x;
+      g.kinds.forEach((k, i) => mini(k, X(g.x) + (i - 1) * 7, Y(g.y) + (i % 2) * 3, fl, fr(pm0, i * 1.3)));
+    }
     // мертвецы — бредут вразвалку, кучкой
     for (const g of this.dead) {
       if (!g.alive || !g.seen) continue;
@@ -457,6 +507,14 @@ export const World = {
     if (b.alive && b.seen) {
       c.font = 'italic 12px "Old Standard TT", serif'; c.textAlign = 'center';
       c.fillStyle = '#e07060'; c.fillText(G.clock < b.calm ? 'Мародёры (отстали)' : dist(b, p) < 230 ? 'Мародёры — преследуют!' : 'Мародёры', b.x - cx, b.y - cy - 40);
+      c.textAlign = 'left';
+    }
+    for (const g of this.hungry) {
+      if (!g.alive || !g.seen) continue;
+      const lbl = G.clock < g.calm ? 'Голодные бандиты (ушли)' : dist(g, p) < 170 ? 'Голодные бандиты — идут к вам' : 'Голодные бандиты';
+      c.font = 'italic 12px "Old Standard TT", serif'; c.textAlign = 'center';
+      c.fillStyle = 'rgba(0,0,0,0.85)'; c.fillText(lbl, g.x - cx + 1, g.y - cy - 39);
+      c.fillStyle = '#c8a878'; c.fillText(lbl, g.x - cx, g.y - cy - 40);
       c.textAlign = 'left';
     }
     for (const g of this.dead) {

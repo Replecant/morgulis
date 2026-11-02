@@ -49,6 +49,12 @@ export const FOLK: FolkDef[] = [
     ],
   },
 
+  { id: 'ash_patrol', name: 'Солдат', kind: 'ashsoldier', scene: 'ashford', speed: 1.2,
+    route: [{ x: 9, y: 43, wait: 5 }, { x: 21, y: 44, wait: 4 }, { x: 22, y: 54, wait: 5 }, { x: 33, y: 44, wait: 5 }],
+    barks: ['С запада тянутся голодные. Гоним, а они снова лезут.', 'Масло — барону, а нам — вышка и сквозняк.', 'Говорят, у баронессы солдаты в масках. Не видел — и видеть не хочу.'] },
+  { id: 'ash_patrol2', name: 'Солдат', kind: 'ashsoldier', scene: 'ashford', speed: 1.1,
+    route: [{ x: 14, y: 57, wait: 6 }, { x: 30, y: 57, wait: 6 }],
+    barks: ['Цистерны охраняем. Каждая — на счету.', 'Не крутись у путей, не положено.'] },
   // ---------------- Ричморд: жуков больше, чем людей
   {
     id: 'hand', name: 'Работник фермы', kind: 'farmhand', scene: 'richmord',
