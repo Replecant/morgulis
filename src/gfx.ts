@@ -11,10 +11,11 @@ type Ctx = CanvasRenderingContext2D;
 
 interface Style {
   coat?: string; legs?: string; skin?: string; hair?: string; beard?: string;
-  hat?: 'cap' | 'helmet' | 'tophat' | 'bonnet' | 'flatcap' | 'minerhelm';
+  hat?: 'cap' | 'helmet' | 'tophat' | 'bonnet' | 'flatcap' | 'minerhelm' | 'brodie';
   hatC?: string; trim?: string; belt?: string; apron?: string;
   dress?: boolean; collar?: boolean; mask?: boolean; band?: boolean; sash?: boolean; hood?: boolean; longHair?: boolean; goggles?: boolean; cuirass?: boolean;
   undead?: boolean; tanks?: boolean;
+  puttees?: string; webbing?: string; respirator?: boolean; tabs?: string; // военная форма: обмотки, ремни с подсумками, противогаз, петлицы
   limbs?: Partial<Record<string, string>>; // утраченные части тела и протезы (prosthetics.ts) — видны на фигурке // траншейные мертвецы: гнилая кожа, светящиеся глаза; газовые баллоны за спиной
   weapon?: 'saber' | 'rifle' | 'fork' | 'musket' | 'hammer' | 'staff' | 'pole' | 'bottle' | 'book' | 'wrench' | 'bag' | 'knife' | 'pistol' | 'goad' | 'shovel';
   scale?: number;
@@ -46,7 +47,8 @@ export const STYLES: Record<string, Style> = {
   sutler: { coat: '#3a2e40', legs: '#1c1a1e', belt: '#2a1d12', trim: '#b09040', hat: 'tophat', hatC: '#1a1418', skin: '#d0b498', beard: '#5a4030', weapon: 'bag' },
   grower: { coat: '#34402c', dress: true, hat: 'bonnet', hatC: '#26301e', skin: '#c8b498', hair: '#8a8a7a', longHair: true, weapon: 'goad' },
   picker: { coat: '#4a4a36', legs: '#2a2a20', belt: '#2a1d12', hat: 'flatcap', hatC: '#2e2e22', skin: '#cdb498', weapon: 'bag' },
-  guard: { coat: '#2e3440', legs: '#1a1c22', belt: '#2a1d12', trim: '#8a8a8a', hat: 'helmet', hatC: '#3a3e46', skin: '#c0a488', weapon: 'rifle' },
+  // солдаты барона: мундир хаки, плоская каска с широкими полями, ремни с подсумками, обмотки
+  guard: { coat: '#6b6345', legs: '#5e573c', belt: '#9a906a', webbing: '#a89c74', puttees: '#9a9070', hat: 'brodie', hatC: '#5c5a40', skin: '#c0a488', weapon: 'rifle' },
   // траншейные мертвецы — павшие солдаты старой войны
   dead_soldier: { coat: '#4a4c3a', legs: '#2a2a22', belt: '#3a2a1a', hat: 'helmet', hatC: '#3e4232', skin: '#8a9a78', undead: true, weapon: 'rifle' },
   dead_rifle: { coat: '#45473a', legs: '#28281f', belt: '#3a2a1a', hat: 'cap', hatC: '#2e3024', skin: '#90a080', undead: true, weapon: 'rifle' },
@@ -61,8 +63,9 @@ export const STYLES: Record<string, Style> = {
   surgeon_under: { coat: '#2a2622', legs: '#1a1816', apron: '#4a3020', hair: '#2a2622', skin: '#b8a090', goggles: true, weapon: 'knife' },
   medic_civ: { coat: '#d0ccc0', legs: '#2a2826', apron: '#a8a498', hair: '#5a5a56', skin: '#c8b096', goggles: true, weapon: 'wrench' },
   // земли баронессы
-  bguard: { coat: '#3a3e4a', legs: '#1e2026', belt: '#2a1d12', trim: '#a03028', hat: 'helmet', hatC: '#2e323c', skin: '#c4a888', weapon: 'rifle' },
-  bofficer: { coat: '#2e323e', legs: '#18191e', belt: '#2a1d12', trim: '#c8a050', hat: 'cap', hatC: '#7a2a24', skin: '#d0b498', weapon: 'saber' },
+  // солдаты баронессы: тёмный серо-оливковый мундир, красные петлицы, та же каска — и противогаз на лице
+  bguard: { coat: '#4e5040', legs: '#44463a', belt: '#7a7458', webbing: '#8a8466', puttees: '#7a7c66', tabs: '#b03830', hat: 'brodie', hatC: '#3e4234', skin: '#c4a888', respirator: true, weapon: 'rifle' },
+  bofficer: { coat: '#4e5040', legs: '#3a3c30', belt: '#5a3a22', webbing: '#5a3a22', puttees: '#4a3a26', tabs: '#a03028', trim: '#c8a050', hat: 'cap', hatC: '#4e5040', skin: '#d0b498', weapon: 'saber' },
   bherald: { coat: '#4a2a2a', legs: '#1e1a1a', trim: '#c8a050', hat: 'cap', hatC: '#2e323c', skin: '#c8ac90', beard: '#4a3a2a', weapon: 'book' },
   fisher: { coat: '#4a5048', legs: '#2a2c28', apron: '#3a3a30', hat: 'flatcap', hatC: '#3a3e38', skin: '#b89878', beard: '#6a5a4a', weapon: 'pole' },
   fisher_w: { coat: '#4a4448', dress: true, apron: '#5a5a4a', hat: 'bonnet', hatC: '#3a3a3a', skin: '#c8a890', hair: '#5a4a3a', longHair: true, weapon: 'bag' },

@@ -57,7 +57,7 @@ function buildChar(kind: string, frame: number): HTMLCanvasElement {
   const top = size === 's' ? 11 : size === 'b' ? 4 : 6;            // верх головы
   const neck = top + 7;
   const tTop = neck + 1;                                            // плечи
-  const tBot = size === 's' ? 26 : 25;                              // низ шинели
+  const tBot = st.puttees ? 22 : size === 's' ? 26 : 25;           // низ шинели (у солдат — короткий мундир)
   const [tx0, tx1] = size === 'b' ? [6, 17] : [7, 16];
   const coat = st.coat ?? '#4a4a3e', coatD = shade(coat, -0.38), coatL = shade(coat, 0.16);
   const skin = st.skin ?? '#c8a684', skinD = shade(skin, -0.3);
@@ -100,6 +100,7 @@ function buildChar(kind: string, frame: number): HTMLCanvasElement {
       }
       if (kind === 'hydraleg') { R(x, lTop - 1, 2, 3, col); R(x, lTop + 2, 2, len - 4, '#6e726c'); R(x + 1, lTop + 3, 1, len - 6, BRASS); R(x, SH - 2, 3, 2, '#4a4e4a'); return; }
       R(x, lTop - 1, 2, len, col); R(x, SH - 3, 3, 3, boot);
+      if (st.puttees) for (let y = SH - 10; y < SH - 3; y++) { R(x, y, 2, 1, (y & 1) ? st.puttees : shade(st.puttees, -0.25)); P(x + ((y >> 1) & 1), y, shade(st.puttees, 0.15)); } // обмотки по спирали
     };
     leg(lx, legsD, LB.legL); leg(rx, legs, LB.legR);
     if (LB.legL === 'lost' || LB.legR === 'lost') pline(c, tx0 - 2, sy(tTop + 3), tx0 - 3, SH - 1, WOOD); // костыль
@@ -134,6 +135,13 @@ function buildChar(kind: string, frame: number): HTMLCanvasElement {
     R(tx0 - 1, sy(tTop), 2, 1, st.trim); R(tx1, sy(tTop), 2, 1, st.trim);
   }
   if (st.belt) { R(tx0, sy(tTop + 7), tx1 - tx0 + 1, 1, st.belt); P(12, sy(tTop + 7), BRASS); }
+  if (st.webbing) { // накладные нагрудные карманы, перекрещенные ремни и подсумки
+    R(tx0 + 1, sy(tTop + 2), 3, 2, shade(coat, -0.18)); R(tx1 - 3, sy(tTop + 2), 3, 2, shade(coat, -0.18));
+    P(tx0 + 2, sy(tTop + 2), BRASS); P(tx1 - 2, sy(tTop + 2), BRASS);
+    pline(c, tx0 + 1, sy(tTop), tx1 - 1, sy(tTop + 6), st.webbing); pline(c, tx1 - 1, sy(tTop), tx0 + 1, sy(tTop + 6), st.webbing);
+    R(tx0, sy(tTop + 8), 3, 2, shade(st.webbing, -0.2)); R(tx1 - 2, sy(tTop + 8), 3, 2, shade(st.webbing, -0.2));
+  }
+  if (st.tabs) { P(10, sy(tTop), st.tabs); P(13, sy(tTop), st.tabs); } // петлицы
   if (st.collar) R(11, sy(tTop), 2, 1, '#e8e4d8');
   if (st.undead) { // истлевшая шинель: дыры, торчащие рёбра, рваный подол
     R(tx0 + 2, sy(tTop + 4), 2, 1, '#d8d4c0'); R(tx0 + 2, sy(tTop + 6), 2, 1, '#d8d4c0'); P(tx0 + 3, sy(tTop + 5), INK);
@@ -153,7 +161,13 @@ function buildChar(kind: string, frame: number): HTMLCanvasElement {
     P(hx0 + 1, hy + 3, skinD);                                      // ухо
     if (st.hair) { R(hx0, hy - 1, 6, 2, st.hair); R(hx0, hy, 2, 4, st.hair); }
     if (st.beard) { R(hx0 + 2, hy + 5, 4, 2, st.beard); R(hx0 + 3, hy + 7, 3, 1, st.beard); }
-    if (st.mask) {
+    if (st.respirator) { // противогаз: прорезиненная маска, круглые стёкла, хобот к сумке на груди
+      R(hx0, hy, 6, 7, '#6a6a54'); R(hx0 + 5, hy, 1, 7, '#4e4e40'); R(hx0, hy, 6, 1, '#7a7a62');
+      R(hx0 + 3, hy + 2, 2, 2, '#c8d8c8'); P(hx0 + 4, hy + 3, '#7a9a8a'); P(hx0 + 1, hy + 2, '#a8b8a8');  // круглые стёкла
+      R(hx0 + 4, hy + 5, 2, 2, '#3a3a30'); P(hx0 + 5, hy + 6, '#6a6a58');
+      pline(c, hx0 + 5, hy + 7, 13, sy(tTop + 3), '#3a3a30');
+      R(11, sy(tTop + 3), 4, 3, '#6a6450'); R(11, sy(tTop + 3), 4, 1, '#7a7460');            // сумка противогаза
+    } else if (st.mask) {
       R(hx0 + 1, hy + 2, 6, 5, '#2b2d28');
       P(hx0 + 3, hy + 3, '#9fd36a'); P(hx0 + 5, hy + 3, '#9fd36a');
       R(hx0 + 3, hy + 6, 3, 3, '#4a4a44'); P(hx0 + 3, hy + 6, '#6a6a62');
@@ -179,6 +193,12 @@ function buildChar(kind: string, frame: number): HTMLCanvasElement {
         break;
       case 'helmet':
         R(hx0, hy - 3, 6, 1, hcL); R(hx0 - 1, hy - 2, 8, 2, hc); R(hx0 - 3, hy, 12, 1, hcD);
+        break;
+      case 'brodie': // плоская каска «тазиком» с широкими полями
+        R(hx0 + 1, hy - 3, 4, 1, hcL); R(hx0, hy - 2, 6, 1, hc); R(hx0 - 1, hy - 1, 8, 1, hc);  // низкий купол
+        R(hx0 - 3, hy, 12, 1, hcD); P(hx0 - 3, hy, shade(hc, 0.1)); P(hx0 + 8, hy, shade(hc, 0.1)); // ровные широкие поля
+        P(hx0 + 2, hy - 2, hcL);                                                                 // заклёпка
+        if (st.tabs) R(hx0, hy - 1, 6, 1, st.tabs);                                              // красная полоса на каске
         break;
       case 'tophat':
         R(hx0, hy - 7, 6, 7, hc); R(hx0, hy - 7, 1, 7, hcL); R(hx0, hy - 2, 6, 1, '#3a2a2a'); R(hx0 - 2, hy, 10, 1, hcD);
@@ -338,7 +358,8 @@ export function miniSprite(kind: string, frame = 0): HTMLCanvasElement {
   if (st.sash) R(3, 7, 1, 1, '#7a2020');
   // голова
   R(3, 2, 4, 4, skin); R(6, 2, 1, 4, shade(skin, -0.2));
-  if (st.mask) { R(3, 4, 4, 2, '#3a3c30'); R(4, 4, 1, 1, '#9aa080'); }
+  if (st.respirator) { R(3, 3, 4, 3, '#5a5a48'); R(5, 3, 1, 1, '#9ab0a0'); R(5, 5, 1, 2, '#3a3a30'); }
+  else if (st.mask) { R(3, 4, 4, 2, '#3a3c30'); R(4, 4, 1, 1, '#9aa080'); }
   else R(5, 3, 1, 1, st.undead ? '#c8ff60' : INK);
   if (st.tanks) R(0, 6, 2, 4, '#5a5e4a');
   if (st.beard) R(3, 5, 4, 1, st.beard);
@@ -349,6 +370,7 @@ export function miniSprite(kind: string, frame = 0): HTMLCanvasElement {
   switch (st.hat) {
     case 'cap': R(3, 1, 4, 2, hc); R(5, 2, 3, 1, INK); break;
     case 'flatcap': R(3, 1, 4, 2, hc); R(6, 2, 2, 1, hc); break;
+    case 'brodie': R(0, 2, 10, 1, shade(hc, -0.3)); R(2, 1, 6, 1, hc); R(3, 0, 4, 1, hc); if (st.tabs) R(2, 1, 6, 1, st.tabs); break;
     case 'helmet': case 'minerhelm': R(2, 1, 6, 2, hc); R(3, 0, 4, 1, hc); R(2, 2, 6, 1, shade(hc, -0.3)); if (st.hat === 'minerhelm') R(6, 1, 1, 1, '#f0d080'); break;
     case 'tophat': R(3, -1, 4, 3, hc); R(2, 2, 6, 1, hc); break;
     case 'bonnet': R(2, 1, 5, 2, hc); R(2, 2, 1, 3, hc); break;

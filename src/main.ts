@@ -14,6 +14,7 @@ import { Sheet } from './sheet';
 import { Music } from './music';
 import { Pause } from './pause';
 import { Debug } from './debug';
+import { charSprite } from './sprites';
 import { ProsthShop } from './prosthshop';
 import { OccultMenu } from './occultmenu';
 import { hasProsth, type Shop } from './prosthetics';
@@ -316,5 +317,5 @@ requestAnimationFrame(frame);
 
 // отладка: ?debug в адресе даёт доступ к состоянию из консоли
 if (new URLSearchParams(location.search).has('debug')) {
-  (window as any).morgulis = { G, Combat, Explore, World, Dialog, startBattle, newGame, newCharacter, openSquad, Inventory, Trade, Sheet, Music, Pause, ProsthShop, OccultMenu, Debug, toScene, toWorld };
+  (window as any).morgulis = { G, Combat, Explore, World, Dialog, startBattle, newGame, newCharacter, openSquad, Inventory, Trade, Sheet, Music, Pause, ProsthShop, OccultMenu, Debug, charSprite, toScene, toWorld };
 }
