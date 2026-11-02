@@ -8,7 +8,7 @@ import { Explore } from './explore';
 import { World, clockText } from './worldmap';
 import { Combat, CT } from './combat';
 import { Dialog, refreshHud, exploreHint, toast, combatShow, combatLog, combatPanel, screen, hideScreen, openSquad, closeSquad, squadOpen } from './ui';
-import { updateAsh, setPcStyle, applyEquipLooks } from './gfx';
+import { setPcStyle, applyEquipLooks } from './gfx';
 import { Inventory } from './inventory';
 import { Trade, resetShops } from './trade';
 import { drawMenuBg, showMainMenu, showAbout, openRules } from './menu';
@@ -218,7 +218,6 @@ function frame(now: number) {
   const dt = Math.min(0.05, (now - last) / 1000);
   last = now;
   G.time += dt;
-  updateAsh(dt, 960, 640);
   Dialog.update(dt);
   const free = !Dialog.active && !squadOpen() && !Inventory.open && !Trade.open;
   if (G.mode === 'explore' && free) Explore.update(dt);

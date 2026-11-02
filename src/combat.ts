@@ -10,7 +10,9 @@ import { check, checkChance, CheckResult } from './rules';
 import { woundMods, effMaxHp, addWound, bandageAmount, medkitAmount, WOUNDS } from './wounds';
 import { AMMO_NAME } from './items';
 import { equipStats } from './items';
-import { drawFigure, Lighting, Light, drawDeadTree, drawCrate, drawAsh, vignette } from './gfx';
+import { PixelView, applyLight, PLight, T, PS, prect, ppx, pline, pellipse, shade, seeded as pseed, outline } from './px';
+import { drawSprite } from './sprites';
+import { paintTile, objSprite } from './pxworld';
 
 export const CT = 40, CW = 24, CH = 14;
 const W = CW * CT, H = CH * CT;
@@ -34,6 +36,7 @@ export interface Unit {
   rallyCharm: boolean;  // медальон: поднятый встаёт с половиной ОЗ
   exposed: boolean;     // раскрылся после рискованного манёвра: −2 к Защите до своего хода
   downed: boolean;      // тяжело ранен (боец отряда на 0 ОЗ) — можно спасти
+  walking?: boolean;    // идёт (для анимации шага)
   weapons: string[]; ammo: Record<string, number>; abil: Record<string, number>;
   ai?: UnitBase['ai']; leader: boolean; demonic: boolean;
   dead: boolean; fled: boolean; terror: boolean; flip: boolean; flash: number; seed: number;
@@ -104,7 +107,7 @@ export const Combat = {
   banner: null as { text: string; color: string; t: number } | null,
   hover: null as Pt | null,
   bg: null as HTMLCanvasElement | null,
-  light: null as Lighting | null,
+  view: null as PixelView | null,
   circle: null as { x: number; y: number; r: number } | null,
   smoke: [] as { x: number; y: number; turns: number }[],
 
@@ -122,7 +125,7 @@ export const Combat = {
       this.units.push(u);
     });
     for (const e of def.enemies) this.units.push(mkUnit(ENEMIES[e.t], 'enemy', e.x, e.y));
-    this.light = this.light ?? new Lighting(W, H);
+    this.view = this.view ?? new PixelView(W / PS, H / PS);
     this.renderBg();
     this.hooks.log(`— ${def.title} —`);
     this.startPlayerTurn();
@@ -797,6 +800,7 @@ export const Combat = {
     });
   },
   async moveAlong(u: Unit, path: Pt[], stepMs = 110) {
+    u.walking = true;
     for (let i = 1; i < path.length; i++) {
       const p = path[i];
       if (p.x !== u.x) u.flip = p.x < u.x;
@@ -804,6 +808,7 @@ export const Combat = {
       await this.tween(stepMs, (k) => { u.px = lerp(sx, tx, k); u.py = lerp(sy, ty, k); });
       u.x = p.x; u.y = p.y;
     }
+    u.walking = false;
   },
   async lunge(a: Unit, t: Unit) {
     const sx = a.px, sy = a.py, dx = (t.px - a.px) * 0.45, dy = (t.py - a.py) * 0.45;
@@ -833,7 +838,7 @@ export const Combat = {
       this.parts.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s - sp * 0.3, life: 0.4 + Math.random() * 0.5, max: 0.9, color, size: 1.5 + Math.random() * 2, g: 160 });
     }
   },
-  float(u: Unit, text: string, color: string) { this.floats.push({ x: u.px, y: u.py - 38, text, color, t: 0 }); },
+  float(u: Unit, text: string, color: string) { this.floats.push({ x: u.px, y: u.py - 58, text, color, t: 0 }); },
   async showBanner(text: string, color: string) { this.banner = { text, color, t: 0 }; await sleep(1000); this.banner = null; },
 
   update(dt: number) {
@@ -852,19 +857,51 @@ export const Combat = {
 
   // ---------------------------------------------------------- отрисовка
   draw(c: CanvasRenderingContext2D, t: number) {
-    c.save();
-    if (this.shake > 0) c.translate((Math.random() - 0.5) * this.shake, (Math.random() - 0.5) * this.shake);
-    c.drawImage(this.bg!, 0, 0);
-    if (this.circle) { // пульсирующий круг призыва
-      const { x, y, r } = this.circle, p = 0.5 + Math.sin(t * 2) * 0.25;
-      c.save(); c.shadowColor = '#9fef6a'; c.shadowBlur = 18;
-      c.strokeStyle = `rgba(160,240,110,${p})`; c.lineWidth = 2;
-      c.beginPath(); c.arc(x, y, r, 0, TAU); c.stroke();
-      c.beginPath();
-      for (let i = 0; i <= 5; i++) { const a = -Math.PI / 2 + i * (TAU * 2 / 5) + t * 0.1; const px = x + Math.cos(a) * r * 0.92, py = y + Math.sin(a) * r * 0.92; if (i) c.lineTo(px, py); else c.moveTo(px, py); }
-      c.stroke(); c.restore();
+    // ---------- пиксельный слой: поле, дым, юниты, эффекты, свет
+    const v = this.view!, lc = v.c, lw = v.w, lh = v.h;
+    lc.setTransform(1, 0, 0, 1, 0, 0);
+    lc.drawImage(this.bg!, 0, 0);
+    if (this.circle) { // пульсирующий круг призыва — точками
+      const { x, y, r } = this.circle, n = 48, on = Math.floor(t * 6);
+      for (let i = 0; i < n; i++) { const a = (i / n) * TAU; if ((i + on) % 3) ppx(lc, x / PS + Math.cos(a) * r / PS, y / PS + Math.sin(a) * r / PS, '#a8f070'); }
     }
+    for (const sm of this.smoke) { // дым — растровые клубы
+      const shift = Math.floor(t * 3);
+      for (let yy = (sm.y - 1) * T - 4; yy < (sm.y + 2) * T + 2; yy++) for (let xx = (sm.x - 1) * T - 4; xx < (sm.x + 2) * T + 4; xx++) {
+        const d = Math.hypot((xx - (sm.x + 0.5) * T) / (1.7 * T), (yy - (sm.y + 0.5) * T) / (1.6 * T));
+        if (d < 1 && ((xx + yy + shift) % (d < 0.6 ? 2 : 3) === 0)) ppx(lc, xx, yy, d < 0.5 ? '#a8a8a0' : '#8a8a82');
+      }
+    }
+    const vis = this.units.filter((u) => !u.fled).sort((a, b) => (a.dead === b.dead ? a.py - b.py : a.dead ? -1 : 1));
+    for (const u of vis) {
+      const frame = u.walking ? 1 + (Math.floor(t * 8) % 2) * 2 : 0;
+      const bob = !u.walking && !u.dead && Math.sin(t * 1.8 + u.seed) > 0.75 ? 1 : 0;
+      drawSprite(lc, u.kind, u.px / PS, u.py / PS + 9, { flip: u.flip, dead: u.dead, flash: u.flash > 0, frame, bob });
+    }
+    for (const f of this.fx) {
+      const a = Math.max(0, f.life / f.max);
+      if (f.type === 'tracer' && a > 0.3) pline(lc, f.x1 / PS, f.y1 / PS, f.x2 / PS, f.y2 / PS, f.color);
+      if (f.type === 'ring') { const rr = ((1 - a) * 50 + 5) / PS; for (let i = 0; i < 40; i++) { const ang = (i / 40) * TAU; ppx(lc, f.x1 / PS + Math.cos(ang) * rr, f.y1 / PS + Math.sin(ang) * rr, f.color); } }
+      if (f.type === 'proj') { const x = lerp(f.x1, f.x2, f.k!) / PS, y = lerp(f.y1, f.y2, f.k!) / PS; prect(lc, x - 1, y - 1, 3, 3, f.color); ppx(lc, x, y, '#ffffff'); }
+    }
+    for (const p of this.parts) if (p.life / p.max > 0.15) prect(lc, p.x / PS, p.y / PS, p.size > 2.5 ? 2 : 1, p.size > 2.5 ? 2 : 1, p.color);
+    // свет
+    const lights: PLight[] = this.def.lights.map(([x, y, r, color]) => ({ x: x * T + T / 2, y: y * T + T / 2, r: r / PS, a: 0.85 + Math.sin(t * 7 + x) * 0.06, color }));
+    for (const u of this.units) {
+      if (u.dead) continue;
+      if (u.team === 'player') lights.push({ x: u.px / PS, y: u.py / PS, r: 44, a: 0.7 });
+      else if (u.kind === 'cultist') lights.push({ x: u.px / PS + (u.flip ? -5 : 5), y: u.py / PS - 14, r: 46, a: 0.9, color: '#9fef6a' });
+      else if (u.kind === 'imp') lights.push({ x: u.px / PS, y: u.py / PS - 6, r: 20, a: 0.5, color: '#e8ff6a' });
+    }
+    for (const f of this.fx) if (f.type === 'proj') lights.push({ x: lerp(f.x1, f.x2, f.k!) / PS, y: lerp(f.y1, f.y2, f.k!) / PS, r: 36, a: 1, color: f.color });
+    for (let i = 0; i < 30; i++) ppx(lc, (i * 97 + t * (6 + (i % 4) * 3)) % lw, (i * 53 + t * (9 + (i % 3) * 4)) % lh, '#8a8c7a');
+    applyLight(lc, lw, lh, lights, 0.6, [0.84, 1, 0.78], 0.25);
 
+    c.save();
+    if (this.shake > 0) c.translate(Math.round((Math.random() - 0.5) * this.shake), Math.round((Math.random() - 0.5) * this.shake));
+    v.present(c);
+
+    // ---------- чёткий слой поверх: подсветка клеток, цели, полоски, подсказки
     const sel = this.sel, playerTurn = this.turn === 'player' && !this.busy;
     const hov = this.hover, hovU = hov ? this.unitAt(hov.x, hov.y) ?? this.downedAt(hov.x, hov.y) : undefined;
     if (playerTurn && sel) {
@@ -872,7 +909,7 @@ export const Combat = {
       if ((this.action.type === 'w' || brave) && this.reach) {
         for (const n of this.reach.values()) {
           if (n.d === 0) continue;
-          c.fillStyle = brave ? 'rgba(240,150,60,0.16)' : n.d <= sel.move ? 'rgba(90,150,210,0.2)' : 'rgba(210,170,80,0.15)';
+          c.fillStyle = brave ? 'rgba(240,150,60,0.13)' : n.d <= sel.move ? 'rgba(110,160,210,0.14)' : 'rgba(210,170,80,0.11)';
           c.fillRect(n.x * CT + 1, n.y * CT + 1, CT - 2, CT - 2);
         }
         const showPath = this.action.type === 'w' || this.action.key === 'rush';
@@ -909,51 +946,14 @@ export const Combat = {
     if (hov) { c.strokeStyle = 'rgba(240,230,190,0.5)'; c.lineWidth = 1; c.strokeRect(hov.x * CT + 0.5, hov.y * CT + 0.5, CT - 1, CT - 1); }
     if (sel) {
       c.strokeStyle = '#d4b673'; c.lineWidth = 2;
-      c.beginPath(); c.ellipse(sel.px, sel.py + 14, 15, 5, 0, 0, TAU); c.stroke();
+      c.beginPath(); c.ellipse(sel.px, sel.py + 17, 14, 4, 0, 0, TAU); c.stroke();
     }
 
-    // юниты
-    for (const sm of this.smoke) { // дымовые облака
-      for (let i = 0; i < 9; i++) {
-        const px = (sm.x - 1 + (i % 3)) * CT + CT / 2, py = (sm.y - 1 + Math.floor(i / 3)) * CT + CT / 2;
-        const g = c.createRadialGradient(px, py, 4, px, py, CT * 0.9);
-        g.addColorStop(0, `rgba(150,150,140,${0.55 * Math.min(1, sm.turns / 2 + 0.3)})`); g.addColorStop(1, 'rgba(150,150,140,0)');
-        c.fillStyle = g; c.fillRect(px - CT, py - CT, CT * 2, CT * 2);
-      }
-    }
-    const vis = this.units.filter((u) => !u.fled).sort((a, b) => (a.dead === b.dead ? a.py - b.py : a.dead ? -1 : 1));
-    for (const u of vis) drawFigure(c, u.kind, u.px, u.py + 15, 1.2, { t, flip: u.flip, dead: u.dead, flash: u.flash, seed: u.seed });
-
-    // эффекты
-    for (const f of this.fx) {
-      const a = Math.max(0, f.life / f.max);
-      if (f.type === 'tracer') { c.strokeStyle = f.color; c.globalAlpha = a; c.lineWidth = 2; c.beginPath(); c.moveTo(f.x1, f.y1); c.lineTo(f.x2, f.y2); c.stroke(); c.globalAlpha = 1; }
-      if (f.type === 'ring') { c.strokeStyle = f.color; c.globalAlpha = a; c.lineWidth = 3; c.beginPath(); c.arc(f.x1, f.y1, (1 - a) * 50 + 5, 0, TAU); c.stroke(); c.globalAlpha = 1; }
-      if (f.type === 'proj') {
-        const x = lerp(f.x1, f.x2, f.k!), y = lerp(f.y1, f.y2, f.k!);
-        c.save(); c.shadowColor = f.color; c.shadowBlur = 16; c.fillStyle = f.color; c.beginPath(); c.arc(x, y, 5, 0, TAU); c.fill(); c.restore();
-      }
-    }
-    for (const p of this.parts) { c.globalAlpha = Math.max(0, p.life / p.max); c.fillStyle = p.color; c.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size); }
-    c.globalAlpha = 1;
-
-    // свет
-    const lights: Light[] = this.def.lights.map(([x, y, r, color]) => ({ x: x * CT + 20, y: y * CT + 20, r, a: 0.85 + Math.sin(t * 7 + x) * 0.08, color }));
-    for (const u of this.units) {
-      if (u.dead) continue;
-      if (u.team === 'player') lights.push({ x: u.px, y: u.py, r: 85, a: 0.7 });
-      else if (u.kind === 'cultist') lights.push({ x: u.px + (u.flip ? -9 : 9), y: u.py - 25, r: 90, a: 0.9, color: '#9fef6a' });
-      else if (u.kind === 'imp') lights.push({ x: u.px, y: u.py - 10, r: 40, a: 0.5, color: '#e8ff6a' });
-    }
-    for (const f of this.fx) if (f.type === 'proj') lights.push({ x: lerp(f.x1, f.x2, f.k!), y: lerp(f.y1, f.y2, f.k!), r: 70, a: 1, color: f.color });
-    this.light!.draw(c, lights, 0.45, 0.45);
-    drawAsh(c, t);
-    vignette(c, W, H);
 
     // полоски здоровья и статусы — поверх темноты
     for (const u of this.units) {
       if (u.dead) continue;
-      const bw = 30, x = u.px - bw / 2, y = u.py - 34;
+      const bw = 30, x = u.px - bw / 2, y = u.py - 50;
       c.fillStyle = 'rgba(0,0,0,0.7)'; c.fillRect(x - 1, y - 1, bw + 2, 5);
       c.fillStyle = u.team === 'player' ? '#7fbf5a' : '#c9503e';
       c.fillRect(x, y, bw * (u.hp / u.maxHp), 3);
@@ -1031,86 +1031,78 @@ export const Combat = {
   },
 
   renderBg() {
-    const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+    const LWb = W / PS, LHb = H / PS;
+    const cv = document.createElement('canvas'); cv.width = LWb; cv.height = LHb;
     const c = cv.getContext('2d')!;
-    const r = seeded(this.def.id === 'road' ? 42 : 77);
+    const r = pseed(this.def.id === 'road' ? 42 : this.def.id === 'waste' ? 91 : 77);
     const factory = this.def.theme === 'factory';
+    // пол
     for (let y = 0; y < CH; y++) for (let x = 0; x < CW; x++) {
-      const X = x * CT, Y = y * CT, t = this.map[y][x];
+      const X = x * T, Y = y * T;
       if (factory) {
-        c.fillStyle = r() < 0.5 ? '#2a2a26' : '#272723'; c.fillRect(X, Y, CT, CT);
-        c.strokeStyle = '#1c1c19'; c.lineWidth = 1; c.strokeRect(X + 0.5, Y + 0.5, CT - 1, CT - 1);
-        c.fillStyle = '#3a3a34'; for (const [a, b] of [[4, 4], [36, 4], [4, 36], [36, 36]]) c.fillRect(X + a - 1, Y + b - 1, 2, 2);
-        if (r() < 0.2) { c.fillStyle = 'rgba(40,70,30,0.35)'; c.beginPath(); c.ellipse(X + r() * CT, Y + r() * CT, 8 + r() * 10, 4 + r() * 5, 0, 0, TAU); c.fill(); }
-      } else {
-        c.fillStyle = ['#3d3b34', '#413f37', '#3a3832'][Math.floor(r() * 3)]; c.fillRect(X, Y, CT, CT);
-        for (let i = 0; i < 12; i++) { c.fillStyle = `rgba(${r() < 0.5 ? '20,20,16' : '90,90,75'},0.25)`; c.fillRect(X + r() * CT, Y + r() * CT, 1.5, 1.5); }
-        if (t === ',') { c.strokeStyle = '#5a5638'; for (let i = 0; i < 6; i++) { const gx = X + 6 + r() * 28, gy = Y + 10 + r() * 24; c.beginPath(); c.moveTo(gx, gy); c.lineTo(gx + (r() - 0.5) * 5, gy - 6); c.stroke(); } }
-      }
+        prect(c, X, Y, T, T, r() < 0.5 ? '#3a3a34' : '#36362f');
+        prect(c, X, Y, T, 1, '#2a2a24'); prect(c, X, Y, 1, T, '#2a2a24');
+        for (const [a, b] of [[2, 2], [17, 2], [2, 17], [17, 17]]) ppx(c, X + a, Y + b, '#5a5a50');
+        if (r() < 0.2) pellipse(c, X + 4 + r() * 12, Y + 4 + r() * 12, 4, 2, '#344a2c');
+      } else paintTile(c, X, Y, this.map[y][x] === ',' ? 'g' : 'w', r);
     }
     if (!factory) { // разбитая дорога через поле боя
-      c.fillStyle = 'rgba(25,23,20,0.55)';
-      c.beginPath(); c.moveTo(0, 6.2 * CT); c.bezierCurveTo(8 * CT, 5.5 * CT, 14 * CT, 8.4 * CT, W, 6.6 * CT); c.lineTo(W, 8 * CT); c.bezierCurveTo(14 * CT, 9.8 * CT, 8 * CT, 7 * CT, 0, 7.8 * CT); c.fill();
+      for (let x = 0; x < LWb; x++) {
+        const yc = 7 * T + Math.round(Math.sin(x / 40) * 10);
+        for (let y = yc - 10; y < yc + 10; y++) if (r() < 0.55) ppx(c, x, y, (x + y) % 7 ? '#4a4436' : '#5a5040');
+      }
     }
-    const os = this.map.flatMap((row, y) => row.map((t, x) => (t === 'o' ? { x, y } : null)).filter(Boolean)) as Pt[];
+    // ритуальный круг
+    const os = this.map.flatMap((row, y) => row.map((ch, x) => (ch === 'o' ? { x, y } : null)).filter(Boolean)) as Pt[];
     if (os.length) {
-      const cx = os.reduce((s, p) => s + p.x, 0) / os.length * CT + CT / 2, cy = os.reduce((s, p) => s + p.y, 0) / os.length * CT + CT / 2;
+      const cx = os.reduce((a, p) => a + p.x, 0) / os.length * CT + CT / 2, cy = os.reduce((a, p) => a + p.y, 0) / os.length * CT + CT / 2;
       this.circle = { x: cx, y: cy, r: 2.9 * CT };
-      c.strokeStyle = 'rgba(60,90,40,0.8)'; c.lineWidth = 3;
-      c.beginPath(); c.arc(cx, cy, this.circle.r, 0, TAU); c.stroke();
-      c.fillStyle = 'rgba(90,10,10,0.35)'; for (let i = 0; i < 6; i++) { c.beginPath(); c.ellipse(cx + (r() - 0.5) * 120, cy + (r() - 0.5) * 120, 6 + r() * 8, 3 + r() * 4, 0, 0, TAU); c.fill(); }
+      for (let i = 0; i < 120; i++) { const a = (i / 120) * TAU; ppx(c, cx / PS + Math.cos(a) * 58, cy / PS + Math.sin(a) * 58, '#3e5a2e'); }
+      for (let k = 0; k < 5; k++) { const a0 = -Math.PI / 2 + k * (TAU * 2 / 5), a1 = -Math.PI / 2 + (k + 1) * (TAU * 2 / 5); pline(c, cx / PS + Math.cos(a0) * 54, cy / PS + Math.sin(a0) * 54, cx / PS + Math.cos(a1) * 54, cy / PS + Math.sin(a1) * 54, '#34502a'); }
+      for (let i = 0; i < 8; i++) pellipse(c, cx / PS + (r() - 0.5) * 70, cy / PS + (r() - 0.5) * 70, 3, 2, '#4a1a14');
     } else this.circle = null;
-
+    // объекты по рядам (нижние перекрывают верхние)
+    let seed = 1;
+    const spr = (kind: string, x: number, y: number, extra: any = {}) => {
+      const sp = objSprite({ kind, x, y, w: 1, h: 1, seed: seed++ }, extra);
+      c.drawImage(sp.cv, x * T - sp.sx, y * T - sp.sy);
+    };
     for (let y = 0; y < CH; y++) for (let x = 0; x < CW; x++) {
-      const X = x * CT, Y = y * CT, t = this.map[y][x], cx = X + CT / 2;
-      switch (t) {
-        case '#':
-          if (factory) {
-            c.fillStyle = '#3b241e'; c.fillRect(X, Y - 8, CT, CT + 8);
-            c.strokeStyle = 'rgba(20,10,8,0.6)'; c.lineWidth = 1;
-            for (let yy = Y - 8; yy < Y + CT; yy += 7) { c.beginPath(); c.moveTo(X, yy); c.lineTo(X + CT, yy); c.stroke(); }
-            c.fillStyle = '#2a1712'; c.fillRect(X, Y - 10, CT, 4);
-          } else {
-            c.fillStyle = '#4e4b43'; c.fillRect(X + 2, Y - 10, CT - 4, CT + 8);
-            c.strokeStyle = '#34322c'; c.lineWidth = 1.5;
-            for (let yy = Y - 4; yy < Y + CT; yy += 9) { c.beginPath(); c.moveTo(X + 2, yy); c.lineTo(X + CT - 2, yy); c.stroke(); }
-            c.fillStyle = '#5c5950'; c.fillRect(X + 2, Y - 12, CT - 4, 4);
-          }
+      const X = x * T, Y = y * T, ch = this.map[y][x];
+      switch (ch) {
+        case '#': {
+          const col = factory ? '#6a3a2c' : '#6a665a', dark = shade(col, -0.3);
+          prect(c, X, Y - 6, T, T + 6, col);
+          for (let yy = Y - 4; yy < Y + T; yy += 4) for (let xx = X + (((yy / 4) | 0) % 2) * 3; xx < X + T; xx += 6) prect(c, xx, yy, 5, 1, dark);
+          prect(c, X, Y - 7, T, 2, shade(col, 0.2)); prect(c, X + T - 2, Y - 6, 2, T + 6, dark);
           break;
-        case 'T': drawDeadTree(c, cx, Y + CT - 6, r, 1.4); break;
-        case 'c': drawCrate(c, cx, Y + CT - 4, CT, r() < 0.4); break;
-        case 'f':
-          c.fillStyle = '#2c241b'; c.fillRect(X + 4, Y + 10, 4, 26); c.fillRect(X + CT - 8, Y + 12, 4, 24);
-          c.fillStyle = '#3e3225'; c.fillRect(X, Y + 16, CT, 4); c.fillRect(X, Y + 27, CT, 4);
+        }
+        case 'T': spr('tree', x, y); break;
+        case 'c':
+          if (r() < 0.4) spr('barrel', x, y);
+          else { prect(c, X + 3, Y + 4, 14, 13, '#6a4c2c'); prect(c, X + 3, Y + 2, 14, 3, '#82603a'); pline(c, X + 3, Y + 5, X + 16, Y + 16, '#3a2a18'); prect(c, X + 3, Y + 4, 14, 1, '#3a2a18'); prect(c, X + 2, Y + 17, 16, 1, 'rgba(0,0,0,0.5)'); }
           break;
+        case 'f': spr('fence', x, y, { horizFence: true }); break;
         case 'w':
-          if (factory) {
-            c.fillStyle = '#1e1e1b'; c.beginPath(); c.ellipse(cx, Y + 22, 18, 14, 0, 0, TAU); c.fill();
-            c.fillStyle = '#21402a'; c.beginPath(); c.ellipse(cx, Y + 20, 14, 9, 0, 0, TAU); c.fill();
-            c.strokeStyle = '#3a3a34'; c.lineWidth = 2; c.beginPath(); c.ellipse(cx, Y + 20, 16, 11, 0, 0, TAU); c.stroke();
-          } else {
-            c.fillStyle = '#0b0c0a'; c.beginPath(); c.ellipse(cx, Y + 22, 19, 13, 0, 0, TAU); c.fill();
-            c.fillStyle = 'rgba(130,170,110,0.25)'; c.beginPath(); c.ellipse(cx - 5, Y + 18, 7, 2, 0, 0, TAU); c.fill();
-          }
+          if (factory) { pellipse(c, X + 10, Y + 11, 9, 7, '#2a2a26'); pellipse(c, X + 10, Y + 10, 7, 5, '#2e5a34'); ppx(c, X + 7, Y + 8, '#6aa060'); }
+          else { pellipse(c, X + 10, Y + 11, 9, 6, '#121310'); prect(c, X + 5, Y + 9, 4, 1, '#4a5e44'); }
           break;
-        case 'm':
-          c.fillStyle = '#26282a'; c.fillRect(X + 2, Y - 6, CT - 4, CT + 2);
-          c.fillStyle = '#34363a'; c.fillRect(X + 2, Y - 8, CT - 4, 5);
-          c.strokeStyle = '#4a3a2a'; c.lineWidth = 3; c.beginPath(); c.arc(cx, Y + 12, 9, 0, TAU); c.stroke();
-          c.fillStyle = '#4a3a2a'; c.beginPath(); c.arc(cx, Y + 12, 3, 0, TAU); c.fill();
-          c.fillStyle = '#2a2016'; c.fillRect(X + 6, Y + 26, 6, 8);
+        case 'm': {
+          prect(c, X + 1, Y - 4, 18, 22, '#3a3c3e'); prect(c, X + 1, Y - 5, 18, 2, '#5a5c5e'); prect(c, X + 1, Y - 4, 2, 22, '#4e5052');
+          pellipse(c, X + 10, Y + 5, 5, 5, '#5a4630'); pellipse(c, X + 10, Y + 5, 2, 2, '#2a2016');
+          prect(c, X + 4, Y + 13, 3, 4, '#2a2016'); ppx(c, X + 15, Y - 1, '#c8a050');
           break;
+        }
         case 'P':
-          c.fillStyle = 'rgba(0,0,0,0.4)'; c.fillRect(X + 12, Y + 30, 22, 8);
-          c.fillStyle = '#33302b'; c.fillRect(X + 11, Y - 20, 18, CT + 16);
-          c.fillStyle = '#4a463e'; c.fillRect(X + 9, Y - 22, 22, 5); c.fillRect(X + 9, Y + 30, 22, 5);
-          c.fillStyle = '#5a564c'; for (let yy = Y - 14; yy < Y + 28; yy += 10) c.fillRect(X + 13, yy, 2, 2);
+          prect(c, X + 6, Y + 16, 10, 3, 'rgba(0,0,0,0.5)'); prect(c, X + 6, Y - 10, 8, 27, '#4a463e'); prect(c, X + 5, Y - 12, 10, 3, '#5e5a50'); prect(c, X + 5, Y + 15, 10, 2, '#5e5a50');
+          prect(c, X + 6, Y - 10, 2, 25, '#5e5a50'); for (let yy = Y - 6; yy < Y + 14; yy += 5) ppx(c, X + 10, yy, '#6a665a');
           break;
       }
     }
-    c.strokeStyle = 'rgba(255,255,255,0.035)'; c.lineWidth = 1;
-    for (let x = 0; x <= CW; x++) { c.beginPath(); c.moveTo(x * CT + 0.5, 0); c.lineTo(x * CT + 0.5, H); c.stroke(); }
-    for (let y = 0; y <= CH; y++) { c.beginPath(); c.moveTo(0, y * CT + 0.5); c.lineTo(W, y * CT + 0.5); c.stroke(); }
+    // едва заметная сетка клеток
+    c.fillStyle = 'rgba(255,255,255,0.035)';
+    for (let x = 0; x <= CW; x++) c.fillRect(x * T, 0, 1, LHb);
+    for (let y = 0; y <= CH; y++) c.fillRect(0, y * T, LWb, 1);
     this.bg = cv;
   },
 };

@@ -9,15 +9,38 @@ import { woundMods, effMaxHp } from './wounds';
 import { drawFigure, applyEquipLooks } from './gfx';
 import { h } from './book';
 import { $, TAU } from './util';
+import { pixelize, outline } from './px';
 
 // ------------------------------------------------------------ иконки предметов
 export const KIND_COLOR: Record<ItemKind, string> = { tool: '#6a8a8a', weapon: '#a07a4a', head: '#7a8a6a', body: '#6a7a8a', hands: '#8a7a5a', legs: '#7a6a5a', charm: '#9a7ab0', belt: '#a08a50' };
 
+const iconCache = new Map<string, HTMLCanvasElement>();
+/** Пиксельная иконка: рисунок в сетке S/2, контур и блик, увеличение ×2 без сглаживания. */
 export function drawItemIcon(c: CanvasRenderingContext2D, icon: string, S = 52) {
+  const g = Math.round(S / 2), key = icon + '|' + g;
+  let cv = iconCache.get(key);
+  if (!cv) {
+    const src = pixelize(g, g, (v) => drawItemIconVec(v, icon, g));
+    const sc = src.getContext('2d')!, img = sc.getImageData(0, 0, g, g), d = img.data;
+    const a = (x: number, y: number) => x >= 0 && y >= 0 && x < g && y < g && d[(y * g + x) * 4 + 3] > 0;
+    // блик по верхним и левым краям, тень по нижним
+    const hi: number[] = [], lo: number[] = [];
+    for (let y = 0; y < g; y++) for (let x = 0; x < g; x++) if (a(x, y)) { if (!a(x, y - 1) || !a(x - 1, y)) hi.push(x, y); else if (!a(x, y + 1) || !a(x + 1, y)) lo.push(x, y); }
+    const tone = (pts: number[], k: number) => { for (let i = 0; i < pts.length; i += 2) { const p = (pts[i + 1] * g + pts[i]) * 4; for (let j = 0; j < 3; j++) d[p + j] = k > 0 ? d[p + j] + (255 - d[p + j]) * k : d[p + j] * (1 + k); } };
+    tone(hi, 0.22); tone(lo, -0.3);
+    sc.putImageData(img, 0, 0);
+    outline(src, '#0c0e0a');
+    cv = src; iconCache.set(key, cv);
+  }
+  c.imageSmoothingEnabled = false;
+  c.drawImage(cv, 0, 0, g, g, Math.round((S - g * 2) / 2), Math.round((S - g * 2) / 2), g * 2, g * 2);
+}
+
+function drawItemIconVec(c: CanvasRenderingContext2D, icon: string, S = 52) {
   c.save();
   c.scale(S / 52, S / 52);
   c.lineCap = 'round'; c.lineJoin = 'round';
-  const L = (pts: number[], col: string, w: number) => { c.strokeStyle = col; c.lineWidth = w; c.beginPath(); c.moveTo(pts[0], pts[1]); for (let i = 2; i < pts.length; i += 2) c.lineTo(pts[i], pts[i + 1]); c.stroke(); };
+  const L = (pts: number[], col: string, w: number) => { c.strokeStyle = col; c.lineWidth = Math.max(w, 2.6); c.beginPath(); c.moveTo(pts[0], pts[1]); for (let i = 2; i < pts.length; i += 2) c.lineTo(pts[i], pts[i + 1]); c.stroke(); };
   const R = (x: number, y: number, w: number, hh: number, col: string) => { c.fillStyle = col; c.fillRect(x, y, w, hh); };
   const steel = '#9a9c98', dark = '#2a2622', wood = '#6a4428', leather = '#5a3a22';
   switch (icon) {
@@ -200,7 +223,7 @@ export const Inventory = {
     // вкладки бойцов
     const tabs = h('div', { class: 'inv-tabs' }, ...G.squad.map((m, i) => {
       const cv = h('canvas', { width: 34, height: 34 });
-      drawFigure(cv.getContext('2d')!, m.look ?? m.kind, 17, 54, 1.45, { t: 0 });
+      drawFigure(cv.getContext('2d')!, m.look ?? m.kind, 17, 58, 2, { t: 0 });
       return h('button', { class: 'inv-tab' + (i === this.member ? ' on' : ''), onclick: () => { this.member = i; this.sel = null; this.render(); } }, cv, h('span', {}, m.name));
     }));
 
@@ -210,7 +233,7 @@ export const Inventory = {
     const glow = fc.createRadialGradient(100, 170, 10, 100, 170, 150);
     glow.addColorStop(0, 'rgba(159,211,106,0.10)'); glow.addColorStop(1, 'rgba(159,211,106,0)');
     fc.fillStyle = glow; fc.fillRect(0, 0, 200, 330);
-    drawFigure(fc, b.look ?? b.kind, 100, 320, 8.4, { t: 0 });
+    drawFigure(fc, b.look ?? b.kind, 100, 316, 8, { t: 0 });
 
     const svgLines = SLOT_ORDER.map((s) => {
       const p = SLOT_POS[s];

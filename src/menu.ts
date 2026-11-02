@@ -2,7 +2,8 @@
 //  Главное меню, книга правил, «Об игре»
 // ============================================================
 import { Book, h, Spread } from './book';
-import { drawAsh, vignette, drawDeadTree } from './gfx';
+import { vignette, drawDeadTree } from './gfx';
+import { PixelView, pixelize } from './px';
 import { ATTRS, ATTR_ORDER, PROFESSIONS, PROF_ORDER, DC, DC_NAMES, LEVEL_XP, mastery, ProfId } from './rules';
 import { seeded, TAU } from './util';
 
@@ -13,8 +14,9 @@ const STAR = { x: 480, y: 177 }; // за розеткой готической �
 let silhouettes: HTMLCanvasElement | null = null;
 
 function buildSilhouettes() {
-  const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
-  const c = cv.getContext('2d')!;
+  silhouettes = pixelize(W / 2, H / 2, (c) => { c.scale(0.5, 0.5); drawSilhouettes(c); }, 2);
+}
+function drawSilhouettes(c: CanvasRenderingContext2D) {
   const r = seeded(13);
   // дальние холмы
   c.fillStyle = '#121810';
@@ -66,13 +68,18 @@ function buildSilhouettes() {
   for (const [x, y] of [[360, 545], [395, 552], [610, 548]]) { c.lineWidth = 3; c.beginPath(); c.moveTo(x, y); c.lineTo(x, y - 26); c.moveTo(x - 9, y - 18); c.lineTo(x + 9, y - 18); c.stroke(); }
   drawDeadTree(c, 930, 560, r, 3.2);
   drawDeadTree(c, 40, 560, r, 2.6);
-  silhouettes = cv;
 }
 
 const fog = Array.from({ length: 7 }, (_, i) => ({ x: i * 170, y: 470 + (i % 3) * 30, w: 260 + (i % 2) * 120, s: 6 + i * 1.3 }));
 
-export function drawMenuBg(c: CanvasRenderingContext2D, t: number) {
+let view: PixelView | null = null;
+const BAY = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5].map((q) => q / 16 - 0.5);
+/** Фон меню: рисуется в половинном разрешении, цвета квантуются растром, вывод ×2 без сглаживания. */
+export function drawMenuBg(out: CanvasRenderingContext2D, t: number) {
   if (!silhouettes) buildSilhouettes();
+  view ??= new PixelView(W / 2, H / 2);
+  const c = view.c;
+  c.save(); c.scale(0.5, 0.5);
   const g = c.createLinearGradient(0, 0, 0, H);
   g.addColorStop(0, '#060a06'); g.addColorStop(0.55, '#16201a'); g.addColorStop(1, '#22301f');
   c.fillStyle = g; c.fillRect(0, 0, W, H);
@@ -92,15 +99,29 @@ export function drawMenuBg(c: CanvasRenderingContext2D, t: number) {
     c.fillStyle = 'rgba(8,12,8,0.55)';
     c.beginPath(); c.ellipse(cx, 70 + i * 34, 230, 9 + (i % 3) * 4, 0, 0, TAU); c.fill();
   }
-  c.drawImage(silhouettes!, 0, 0);
+  c.drawImage(silhouettes!, 0, 0, W, H);
   for (const f of fog) {
     const x = ((f.x + t * f.s) % (W + 400)) - 200;
     const fg = c.createRadialGradient(x, f.y, 0, x, f.y, f.w);
     fg.addColorStop(0, 'rgba(110,130,100,0.12)'); fg.addColorStop(1, 'rgba(110,130,100,0)');
     c.fillStyle = fg; c.fillRect(x - f.w, f.y - f.w, f.w * 2, f.w * 2);
   }
-  drawAsh(c, t);
   vignette(c, W, H);
+  c.restore();
+  // квантование с растром Байера: градиенты неба и тумана становятся пиксельными
+  const w = W / 2, hh = H / 2, img = c.getImageData(0, 0, w, hh), d = img.data, step = 7;
+  for (let y = 0; y < hh; y++) for (let x = 0; x < w; x++) {
+    const i = (y * w + x) * 4, b = BAY[(y & 3) * 4 + (x & 3)] * step;
+    d[i] = Math.round((d[i] + b) / step) * step; d[i + 1] = Math.round((d[i + 1] + b) / step) * step; d[i + 2] = Math.round((d[i + 2] + b) / step) * step;
+  }
+  c.putImageData(img, 0, 0);
+  // пепел — по одному пикселю
+  c.fillStyle = 'rgba(190,200,170,0.6)';
+  for (let i = 0; i < 50; i++) {
+    const ax = ((i * 97.3 + t * (5 + (i % 5) * 2)) % (w + 20)) - 10, ay = ((i * 53.7 + t * (8 + (i % 3) * 3)) % (hh + 20)) - 10;
+    c.fillRect(Math.round(ax + Math.sin(t + i) * 3), Math.round(ay), 1, 1);
+  }
+  view.present(out, 0, 0, 2);
 }
 
 // ------------------------------------------------------------ меню
