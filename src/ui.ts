@@ -140,7 +140,7 @@ export function refreshHud() {
     const max = effMaxHp(s), w = woundsOf(s);
     const marks = w.map((x) => `<span class="wd ${x.heavy ? 'heavy' : ''}" title="${x.name}: ${x.desc}">✚</span>`).join('');
     return `<div class="sq">${s.name} ${marks}<div class="hp"><span style="width:${(s.hp / s.maxHp) * 100}%"></span><i style="width:${((s.maxHp - max) / s.maxHp) * 100}%"></i></div><div class="hpn">${s.hp}/${max}</div></div>`;
-  }).join('') + `<div class="sq res" title="Бинты · медикаменты · пайки">Бинты ${G.supplies.bandages} · Медик. ${G.supplies.medicine} · Пайки ${G.supplies.rations}<div class="hpn">[Q] Отряд и лечение</div></div>`;
+  }).join('') + `<div class="sq res" title="Бинты · медикаменты · пайки">Бинты ${G.supplies.bandages} · Медик. ${G.supplies.medicine} · Пайки ${G.supplies.rations}<div class="hpn">[Q] лечение · [I] снаряжение</div></div>`;
 }
 
 // ------------------------------------------------------------ Отряд: лечение
@@ -209,7 +209,7 @@ export function closeSquad(onClose: () => void) { $('squad').classList.add('hidd
 export const squadOpen = () => !$('squad').classList.contains('hidden');
 
 export function exploreHint() {
-  $('hint').textContent = 'WASD / стрелки — идти · E / Пробел — говорить · клик — идти или говорить · Q — отряд и лечение';
+  $('hint').textContent = 'WASD / стрелки — идти · E / Пробел — говорить · клик — идти или говорить · Q — лечение · I — снаряжение';
 }
 
 let toastTimer = 0;

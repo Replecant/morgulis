@@ -2,7 +2,8 @@
 //  Данные: оружие, отряд, противники, тактические карты
 // ============================================================
 
-import { Character, PROFESSIONS, maxHp, defense, armorOf, meleeAttack, rangedAttack, meleeDamage, horrorSave, skillBonus } from './rules';
+import { PROF_EQUIP, SQUAD_EQUIP, Equip } from './items';
+import { Character, PROFESSIONS, maxHp, defense, meleeAttack, rangedAttack, meleeDamage, horrorSave, skillBonus } from './rules';
 
 export interface Weapon {
   name: string;
@@ -25,6 +26,9 @@ export const WEAPONS: Record<string, Weapon> = {
   bayonet:   { name: 'Штык', type: 'melee', atk: 0, dmg: [2, 4] },
   knife:     { name: 'Нож', type: 'melee', atk: 1, dmg: [2, 4] },
   wrench:    { name: 'Тяжёлый гаечный ключ', type: 'melee', atk: 0, dmg: [3, 5] },
+  sawnoff:   { name: 'Обрез', type: 'ranged', range: 4, opt: 2, atk: 0, dmg: [4, 7], ammo: 2 },
+  axe:       { name: 'Пожарный топор', type: 'melee', atk: 0, dmg: [3, 7] },
+  fists:     { name: 'Кулаки', type: 'melee', atk: 0, dmg: [1, 2] },
   pitchfork: { name: 'Вилы', type: 'melee', atk: 0, dmg: [2, 4] },
   musket:    { name: 'Старое ружьё', type: 'ranged', range: 7, opt: 3, atk: -1, dmg: [2, 4] },
   hammer:    { name: 'Кузнечный молот', type: 'melee', atk: 0, dmg: [3, 6] },
@@ -56,6 +60,8 @@ export interface UnitBase {
   horror?: number;       // бонус к спасброску против ужаса
   med?: number;          // бонус Медицины (перевязка, операции)
   wounds?: string[];     // ранения (см. wounds.ts)
+  equip?: Equip;         // снаряжение (см. items.ts) — у бойцов отряда
+  look?: string;         // ключ стиля фигурки с учётом снаряжения
   abil?: Record<string, number>;
   ai?: 'melee' | 'ranged' | 'caster';
   leader?: boolean;
@@ -70,7 +76,8 @@ export function makeLeader(c: Character): UnitBase {
   return {
     id: 'pc', name: `Лт. ${c.last}`, kind: 'pc', hp, maxHp: hp, move: 4,
     weapons: p.weapons.slice(), atkM: meleeAttack(c), atkR: rangedAttack(c), def: defense(c),
-    armor: armorOf(c), dmgM: meleeDamage(c), horror: horrorSave(c), med: skillBonus(c, 'medicine'), wounds: [],
+    armor: 0, dmgM: meleeDamage(c), horror: horrorSave(c), med: skillBonus(c, 'medicine'), wounds: [],
+    equip: { ...PROF_EQUIP[c.prof] }, // броня теперь даётся предметами
     abil: { rally: 1, ...p.combatAbil }, leader: true,
   };
 }
@@ -78,9 +85,9 @@ export function makeLeader(c: Character): UnitBase {
 export function makeSquad(c: Character): UnitBase[] {
   return [
     makeLeader(c),
-    { id: 'halloway', name: 'Серж. Хэллоуэй', kind: 'sergeant', hp: 12, maxHp: 12, move: 4, weapons: ['carbine', 'bayonet'], atkM: 3, atkR: 3, def: 11, armor: 1, abil: { grenade: 1 } },
-    { id: 'pickett', name: 'Ряд. Пиккет', kind: 'sniper', hp: 9, maxHp: 9, move: 4, weapons: ['rifle', 'bayonet'], atkM: 1, atkR: 4, def: 11, abil: { aim: 99 } },
-    { id: 'doe', name: 'Ряд. Доу', kind: 'medic', hp: 10, maxHp: 10, move: 4, weapons: ['carbine', 'bayonet'], atkM: 1, atkR: 2, def: 10, med: 3, abil: { bandage: 1 } },
+    { id: 'halloway', name: 'Серж. Хэллоуэй', kind: 'sergeant', hp: 12, maxHp: 12, move: 4, weapons: [], atkM: 3, atkR: 3, def: 11, abil: { grenade: 1 }, equip: { ...SQUAD_EQUIP.halloway } },
+    { id: 'pickett', name: 'Ряд. Пиккет', kind: 'sniper', hp: 9, maxHp: 9, move: 4, weapons: [], atkM: 1, atkR: 4, def: 11, abil: { aim: 99 }, equip: { ...SQUAD_EQUIP.pickett } },
+    { id: 'doe', name: 'Ряд. Доу', kind: 'medic', hp: 10, maxHp: 10, move: 4, weapons: [], atkM: 1, atkR: 2, def: 10, med: 3, abil: { bandage: 1 }, equip: { ...SQUAD_EQUIP.doe } },
   ];
 }
 

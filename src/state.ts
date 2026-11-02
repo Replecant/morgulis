@@ -1,5 +1,6 @@
 import { makeSquad, UnitBase } from './data';
 import { Character, newCharacter } from './rules';
+import { START_STASH } from './items';
 
 export type Mode = 'title' | 'create' | 'explore' | 'combat' | 'end';
 
@@ -9,6 +10,7 @@ export const G = {
   pc: null as Character | null,
   squad: [] as UnitBase[],
   supplies: newSupplies(),
+  stash: [] as string[],   // общий обоз отряда (id предметов)
   time: 0,
   mouse: { x: 0, y: 0 },
   keys: new Set<string>(),
@@ -21,6 +23,7 @@ export function newSupplies(): Supplies { return { bandages: 4, medicine: 1, rat
 export function resetGame(pc: Character = newCharacter()) {
   G.flags = {};
   G.supplies = newSupplies();
+  G.stash = [...START_STASH];
   G.pc = pc;
   G.squad = makeSquad(pc);
 }

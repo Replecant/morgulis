@@ -195,8 +195,8 @@ export const Explore = {
       const near = Math.abs(n.x - p.x) + Math.abs(n.y - p.y) < 4;
       ents.push({ y: n.y, d: () => drawFigure(c, n.kind, n.x * ET + 16, n.y * ET + 29, 0.95, { t, seed: n.seed, flip: near ? p.x < n.x : n.x > 15 }) });
     }
-    this.followers.forEach((f, i) => ents.push({ y: f.ry - 0.01, d: () => drawFigure(c, f.kind, f.rx * ET + 16, f.ry * ET + 29, 0.95, { t, seed: i + 1, flip: f.flip }) }));
-    ents.push({ y: p.ry, d: () => drawFigure(c, 'pc', p.rx * ET + 16, p.ry * ET + 29, 0.95, { t, flip: p.flip }) });
+    this.followers.forEach((f, i) => ents.push({ y: f.ry - 0.01, d: () => drawFigure(c, G.squad[i + 1]?.look ?? f.kind, f.rx * ET + 16, f.ry * ET + 29, 0.95, { t, seed: i + 1, flip: f.flip }) }));
+    ents.push({ y: p.ry, d: () => drawFigure(c, G.squad[0]?.look ?? 'pc', p.rx * ET + 16, p.ry * ET + 29, 0.95, { t, flip: p.flip }) });
     ents.sort((a, b) => a.y - b.y).forEach((e) => e.d());
 
     // свет

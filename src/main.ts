@@ -6,7 +6,8 @@ import { G, resetGame } from './state';
 import { Explore, ET } from './explore';
 import { Combat, CT } from './combat';
 import { Dialog, refreshHud, exploreHint, toast, combatShow, combatLog, combatPanel, screen, hideScreen, openSquad, closeSquad, squadOpen } from './ui';
-import { updateAsh, setPcStyle } from './gfx';
+import { updateAsh, setPcStyle, applyEquipLooks } from './gfx';
+import { Inventory } from './inventory';
 import { drawMenuBg, showMainMenu, showAbout, openRules } from './menu';
 import { openCreation } from './creation';
 import { Character, g, fullName, newCharacter } from './rules';
@@ -69,7 +70,7 @@ Dialog.onAction = (act) => {
 
 $('cend').onclick = () => Combat.endPlayerTurn();
 $('squadbar').addEventListener('click', (e) => {
-  if ((e.target as HTMLElement).closest('.res') && G.mode === 'explore' && !Dialog.active && !squadOpen()) openSquad(exploreHint);
+  if ((e.target as HTMLElement).closest('.res') && G.mode === 'explore' && !Dialog.active && !squadOpen() && !Inventory.open) openSquad(exploreHint);
 });
 
 // ---------------------------------------------------------------- экраны
@@ -91,6 +92,7 @@ function newGame(pc: Character) {
   layer.replaceChildren();
   resetGame(pc);
   setPcStyle(pc);
+  applyEquipLooks(G.squad);
   Explore.init();
   hideScreen();
   G.mode = 'explore';
@@ -123,6 +125,11 @@ function toCanvas(e: MouseEvent) {
 
 window.addEventListener('keydown', (e) => {
   if (Dialog.active) { e.preventDefault(); Dialog.key(e); return; }
+  if (e.code === 'KeyI' && G.mode === 'explore' && !Dialog.active && !squadOpen()) {
+    if (Inventory.open) Inventory.close(); else { G.keys.clear(); Inventory.show(() => { refreshHud(); exploreHint(); }); }
+    return;
+  }
+  if (Inventory.open) { if (e.code === 'Escape') Inventory.close(); return; }
   if (e.code === 'KeyQ' && G.mode === 'explore' && !Dialog.active) {
     if (squadOpen()) closeSquad(exploreHint); else { G.keys.clear(); openSquad(exploreHint); }
     return;
@@ -178,7 +185,7 @@ function frame(now: number) {
   G.time += dt;
   updateAsh(dt, 960, 640);
   Dialog.update(dt);
-  if (G.mode === 'explore' && !Dialog.active && !squadOpen()) Explore.update(dt);
+  if (G.mode === 'explore' && !Dialog.active && !squadOpen() && !Inventory.open) Explore.update(dt);
   if (G.mode === 'combat') { Combat.update(dt); Combat.draw(ctx, G.time); }
   else if (G.mode === 'title' || G.mode === 'create') drawMenuBg(ctx, G.time);
   else Explore.draw(ctx, G.time);
@@ -190,5 +197,5 @@ requestAnimationFrame(frame);
 
 // отладка: ?debug в адресе даёт доступ к состоянию из консоли
 if (new URLSearchParams(location.search).has('debug')) {
-  (window as any).morgulis = { G, Combat, Explore, Dialog, startBattle, newGame, newCharacter, openSquad };
+  (window as any).morgulis = { G, Combat, Explore, Dialog, startBattle, newGame, newCharacter, openSquad, Inventory };
 }

@@ -3,6 +3,8 @@
 // ============================================================
 import { TAU } from './util';
 import { Character, PROFESSIONS } from './rules';
+import { ITEMS } from './items';
+import type { UnitBase } from './data';
 
 type Ctx = CanvasRenderingContext2D;
 
@@ -10,8 +12,8 @@ interface Style {
   coat?: string; legs?: string; skin?: string; hair?: string; beard?: string;
   hat?: 'cap' | 'helmet' | 'tophat' | 'bonnet' | 'flatcap' | 'minerhelm';
   hatC?: string; trim?: string; belt?: string; apron?: string;
-  dress?: boolean; collar?: boolean; mask?: boolean; band?: boolean; sash?: boolean; hood?: boolean; longHair?: boolean; goggles?: boolean;
-  weapon?: 'saber' | 'rifle' | 'fork' | 'musket' | 'hammer' | 'staff' | 'pole' | 'bottle' | 'book' | 'wrench' | 'bag' | 'knife';
+  dress?: boolean; collar?: boolean; mask?: boolean; band?: boolean; sash?: boolean; hood?: boolean; longHair?: boolean; goggles?: boolean; cuirass?: boolean;
+  weapon?: 'saber' | 'rifle' | 'fork' | 'musket' | 'hammer' | 'staff' | 'pole' | 'bottle' | 'book' | 'wrench' | 'bag' | 'knife' | 'pistol';
   scale?: number;
 }
 
@@ -44,6 +46,30 @@ export function setPcStyle(c: Character) {
     longHair: c.gender === 'f', beard: c.gender === 'm' && c.age >= 40 ? (grey ? '#a8a49a' : c.hair) : undefined,
     weapon: p.look.weapon, goggles: p.look.goggles, band: p.look.band,
   };
+}
+
+const WEAPON_LOOK: Record<string, Style['weapon']> = {
+  carbine: 'rifle', rifle: 'rifle', musket: 'musket', sawnoff: 'musket', saber: 'saber', knife: 'knife', bayonet: 'knife',
+  axe: 'hammer', hammer: 'hammer', wrench: 'wrench', revolver: 'pistol',
+};
+/** Пересобрать внешний вид бойцов отряда по снаряжению: головной убор, кираса, оружие в руках. */
+export function applyEquipLooks(squad: UnitBase[]) {
+  for (const b of squad) {
+    const base = STYLES[b.kind];
+    if (!base || !b.equip) continue;
+    const head = b.equip.head ? ITEMS[b.equip.head] : null;
+    const main = b.equip.main ? ITEMS[b.equip.main] : null;
+    const tool = base.weapon === 'book' || base.weapon === 'bag';
+    const key = 'eq_' + b.id;
+    STYLES[key] = {
+      ...base,
+      hat: head?.hat, hatC: head?.hat === 'helmet' ? '#3d4030' : head?.hat === 'cap' ? (base.hat === 'cap' ? base.hatC : '#211a16') : undefined,
+      hair: base.hair ?? (head ? undefined : '#3a2a1a'),
+      cuirass: b.equip.body === 'cuirass',
+      weapon: main?.weapon === 'revolver' && tool ? base.weapon : main?.weapon ? WEAPON_LOOK[main.weapon] : undefined,
+    };
+    b.look = key;
+  }
 }
 
 export interface FigOpts { t?: number; flip?: boolean; dead?: boolean; flash?: number; seed?: number; terror?: boolean }
@@ -89,6 +115,11 @@ export function drawFigure(c: Ctx, kind: string, x: number, y: number, s = 1, o:
   c.closePath(); c.fill();
   if (!flash) { c.fillStyle = 'rgba(0,0,0,0.2)'; c.fillRect(1.5, -18 + bob, 5, st.dress ? 18 - bob : 13); }
   if (st.apron) { c.fillStyle = col(st.apron); c.fillRect(-4, -15 + bob, 8, 13); }
+  if (st.cuirass) {
+    c.fillStyle = col('#8e9296'); c.strokeStyle = col('#3a3c3e'); c.lineWidth = 0.6;
+    c.beginPath(); c.moveTo(-4.8, -17.5 + bob); c.lineTo(4.8, -17.5 + bob); c.lineTo(4, -10 + bob); c.lineTo(0, -8.5 + bob); c.lineTo(-4, -10 + bob); c.closePath(); c.fill(); c.stroke();
+    c.fillStyle = col('#c0c4c8'); c.fillRect(-3.5, -16.5 + bob, 1.6, 5);
+  }
   if (st.belt) { c.fillStyle = col(st.belt); c.fillRect(-5.6, -10 + bob, 11.2, 1.6); }
   if (st.trim) {
     c.fillStyle = col(st.trim);
@@ -220,6 +251,10 @@ function drawWeapon(c: Ctx, w: Style['weapon'], bob: number, col: (v?: string) =
     case 'pole':
       line(6.5, 0, 9.5, -33, '#4a3a28', 1.2);
       c.fillStyle = '#f0a040'; c.fillRect(9, -35, 1.6, 2);
+      break;
+    case 'pistol':
+      c.fillStyle = col('#1e1e1c'); c.fillRect(6, -10 + bob, 5, 1.8); c.fillRect(6, -9 + bob, 1.6, 3);
+      c.fillStyle = col('#4a3420'); c.fillRect(5.6, -8.6 + bob, 1.6, 2.6);
       break;
     case 'knife':
       line(6.5, -8 + bob, 9, -4 + bob, '#c9c9c0', 1.2);

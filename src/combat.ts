@@ -8,6 +8,7 @@ import { WEAPONS, ENEMIES, ABILITIES, battleDef, BattleDef, UnitBase } from './d
 import { bfs, pathTo, lineTiles, BfsMap, DIRS8, Pt, clamp, cheb, dist, lerp, pick, randInt, seeded, sleep, TAU } from './util';
 import { check, checkChance, CheckResult } from './rules';
 import { woundMods, effMaxHp, addWound, bandageAmount, WOUNDS } from './wounds';
+import { equipStats } from './items';
 import { drawFigure, Lighting, Light, drawDeadTree, drawCrate, drawAsh, vignette } from './gfx';
 
 export const CT = 40, CW = 24, CH = 14;
@@ -25,6 +26,8 @@ export interface Unit {
   hp: number; maxHp: number; move: number; ap: number;
   atkM: number; atkR: number; def: number; armor: number; dmgM: number; horror: number; med: number;
   courage: number;      // боевой кураж 0–3
+  reloads: number;      // перезарядок осталось (зависит от патронташа)
+  rallyCharm: boolean;  // медальон: поднятый встаёт с половиной ОЗ
   exposed: boolean;     // раскрылся после рискованного манёвра: −2 к Защите до своего хода
   downed: boolean;      // тяжело ранен (боец отряда на 0 ОЗ) — можно спасти
   weapons: string[]; ammo: Record<string, number>; abil: Record<string, number>;
@@ -51,13 +54,21 @@ const COURAGE_ORDER = ['charge', 'rush', 'last', 'rescue'];
 
 let UID = 0;
 function mkUnit(b: UnitBase, team: Unit['team'], x: number, y: number): Unit {
-  const m = team === 'player' ? woundMods(b) : { atkM: 0, atkR: 0, def: 0, move: 0, horror: 0, maxHp: 0 };
+  const player = team === 'player';
+  const m = player ? woundMods(b) : { atkM: 0, atkR: 0, def: 0, move: 0, horror: 0, maxHp: 0 };
+  // снаряжение бойцов отряда: оружие, броня, бонусы, патронташ, оберег
+  const e = player && b.equip ? equipStats(b) : null;
+  const abil = { ...(b.abil ?? {}) };
+  if (e?.grenades) abil.grenade = (abil.grenade ?? 0) + e.grenades;
   const u: Unit = {
-    uid: ++UID, team, base: b, name: b.name, kind: b.kind, x, y, px: x * CT + CT / 2, py: y * CT + CT / 2,
-    hp: b.hp, maxHp: team === 'player' ? effMaxHp(b) : b.maxHp, move: Math.max(2, b.move + m.move), ap: 0,
-    weapons: b.weapons.slice(), ammo: {}, abil: { ...(b.abil ?? {}) },
-    atkM: b.atkM + m.atkM, atkR: b.atkR + m.atkR, def: b.def + m.def, armor: b.armor ?? 0, dmgM: b.dmgM ?? 0,
-    horror: (b.horror ?? 0) + m.horror, med: b.med ?? 0, courage: 0, exposed: false, downed: false,
+    uid: ++UID, team, base: b, name: b.name, kind: b.look ?? b.kind, x, y, px: x * CT + CT / 2, py: y * CT + CT / 2,
+    hp: b.hp, maxHp: player ? effMaxHp(b) : b.maxHp, move: Math.max(2, b.move + m.move + (e?.move ?? 0)), ap: 0,
+    weapons: e ? e.weapons : b.weapons.slice(), ammo: {}, abil,
+    atkM: b.atkM + m.atkM + (e?.atkM ?? 0), atkR: b.atkR + m.atkR + (e?.atkR ?? 0), def: b.def + m.def + (e?.def ?? 0),
+    armor: (b.armor ?? 0) + (e?.armor ?? 0), dmgM: b.dmgM ?? 0,
+    horror: (b.horror ?? 0) + m.horror + (e?.horror ?? 0), med: b.med ?? 0,
+    courage: Math.min(COURAGE_MAX, e?.courage ?? 0), reloads: e ? e.reloads : 99, rallyCharm: !!e?.rally,
+    exposed: false, downed: false,
     ai: b.ai, leader: !!b.leader, demonic: !!b.demonic,
     dead: false, fled: false, terror: false, flip: team === 'enemy', flash: 0, seed: Math.random() * 10, cd: { summon: 0, whisper: 0 },
   };
@@ -225,7 +236,7 @@ export const Combat = {
       const desc = W_.type === 'melee' ? `Ближний бой · урон ${W_.dmg[0]}–${W_.dmg[1]} · атака ${ab(u.atkM + W_.atk)}` : `Дальность ${W_.range} · урон ${W_.dmg[0]}–${W_.dmg[1]} · атака ${ab(u.atkR + W_.atk)}`;
       out.push({ kind: 'w', key: w, label: W_.name + ammo, desc, disabled: false, active: this.action.type === 'w' && this.action.key === w });
     }
-    if (Object.keys(u.ammo).length) out.push({ kind: 'a', key: 'reload', label: ABILITIES.reload.name, desc: ABILITIES.reload.desc, disabled: u.ap < 1 || Object.entries(u.ammo).every(([w, n]) => n >= WEAPONS[w].ammo!), active: false });
+    if (Object.keys(u.ammo).length) out.push({ kind: 'a', key: 'reload', label: `${ABILITIES.reload.name} (${u.reloads})`, desc: `${ABILITIES.reload.desc} Запас зарядов зависит от патронташа.`, disabled: u.ap < 1 || u.reloads <= 0 || Object.entries(u.ammo).every(([w, n]) => n >= WEAPONS[w].ammo!), active: false });
     for (const k of Object.keys(u.abil)) {
       const n = u.abil[k];
       if (k === 'bandage') {
@@ -251,9 +262,9 @@ export const Combat = {
     if (b.key === 'reload') {
       this.run(async () => {
         for (const w in u.ammo) u.ammo[w] = WEAPONS[w].ammo!;
-        u.ap -= 1;
+        u.ap -= 1; u.reloads--;
         this.float(u, 'Перезарядка', '#d8c890');
-        this.hooks.log(`${u.name} перезаряжает оружие.`);
+        this.hooks.log(`${u.name} перезаряжает оружие. Запасных зарядов: ${u.reloads}.`);
         await sleep(350);
       });
       return;
@@ -409,6 +420,7 @@ export const Combat = {
 
   revive(t: Unit, hp: number) {
     t.dead = false; t.downed = false; t.ap = 0; t.flash = 0.3;
+    if (t.rallyCharm) { hp = Math.max(hp, Math.ceil(t.maxHp / 2)); this.float(t, 'Медальон', '#e8d070'); }
     t.hp = Math.max(1, Math.min(t.maxHp, hp));
     this.float(t, `На ногах! ${t.hp} ОЗ`, '#8fdc7a');
     this.hooks.log(`${t.name} снова на ногах (${t.hp} ОЗ).`);
