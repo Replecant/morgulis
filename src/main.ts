@@ -11,11 +11,11 @@ import { Dialog, refreshHud, exploreHint, toast, combatShow, combatLog, combatPa
 import { setPcStyle, applyEquipLooks } from './gfx';
 import { Inventory } from './inventory';
 import { Sheet } from './sheet';
-import { frameReady, whenFrameReady } from './frames';
+import { frameReady, whenFrameReady, frameUrl } from './frames';
 import { Trade, resetShops } from './trade';
 import { drawMenuBg, showMainMenu, showAbout, openRules } from './menu';
 import { openCreation } from './creation';
-import { Character, fullName, newCharacter, quickCharacter, PROF_ORDER, ProfId } from './rules';
+import { Character, newCharacter, quickCharacter, PROF_ORDER, ProfId } from './rules';
 import { rest } from './wounds';
 import { $ } from './util';
 
@@ -62,7 +62,7 @@ Combat.hooks = {
   },
   defeat(id) {
     screen(
-      `<h2>Поражение</h2><p>${fullName(G.pc!)} падает без сил. Пустошь забирает своё.</p>`,
+      `<img class="death-img" src="${frameUrl('death')}" alt=""><div class="death-cap">Ещё одна душа сгинула под взглядом Ока</div>`,
       [
         { label: 'Повторить бой', fn: () => { hideScreen(); restoreSnapshot(); startBattle(id); } },
         { label: 'Отступить', fn: () => {
@@ -73,6 +73,7 @@ Combat.hooks = {
           combatShow(false); G.mode = returnMode; hint(); refreshHud();
         } },
       ],
+      'death',
     );
   },
 };

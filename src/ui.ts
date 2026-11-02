@@ -286,8 +286,9 @@ export function combatPanel() {
 }
 
 // ------------------------------------------------------------ Экраны
-export function screen(html: string, buttons: { label: string; fn: () => void }[] = []) {
+export function screen(html: string, buttons: { label: string; fn: () => void }[] = [], cls = '') {
   const s = $('screen');
+  s.className = cls;
   s.innerHTML = `<div class="scr">${html}<div class="btns"></div></div>`;
   const bx = s.querySelector('.btns')!;
   for (const b of buttons) {

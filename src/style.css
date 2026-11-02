@@ -99,6 +99,13 @@ body { font-family: 'Old Standard TT', Georgia, serif; color: var(--text); }
   background: radial-gradient(ellipse at 50% 40%, rgba(20, 30, 16, 0.55), rgba(0, 0, 0, 0.88));
 }
 #screen:empty { display: none; }
+/* смерть: надгробие со скелетом-солдатом и подпись */
+#screen.death { background: #000; animation: deathIn 1.2s ease-out; }
+#screen.death .scr { max-width: 640px; padding: 0; }
+.death-img { display: block; width: 400px; height: 400px; margin: 0 auto; image-rendering: pixelated; }
+.death-cap { font-family: 'Playfair Display SC', 'Old Standard TT', serif; font-size: 22px; letter-spacing: 2px; color: #d8cfa8; margin-top: 6px; text-shadow: 0 0 18px rgba(159, 211, 106, 0.35); }
+#screen.death .btn { font-size: 15px; padding: 7px 22px; margin: 18px 6px 0; }
+@keyframes deathIn { from { opacity: 0; } to { opacity: 1; } }
 .scr { text-align: center; max-width: 560px; padding: 20px; }
 .scr h1 { font-size: 64px; margin: 0; letter-spacing: 10px; color: var(--green); text-shadow: 0 0 24px rgba(159, 211, 106, 0.45); }
 .scr h2 { font-size: 22px; margin: 4px 0 18px; color: var(--brass); font-weight: 400; font-style: italic; }
