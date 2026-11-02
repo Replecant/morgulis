@@ -6,11 +6,7 @@
 import { G } from './state';
 import type { SkillKey } from './rules';
 import { addWound } from './wounds';
-import { LIMB_ORDER, LIMB_NAMES, PROSTHESES, fits, limbState } from './prosthetics';
 
-/** Итог последней установки протеза — текст для диалога prosth_done. */
-export let prosthNote = '';
-export const setProsthNote = (t: string) => { prosthNote = t; };
 
 type Flags = typeof G;
 type Txt = string | ((g: Flags) => string);
@@ -45,6 +41,7 @@ export const SPEAKERS: Record<string, { name: string; kind: string | null }> = {
   guard: { name: 'Стражник у ворот', kind: 'guard' },
   upper: { name: 'Стража Верхнего города', kind: 'guard' },
   prosth: { name: 'Протезист', kind: 'medic_civ' },
+  surgeon: { name: 'Подпольный хирург', kind: 'surgeon_under' },
   patrol: { name: 'Сержант патруля', kind: 'guard' },
   sutler: { name: 'Маркитант', kind: 'sutler' },
   agnes: { name: 'Агнес, старшая грибница', kind: 'grower' },
@@ -314,27 +311,24 @@ export const DIALOGS: Record<string, DTree> = {
   } },
   clinic: flavor('Клиника протезирования. За мутными окнами — ряды стальных кистей на крюках, деревянные ноги, ремни и пружины. Пахнет карболкой и машинным маслом.'),
   prosthetist: { start: 'a', nodes: {
-    a: { s: 'prosth', t: (g) => {
-      const b = g.squad[0], lost = LIMB_ORDER.filter((l) => b.limbs?.[l]);
-      const what = lost.length ? 'Покажи-ка, что у тебя. ' + lost.map((l) => `${LIMB_NAMES[l]}: ${limbState(b, l).text}`).join('; ') + '.' : 'Руки-ноги на месте? Повезло. Многим здесь — нет.';
-      return 'Протезист вытирает руки о фартук. — Железо, дерево, пружины, поршни. Ставлю всё, что держится на ремнях. ' + what;
-    }, c: (g) => {
-      const b = g.squad[0], out: Choice[] = [];
-      for (const l of LIMB_ORDER) {
-        if (!b.limbs?.[l]) continue;
-        for (const p of Object.values(PROSTHESES)) {
-          if (!fits(p, l) || b.limbs[l] === p.id) continue;
-          out.push({ t: `${LIMB_NAMES[l]}: ${p.name} (кат. ${'I'.repeat(p.cat)}) — ${p.price} ш.`, act: `prosth:${l}:${p.id}`, if: (gg) => gg.money >= p.price });
-        }
-      }
-      out.push({ t: 'Расскажи о протезах.', go: 'about' });
-      out.push({ t: 'Ухожу.', go: 'bye' });
-      return out;
-    } },
-    about: { s: 'prosth', go: 'a', t: 'Крюк и деревянная нога — дёшево, но работать будешь вполсилы. Шарнирная кисть и пружинная нога — почти как своё. Поршневая рука и гидравлическая нога — заводская работа: держат больше, чем живое. Ставлю вместо утраченного — целое не режу.' },
+    a: { s: 'prosth', t: 'Протезист вытирает руки о фартук. — Железо, дерево, пружины, поршни. Ставлю всё, что держится на ремнях.', c: [
+      { t: 'Подобрать протез', act: 'prosthshop:clinic' },
+      { t: 'Расскажи о протезах.', go: 'about' },
+      { t: 'Ухожу.', go: 'bye' },
+    ] },
+    about: { s: 'prosth', go: 'a', t: 'Крюк и деревянная нога — дёшево, но работать будешь вполсилы. Шарнирная кисть и пружинная нога — почти как своё. Поршневая рука и гидравлическая нога — заводская работа: держат больше, чем живое. Стеклянный глаз — для вида, зрения не вернёт. Целое не режу.' },
     bye: { s: 'prosth', t: 'Береги то, что осталось.' },
   } },
-  prosth_done: { start: 'a', nodes: { a: { s: 'prosth', t: () => prosthNote } } },
+  surgeon: { start: 'a', nodes: {
+    a: { s: 'surgeon', t: 'В полутёмной мастерской гудят гальванические банки, в склянках с мутным раствором плавает что-то, о чём лучше не думать. Хирург не поднимает глаз. — Если пришёл за тем, чего не ставят наверху, — говори. Если нет — дверь сзади.', c: [
+      { t: 'Показывай, что у тебя есть.', act: 'prosthshop:under' },
+      { t: 'Что ты ставишь?', go: 'about' },
+      { t: 'Ухожу.', go: 'bye' },
+    ] },
+    about: { s: 'surgeon', go: 'a', t: 'Гальваническую руку — бьёт так, что кости трещат, только иногда и твои. Плотяную руку — как своя, пока поишь её раствором. Глаз, который видит лишнее, — для этого принеси ритуальные принадлежности. Остальное — к протезисту в Средний город.' },
+    bye: { s: 'surgeon', t: 'Хирург молча возвращается к своим банкам.' },
+  } },
+  underworkshop: flavor('Покосившаяся мастерская без вывески. За заколоченным окном мерцает зеленоватый свет и что-то гудит.'),
   factory: flavor('Заводской цех. Из окон — красный жар печей, грохот и чад. У дверей толпятся те, кого сегодня не взяли на смену.'),
   shack: flavor('Лачуга из ржавого железа и досок. Внутри — тряпьё, печка и слишком много людей на одну комнату.'),
   slumfire: flavor('У огня греются трое. Подвинуться никто не спешит.'),

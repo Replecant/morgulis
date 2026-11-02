@@ -13,8 +13,8 @@ import { Inventory } from './inventory';
 import { Sheet } from './sheet';
 import { Music } from './music';
 import { Pause } from './pause';
-import { PROSTHESES, LIMB_NAMES, install, modsText, Limb } from './prosthetics';
-import { setProsthNote } from './dialogs';
+import { ProsthShop } from './prosthshop';
+import { hasProsth, type Shop } from './prosthetics';
 import { frameReady, whenFrameReady, frameUrl } from './frames';
 import { Trade, resetShops } from './trade';
 import { drawMenuBg, showMainMenu, showAbout, openRules } from './menu';
@@ -107,7 +107,20 @@ World.onPatrol = () => Dialog.start('enc_patrol');
 World.onDiscover = (l) => toast(`Замечено: ${l.name}`);
 World.onDead = () => Dialog.start('enc_dead');
 World.onGas = (msg) => { toast(msg); refreshHud(); };
+/** Плотяная рука: раз в 3 дня нужен тканевый раствор, иначе отторжение. */
+function fleshCare() {
+  for (const b of G.squad) {
+    if (!hasProsth(b, 'flesh') || G.clock < (b.fleshDue ?? 0)) continue;
+    if (G.supplies.tissue > 0) {
+      G.supplies.tissue--; b.fleshDue = G.clock + 72;
+      if (b.fleshReject) toast(`${b.name}: раствор снял отторжение — плотяная рука снова слушается.`);
+      else toast(`${b.name}: плотяная рука получила раствор (осталось ${G.supplies.tissue}).`);
+      b.fleshReject = false;
+    } else if (!b.fleshReject) { b.fleshReject = true; toast(`${b.name}: раствора нет — плотяная рука немеет и чернеет. Отторжение!`); }
+  }
+}
 World.onDay = () => { // раз в сутки отряд ест
+  fleshCare();
   if (G.supplies.ration > 0) { G.supplies.ration--; toast(`${clockText()}: отряд съел паёк (осталось ${G.supplies.ration})`); }
   else { G.squad.forEach((s) => (s.hp = Math.max(1, s.hp - 2))); Dialog.start('hunger'); }
   refreshHud();
@@ -115,15 +128,7 @@ World.onDay = () => { // раз в сутки отряд ест
 Dialog.onClose = () => { refreshHud(); if (G.mode === 'explore' || G.mode === 'world') hint(); };
 Dialog.onAction = (act) => {
   if (act.startsWith('enter:')) toScene(act.slice(6));
-  else if (act.startsWith('prosth:')) {
-    const [, limb, id] = act.split(':') as [string, Limb, string];
-    const p = PROSTHESES[id], b = G.squad[0];
-    if (G.money >= p.price) {
-      G.money -= p.price; install(b, limb, id);
-      setProsthNote(`Протезист подгоняет ремни и затягивает винты. ${LIMB_NAMES[limb]}: ${p.name}. (−${p.price} ш.) ${p.desc} Поправки: ${modsText(p.mods)}.`);
-      Dialog.start('prosth_done'); refreshHud();
-    }
-  }
+  else if (act.startsWith('prosthshop:')) { G.keys.clear(); ProsthShop.show(act.slice(11) as Shop, () => { refreshHud(); hint(); }); }
   else if (act.startsWith('goto:')) { const [, id, x, y] = act.split(':'); toScene(id, { x: +x, y: +y }); }
   else if (act === 'rest') { toast(rest()); refreshHud(); }
   else if (act.startsWith('trade:')) { G.keys.clear(); Trade.show(act.slice(6), () => { refreshHud(); hint(); }); }
@@ -188,13 +193,14 @@ window.addEventListener('keydown', (e) => {
   if (e.code === 'KeyM' && G.mode !== 'create') { toast(Music.toggle() ? 'Музыка выключена [M]' : 'Музыка включена [M]'); if (Pause.open) Pause.render(); return; }
   if (Pause.open) { if (e.code === 'Escape') Pause.close(); return; }
   // Esc вне окон — меню паузы (в бою: сначала отменяет выбранное действие)
-  const anyWindow = Dialog.active || Trade.open || Inventory.open || Sheet.open || squadOpen() || !!$('screen').innerHTML;
+  const anyWindow = Dialog.active || Trade.open || ProsthShop.open || Inventory.open || Sheet.open || squadOpen() || !!$('screen').innerHTML;
   if (e.code === 'Escape' && !anyWindow && (roaming() || G.mode === 'combat')) {
     const sel = Combat.sel, plain = !sel || (Combat.action.type === 'w' && Combat.action.key === sel.weapons[0]);
     if (G.mode !== 'combat' || plain) { G.keys.clear(); Pause.show(() => { combatShow(false); showTitle(); }); return; }
   }
   if (Dialog.active) { e.preventDefault(); Dialog.key(e); return; }
   if (Trade.open) { if (e.code === 'Escape') Trade.close(); return; }
+  if (ProsthShop.open) { if (e.code === 'Escape') ProsthShop.close(); return; }
   if (e.code === 'KeyI' && roaming() && !squadOpen()) {
     if (Inventory.open) Inventory.close(); else { G.keys.clear(); Inventory.show(() => { refreshHud(); hint(); }); }
     return;
@@ -263,7 +269,7 @@ function frame(now: number) {
   last = now;
   G.time += dt;
   Dialog.update(dt);
-  const free = !Dialog.active && !squadOpen() && !Inventory.open && !Trade.open && !Sheet.open && !Pause.open;
+  const free = !Dialog.active && !squadOpen() && !Inventory.open && !Trade.open && !Sheet.open && !Pause.open && !ProsthShop.open;
   if (G.mode === 'explore' && free) Explore.update(dt);
   if (G.mode === 'world' && free) World.update(dt);
   if (G.mode === 'combat') { Combat.update(dt); Combat.draw(ctx, G.time); }
@@ -283,5 +289,5 @@ requestAnimationFrame(frame);
 
 // отладка: ?debug в адресе даёт доступ к состоянию из консоли
 if (new URLSearchParams(location.search).has('debug')) {
-  (window as any).morgulis = { G, Combat, Explore, World, Dialog, startBattle, newGame, newCharacter, openSquad, Inventory, Trade, Sheet, Music, Pause, toScene, toWorld };
+  (window as any).morgulis = { G, Combat, Explore, World, Dialog, startBattle, newGame, newCharacter, openSquad, Inventory, Trade, Sheet, Music, Pause, ProsthShop, toScene, toWorld };
 }

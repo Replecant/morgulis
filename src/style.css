@@ -514,3 +514,39 @@ body { font-family: 'Old Standard TT', Georgia, serif; color: var(--text); }
 .pconfirm { color: #e0a070; font-size: 13px; margin-top: 6px; }
 .pconfirm .btn { margin-top: 6px; }
 .phint { margin-top: 10px; font-size: 11px; color: var(--dim); }
+
+/* ---------- Окно протезирования (рамка снаряжения; поле 77..884 × 106..575) ---------- */
+#prosth { position: absolute; inset: 0; background: #0b0f09 0 0 / 100% 100% no-repeat; z-index: 22; }
+.pr-box { position: absolute; left: 86px; top: 112px; width: 790px; height: 458px; display: flex; flex-direction: column; }
+.pr-topbar { display: flex; align-items: center; gap: 14px; }
+.pr-topbar h2 { margin: 0; flex: 1; font-family: 'Playfair Display SC', serif; color: var(--brass); letter-spacing: 3px; font-size: 19px; text-shadow: 0 2px 0 #000; }
+.pr-main { display: flex; gap: 14px; flex: 1; min-height: 0; margin-top: 6px; }
+.pr-doll { position: relative; width: 300px; height: 330px; flex: none; background: radial-gradient(ellipse at 50% 55%, rgba(40, 54, 30, 0.55), rgba(6, 9, 5, 0.35) 70%); border: 1px solid #3a4430; }
+.pr-fig { position: absolute; left: 78px; top: 60px; image-rendering: pixelated; pointer-events: none; }
+.pr-slot { position: absolute; width: 96px; padding: 3px 5px; white-space: nowrap; overflow: hidden; text-align: left; background: rgba(12, 16, 10, 0.9); border: 1px solid #3a4430; color: #b9b49a; cursor: pointer; font: inherit; }
+.pr-slot b { display: block; font-size: 11px; color: var(--dim); font-weight: normal; }
+.pr-slot span { font-size: 12px; display: block; white-space: normal; line-height: 1.15; }
+.pr-slot.lost span { color: #e07060; }
+.pr-slot.prost span { color: #c8c8b8; }
+.pr-slot:hover { border-color: var(--brass); }
+.pr-slot.sel { border-color: #f0d080; box-shadow: 0 0 8px rgba(240, 208, 128, 0.4); }
+.pr-right { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.pr-cur { border-bottom: 1px solid #3a3220; padding-bottom: 4px; }
+.pr-h { font-family: 'Playfair Display SC', serif; color: #e6dcb8; font-size: 16px; display: flex; justify-content: space-between; align-items: baseline; }
+.pr-h span { font-family: 'Old Standard TT', serif; font-size: 13px; color: var(--brass); }
+.pr-eff { font-size: 12px; color: #b9b49a; font-style: italic; }
+.pr-list { flex: 1; overflow-y: auto; margin-top: 6px; padding-right: 4px; }
+.pr-item { border: 1px solid #3a4430; background: rgba(8, 11, 6, 0.6); padding: 5px 8px; margin-bottom: 5px; }
+.pr-item.far { opacity: 0.55; }
+.pr-top { display: flex; gap: 8px; align-items: baseline; }
+.pr-top b { color: #e6dcb8; font-size: 14px; font-weight: normal; }
+.pr-top em { font-size: 11px; color: var(--dim); font-style: normal; }
+.pr-price { margin-left: auto; color: var(--brass); font-size: 13px; }
+.pr-desc { font-size: 12px; color: #b9b49a; font-style: italic; line-height: 1.25; }
+.pr-mods { font-size: 12px; color: var(--green); }
+.pr-spec { font-size: 12px; color: #c8a0e0; }
+.pr-act { text-align: right; margin-top: 2px; }
+.pr-act .btn { padding: 3px 12px; font-size: 12px; }
+.pr-lack { font-size: 11px; color: #c08060; }
+.pr-none { color: var(--dim); font-style: italic; font-size: 13px; padding: 8px; }
+.pr-note { margin-top: 6px; min-height: 36px; border: 1px solid #3a4430; padding: 5px 10px; font-size: 13px; color: #cfd0b8; background: rgba(8, 11, 6, 0.6); }

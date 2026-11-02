@@ -7,7 +7,7 @@ import { G } from './state';
 import { ATTRS, ATTR_ORDER, SKILLS, SKILL_ORDER, PROFESSIONS, TALENTS, LEVEL_XP, MAX_LEVEL, mastery, trainedSkills, skillBonus, initiative, meleeDamage, fullName } from './rules';
 import { memberStats } from './inventory';
 import { woundsOf } from './wounds';
-import { LIMB_ORDER, LIMB_NAMES, limbState, limbSkill, modsText, lostModsText } from './prosthetics';
+import { LIMB_ORDER, LIMB_NAMES, limbState, limbSkill, modsText, modsOf, partOf } from './prosthetics';
 import { drawFigure } from './gfx';
 import { h } from './book';
 import { $ } from './util';
@@ -87,9 +87,9 @@ export const Sheet = {
     // утраченные конечности и протезы
     const limbs = LIMB_ORDER.filter((l) => b.limbs?.[l]).map((l) => {
       const st = limbState(b, l);
-      const eff = st.prost ? modsText(st.prost.mods) : lostModsText(l.startsWith('arm') ? 'arm' : 'leg');
+      const eff = modsText(modsOf(b, l));
       return tip(h('div', { class: 'sh-wound' + (st.lost ? ' heavy' : ' prost') }, `${LIMB_NAMES[l]}: ${st.text}`),
-        st.prost ? `${st.prost.name}. ${st.prost.desc} Поправки: ${eff}.` : `${LIMB_NAMES[l]} утрачена. ${eff}. Протез поставит протезист в Среднем городе форта.`);
+        st.prost ? `${st.prost.name}. ${st.prost.desc} Поправки: ${eff}.${st.prost.special ? ' ' + st.prost.special : ''}` : `${LIMB_NAMES[l]}: утрата. ${eff}. Протез поставят в клинике Среднего города форта.`);
     });
 
     const talent = TALENTS[c.talent];

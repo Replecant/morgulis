@@ -104,7 +104,7 @@ export const ITEMS: Record<string, Item> = {
 };
 
 // ------------------------------------------------------------ расходники
-export type ConsId = 'bandage' | 'medkit' | 'antiseptic' | 'painkiller' | 'ammo_pistol' | 'ammo_rifle' | 'ammo_shell' | 'grenade' | 'smoke' | 'filter' | 'ration';
+export type ConsId = 'bandage' | 'medkit' | 'antiseptic' | 'painkiller' | 'ammo_pistol' | 'ammo_rifle' | 'ammo_shell' | 'grenade' | 'smoke' | 'filter' | 'ration' | 'tissue';
 export interface Consumable { id: ConsId; name: string; icon: string; price: number; pack: number; desc: string; short: string }
 export const CONSUMABLES: Record<ConsId, Consumable> = {
   bandage:     { id: 'bandage', name: 'Бинты', short: 'Бинты', icon: 'bandage', price: 3, pack: 1, desc: 'Перевязка: +3 ОЗ и бонус Медицины. В бою — 1 ОД, поднимает тяжелораненого.' },
@@ -117,9 +117,10 @@ export const CONSUMABLES: Record<ConsId, Consumable> = {
   grenade:     { id: 'grenade', name: 'Ручная граната', short: 'Гранаты', icon: 'grenade', price: 20, pack: 1, desc: 'Взрыв 3×3, урон 3–5 — и своим тоже. Сколько можно бросить за бой, зависит от патронташа.' },
   smoke:       { id: 'smoke', name: 'Дымовая граната', short: 'Дым', icon: 'smoke', price: 12, pack: 1, desc: 'Облако 3×3 на два хода: закрывает обзор, стоящим в дыму +3 к Защите.' },
   filter:      { id: 'filter', name: 'Сменный фильтр', short: 'Фильтры', icon: 'filter', price: 6, pack: 1, desc: 'Коробка фильтра для противогаза (в разработке).' },
+  tissue:      { id: 'tissue', name: 'Тканевый раствор', short: 'Раствор', icon: 'bottle', price: 12, pack: 1, desc: 'Мутная склянка из подпольной мастерской. Плотяной руке нужен раз в 3 дня, иначе — отторжение.' },
   ration:      { id: 'ration', name: 'Паёк', short: 'Пайки', icon: 'ration', price: 4, pack: 1, desc: 'Сухари, солонина или вяленое жучье мясо. Отряд съедает паёк раз в сутки; привал тоже стоит пайка.' },
 };
-export const CONS_ORDER: ConsId[] = ['bandage', 'medkit', 'antiseptic', 'painkiller', 'ammo_pistol', 'ammo_rifle', 'ammo_shell', 'grenade', 'smoke', 'filter', 'ration'];
+export const CONS_ORDER: ConsId[] = ['bandage', 'medkit', 'antiseptic', 'painkiller', 'ammo_pistol', 'ammo_rifle', 'ammo_shell', 'grenade', 'smoke', 'filter', 'ration', 'tissue'];
 export const AMMO_NAME: Record<string, string> = { ammo_pistol: 'пист.', ammo_rifle: 'винт.', ammo_shell: 'дроб.' };
 
 /** Без патронташа — одна граната за бой. */

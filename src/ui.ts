@@ -3,7 +3,7 @@
 // ============================================================
 import { G, journal, gearBonus, hasTool } from './state';
 import { DIALOGS, SPEAKERS, DNode, Choice, fmt } from './dialogs';
-import { drawFigure } from './gfx';
+import { drawFigure, applyEquipLooks } from './gfx';
 import { Combat } from './combat';
 import { $ } from './util';
 import { clockText } from './worldmap';
@@ -196,7 +196,7 @@ export function openSquad(onClose: () => void) {
           ob.className = 'btn'; ob.textContent = 'Оперировать (−1 антисептик)';
           ob.disabled = G.supplies.antiseptic <= 0 || !hasTool('surgerykit');
           ob.title = hasTool('surgerykit') ? '' : 'Нужен хирургический набор';
-          ob.onclick = () => { log = surgery(s, w.id).text; render(); };
+          ob.onclick = () => { log = surgery(s, w.id).text; applyEquipLooks(G.squad); render(); };
           it.append(' ', ob);
         }
         wl.append(it);

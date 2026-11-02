@@ -62,6 +62,8 @@ function buildChar(kind: string, frame: number): HTMLCanvasElement {
   const coat = st.coat ?? '#4a4a3e', coatD = shade(coat, -0.38), coatL = shade(coat, 0.16);
   const skin = st.skin ?? '#c8a684', skinD = shade(skin, -0.3);
   const legs = st.legs ?? '#24221c', legsD = shade(legs, -0.3), boot = '#141210';
+  const LB = st.limbs ?? {};
+  const COPPER = '#b06a3a', SPARK = '#d8ff70';
   const walk = frame === 1 ? 1 : frame === 3 ? -1 : 0;
   const bob = frame === 1 || frame === 3 ? -1 : 0;
   const sy = (y: number) => y + bob; // всё выше пояса покачивается
@@ -71,17 +73,36 @@ function buildChar(kind: string, frame: number): HTMLCanvasElement {
     R(tx0 - 3, sy(tTop), 3, 10, '#5a5e4a'); R(tx0 - 3, sy(tTop), 1, 10, '#7a7e66'); R(tx0 - 3, sy(tTop - 1), 3, 1, BRASS);
     R(tx0 - 2, sy(tTop + 10), 2, 1, '#3a3e30'); P(tx0 - 4, sy(tTop + 3), '#9fd36a');               // течь — зелёная капля
   }
-  // --- задняя рука
-  R(tx0 - 1, sy(tTop + 1), 2, 8, coatD);
-  if (st.band) { R(tx0 - 1, sy(tTop + 2), 2, 2, '#e0dcc8'); P(tx0 - 1, sy(tTop + 3), '#a02a20'); }
-  R(tx0 - 1, sy(tTop + 9), 2, 1, skinD);
+  // --- задняя рука (левая)
+  const armL = LB.armL;
+  if (armL === 'lost') { R(tx0 - 1, sy(tTop + 1), 2, 3, coatD); P(tx0 - 1, sy(tTop + 4), shade(coatD, -0.3)); } // подколотый рукав
+  else {
+    const metal = armL === 'piston' || armL === 'galvanic';
+    R(tx0 - 1, sy(tTop + 1), 2, 8, metal ? (armL === 'galvanic' ? shade(COPPER, -0.25) : '#6e726c') : coatD);
+    if (st.band && !metal) { R(tx0 - 1, sy(tTop + 2), 2, 2, '#e0dcc8'); P(tx0 - 1, sy(tTop + 3), '#a02a20'); }
+    const hcol = armL === 'hook' ? STEEL : armL === 'hinged' ? BRASS : metal ? STEEL : armL === 'flesh' ? '#b89a8a' : skinD;
+    if (armL === 'hook') { P(tx0 - 1, sy(tTop + 9), STEEL); P(tx0, sy(tTop + 10), STEEL); }
+    else R(tx0 - 1, sy(tTop + 9), 2, 1, hcol);
+  }
 
   // --- ноги / подол
   if (!st.dress) {
     const lTop = tBot + 1;
     const lx = 9 - walk, rx = 13 + walk;
-    R(lx, lTop - 1, 2, SH - lTop, legsD); R(lx, SH - 3, 3, 3, boot);
-    R(rx, lTop - 1, 2, SH - lTop, legs); R(rx, SH - 3, 3, 3, boot);
+    const leg = (x: number, col: string, kind: string | undefined) => {
+      const len = SH - lTop;
+      if (kind === 'lost') { R(x, lTop - 1, 2, 2, col); return; }                       // культя под штаниной
+      if (kind === 'pegleg') { R(x, lTop - 1, 2, 3, col); R(x + 1, lTop + 2, 1, len - 2, WOOD); P(x + 1, SH - 1, WOOD_D); return; }
+      if (kind === 'springleg') {
+        R(x, lTop - 1, 2, 3, col);
+        for (let y = lTop + 2; y < SH - 2; y++) P(x + (y % 2), y, STEEL);              // пружина
+        R(x, SH - 2, 3, 2, '#5a5e5a'); return;
+      }
+      if (kind === 'hydraleg') { R(x, lTop - 1, 2, 3, col); R(x, lTop + 2, 2, len - 4, '#6e726c'); R(x + 1, lTop + 3, 1, len - 6, BRASS); R(x, SH - 2, 3, 2, '#4a4e4a'); return; }
+      R(x, lTop - 1, 2, len, col); R(x, SH - 3, 3, 3, boot);
+    };
+    leg(lx, legsD, LB.legL); leg(rx, legs, LB.legR);
+    if (LB.legL === 'lost' || LB.legR === 'lost') pline(c, tx0 - 2, sy(tTop + 3), tx0 - 3, SH - 1, WOOD); // костыль
     if (walk) { R(walk > 0 ? lx : rx, SH - 1, 3, 1, 'rgba(0,0,0,0)'); }
   }
   // --- корпус
@@ -92,7 +113,9 @@ function buildChar(kind: string, frame: number): HTMLCanvasElement {
       R(x0, sy(y), x1 - x0 + 1, 1, coat);
       R(x0, sy(y), 1, 1, coatL); R(x1 - 1, sy(y), 2, 1, coatD);
     }
-    R(tx0 - 3, SH - 1, 3, 1, boot); R(tx1 + 1 + walk, SH - 1, 3, 1, boot);
+    const foot = (x: number, kind: string | undefined) => { if (kind === 'lost') return; R(x, SH - 1, 3, 1, kind === 'pegleg' ? WOOD : kind ? '#5a5e5a' : boot); };
+    foot(tx0 - 3, LB.legL); foot(tx1 + 1 + walk, LB.legR);
+    if (LB.legL === 'lost' || LB.legR === 'lost') pline(c, tx0 - 2, sy(tTop + 3), tx0 - 4, SH - 1, WOOD);
   } else {
     R(tx0 - 1, sy(tTop), tx1 - tx0 + 3, 2, coat);                  // плечи
     R(tx0, sy(tTop + 2), tx1 - tx0 + 1, tBot - tTop - 1, coat);
@@ -139,7 +162,11 @@ function buildChar(kind: string, frame: number): HTMLCanvasElement {
       R(hx0 + 1, hy + 5, 5, 1, '#d8d4c0'); P(hx0 + 2, hy + 5, INK); P(hx0 + 4, hy + 5, INK); // оскал
       P(hx0 + 1, hy + 1, shade(skin, -0.45)); P(hx0 + 4, hy + 6, shade(skin, -0.45));        // трупные пятна
     } else {
-      P(hx0 + 4, hy + 3, INK);                                      // глаз
+      const eR = LB.eyeR;
+      P(hx0 + 4, hy + 3, eR === 'lost' ? INK : eR === 'glasseye' ? '#c8d8e0' : eR === 'occulteye' ? '#b8ff60' : INK); // глаз
+      if (eR === 'lost') { R(hx0 + 3, hy + 2, 3, 3, '#141210'); }                 // повязка на глазу
+      if (eR === 'lost' || LB.eyeL === 'lost') R(hx0, hy + 2, 6, 1, eR === 'lost' ? '#141210' : '#2a2018'); // ремешок повязки
+      if (eR === 'occulteye') P(hx0 + 4, hy + 4, '#4a6a2a');                       // прожилки
       P(hx0 + 5, hy + 5, skinD);
     }
     if (st.mask && st.tanks) pline(c, hx0 + 4, hy + 8, tx0 - 2, sy(tTop + 1), '#2a2c24'); // шланг от маски к баллонам
@@ -170,11 +197,22 @@ function buildChar(kind: string, frame: number): HTMLCanvasElement {
 
   // --- передняя рука и оружие
   const ax = tx1, ay = sy(tTop + 1);
-  const hand = () => R(ax, ay + 8, 2, 2, skin);
-  R(ax, ay, 2, 8, coat); R(ax + 1, ay, 1, 8, coatD);
+  const armR = LB.armR;
+  const hand = () => {
+    if (!armR) { R(ax, ay + 8, 2, 2, skin); return; }
+    if (armR === 'lost') return;
+    if (armR === 'hook') { P(ax, ay + 8, STEEL); P(ax + 1, ay + 9, STEEL_L); P(ax + 1, ay + 10, STEEL); P(ax, ay + 10, STEEL); return; }
+    if (armR === 'hinged') { R(ax, ay + 8, 2, 2, BRASS); P(ax + 1, ay + 9, '#7a5a28'); return; }
+    if (armR === 'flesh') { R(ax, ay + 8, 2, 2, '#b89a8a'); P(ax, ay + 8, '#5a2a2a'); return; }   // чужая кожа, шов
+    R(ax, ay + 8, 2, 2, STEEL); P(ax + 1, ay + 9, STEEL_L);                                         // стальная кисть
+  };
+  if (armR === 'lost') { R(ax, ay, 2, 3, coat); R(ax + 1, ay, 1, 3, coatD); P(ax, ay + 3, coatD); } // подколотый рукав
+  else if (armR === 'piston') { R(ax, ay, 2, 3, coat); R(ax, ay + 3, 2, 5, '#6e726c'); P(ax + 1, ay + 4, BRASS); P(ax + 1, ay + 6, '#4a4e4a'); }
+  else if (armR === 'galvanic') { R(ax, ay, 2, 3, coat); R(ax, ay + 3, 2, 5, COPPER); for (const k of [3, 5, 7]) P(ax, ay + k, '#7a4220'); P(ax + 1, ay + 4, SPARK); }
+  else { R(ax, ay, 2, 8, coat); R(ax + 1, ay, 1, 8, coatD); if (armR === 'flesh') P(ax, ay + 7, '#5a2a2a'); }
   if (st.sash) { R(ax, ay + 1, 2, 2, '#7fb04a'); }
   const hx = ax + 1, hy2 = ay + 9; // кисть
-  switch (st.weapon) {
+  switch (armR === 'lost' && !['rifle', 'musket', 'bag'].includes(st.weapon ?? '') ? undefined : st.weapon) {
     case 'saber':
       pline(c, hx + 1, hy2 + 1, hx + 4, hy2 + 8, STEEL); pline(c, hx + 2, hy2 + 1, hx + 4, hy2 + 6, STEEL_L);
       R(hx - 1, hy2 - 1, 3, 1, BRASS); hand();

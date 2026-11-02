@@ -13,6 +13,7 @@ import { equipStats } from './items';
 import { PixelView, applyLight, PLight, T, PS, prect, ppx, pline, pellipse, shade, seeded as pseed, outline } from './px';
 import { drawSprite } from './sprites';
 import { paintTile, objSprite } from './pxworld';
+import { hasProsth } from './prosthetics';
 
 export const CT = 40, CW = 24, CH = 14;
 const W = CW * CT, H = CH * CT;
@@ -39,6 +40,7 @@ export interface Unit {
   walking?: boolean;    // идёт (для анимации шага)
   weapons: string[]; ammo: Record<string, number>; abil: Record<string, number>;
   emptyNote?: string; // что сказать в журнал, когда у стрелка кончились заряды
+  galv?: boolean;     // заряжен гальванический разряд
   ai?: UnitBase['ai']; leader: boolean; demonic: boolean;
   dead: boolean; fled: boolean; terror: boolean; flip: boolean; flash: number; seed: number;
   cd: { summon: number; whisper: number };
@@ -67,6 +69,7 @@ function mkUnit(b: UnitBase, team: Unit['team'], x: number, y: number): Unit {
   // снаряжение бойцов отряда: оружие, броня, бонусы, патронташ, оберег
   const e = player && b.equip ? equipStats(b) : null;
   const abil = { ...(b.abil ?? {}) };
+  if (player && hasProsth(b, 'galvanic')) abil.galvanic = 1; // гальваническая рука
   const u: Unit = {
     uid: ++UID, team, base: b, name: b.name, kind: b.look ?? b.kind, x, y, px: x * CT + CT / 2, py: y * CT + CT / 2,
     hp: b.hp, maxHp: player ? effMaxHp(b) : b.maxHp, move: Math.max(2, b.move + m.move + (e?.move ?? 0)), ap: 0,
@@ -298,6 +301,15 @@ export const Combat = {
         this.hooks.log(`${u.name} перезаряжает: ${got.join(', ')}.`);
         await sleep(350);
       });
+      return;
+    }
+    if (b.key === 'galvanic') {
+      if (u.galv) return;
+      u.abil.galvanic = 0; u.galv = true;
+      this.float(u, 'Разряд!', '#d8ff70');
+      this.burst(u.px, u.py - 14, '#d8ff70', 8, 30);
+      this.hooks.log(`${u.name}: гальванические банки гудят — следующий удар вблизи +2 к атаке и урону.`);
+      this.hooks.panel();
       return;
     }
     if (b.key === 'painkiller') {
@@ -651,6 +663,8 @@ export const Combat = {
   async attack(a: Unit, t: Unit, wkey: string, bonus = 0, opts: { dmg?: number; adv?: boolean } = {}) {
     const w = WEAPONS[wkey];
     if (t.x !== a.x) a.flip = t.x < a.x;
+    const galv = a.galv && WEAPONS[wkey].type === 'melee';
+    if (galv) { bonus += 2; opts = { ...opts, dmg: (opts.dmg ?? 0) + 2 }; a.galv = false; }
     const info = this.attackInfo(a, a, t, wkey, bonus) ?? { bonus: 0, dc: 99, chance: 0 };
     let roll: CheckResult = check(info.bonus, info.dc);
     let advTxt = '';
@@ -685,6 +699,11 @@ export const Combat = {
       this.hooks.log(`${a.name} промахивается по цели «${t.name}» [${rollTxt}, шанс был ${ch}%]`);
     }
     await sleep(260);
+    if (galv) { // отдача гальванической руки
+      const str = a.team === 'player' && a.leader ? (G.pc?.attrs.str ?? 0) : 0, r = check(str, 12);
+      if (!r.success) { a.hp = Math.max(1, a.hp - 1); this.float(a, '−1 (разряд)', '#d8ff70'); this.hooks.log(`Отдача разряда: ${a.name} теряет 1 ОЗ [Сила: d20 ${r.roll}${str >= 0 ? '+' : ''}${str} против 12].`); }
+      else this.hooks.log(`${a.name} выдерживает отдачу разряда [Сила: d20 ${r.roll}${str >= 0 ? '+' : ''}${str} против 12].`);
+    }
   },
 
   async damage(u: Unit, d: number, crit: boolean) {

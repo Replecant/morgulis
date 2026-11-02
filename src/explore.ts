@@ -227,6 +227,7 @@ export const Explore = {
     B('factory', 117, 31, 9, 4, { name: 'Механический завод', talk: 'factory' });
     B('factory', 130, 31, 7, 4, { name: 'Котельная', talk: 'factory' });
     B('factory', 116, 64, 10, 4, { name: 'Заводской цех', talk: 'factory' });
+    B('workshop', 141, 63, 3, 2, { name: 'Подпольная мастерская', talk: 'underworkshop' });
     for (const [x, y] of [[110, 47], [124, 52], [135, 47], [106, 52], [141, 56]]) B('campfire', x, y, 1, 1, { dynamic: true, name: 'Уличный костёр', talk: 'slumfire' });
     for (const [x, y] of [[108, 48], [131, 51]]) B('lamp', x, y, 1, 1, { name: 'Фонарь', talk: 'lamp' });
     for (const row of [36, 39, 42, 45, 52, 55, 58, 61]) {
@@ -293,6 +294,7 @@ export const Explore = {
     NPC('guard2', 'Стражник', 'guard', 99, 52, 'guard');
     NPC('sutler', 'Маркитант', 'sutler', 94, 45, 'sutler');
     NPC('prosthetist', 'Протезист', 'medic_civ', 167, 56, 'prosthetist');
+    NPC('surgeon', 'Подпольный хирург', 'surgeon_under', 142, 65, 'surgeon');
     NPC('upper1', 'Стража Верхнего города', 'guard', 179, 46, 'upper_guard');
     NPC('upper2', 'Стража Верхнего города', 'guard', 179, 52, 'upper_guard');
 

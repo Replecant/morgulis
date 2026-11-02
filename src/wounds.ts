@@ -31,10 +31,11 @@ export const WOUNDS: Record<string, Wound> = {
   bullet:   { id: 'bullet', name: 'Пуля в плече', heavy: true, desc: '−2 к атакам, −2 к макс. ОЗ.', mods: { atkM: -2, atkR: -2, maxHp: -2 } },
   ribs:     { id: 'ribs', name: 'Сломанные рёбра', heavy: true, desc: '−1 к Защите, −2 к макс. ОЗ.', mods: { def: -1, maxHp: -2 } },
   thigh:    { id: 'thigh', name: 'Рана бедра', heavy: true, desc: '−1 к перемещению, −2 к макс. ОЗ.', mods: { move: -1, maxHp: -2 } },
+  eye:      { id: 'eye', name: 'Рана глаза', heavy: true, desc: '−2 к стрельбе, −2 к макс. ОЗ.', mods: { atkR: -2, maxHp: -2 } },
   gash:     { id: 'gash', name: 'Глубокая рваная рана', heavy: true, desc: '−4 к макс. ОЗ.', mods: { maxHp: -4 } },
 };
 const LIGHT = ['brow', 'shoulder', 'ankle', 'concuss'];
-const HEAVY = ['bullet', 'ribs', 'thigh', 'gash'];
+const HEAVY = ['bullet', 'ribs', 'thigh', 'gash', 'eye'];
 
 export const woundsOf = (b: UnitBase) => (b.wounds ?? []).map((id) => WOUNDS[id]);
 
@@ -138,13 +139,14 @@ export function surgery(b: UnitBase, woundId: string): { text: string; roll?: Ch
     return { text: `${healer.name} оперирует: «${w.name}» вылечена, остались свежие швы. [${rollTxt}]`, roll: r };
   }
   // тяжёлый провал (на 5 и больше) при ране конечности — спасти её не удаётся: ампутация
-  const limb: Limb | null = woundId === 'bullet' ? 'armR' : woundId === 'thigh' ? (Math.random() < 0.5 ? 'legR' : 'legL') : null;
+  const limb: Limb | null = woundId === 'bullet' ? 'armR' : woundId === 'thigh' ? (Math.random() < 0.5 ? 'legR' : 'legL') : woundId === 'eye' ? (Math.random() < 0.5 ? 'eyeR' : 'eyeL') : null;
   if (limb && (r.fumble || r.total <= 8) && !b.limbs?.[limb]) {
     b.wounds = (b.wounds ?? []).filter((id) => id !== woundId);
     loseLimb(b, limb);
     if (!b.wounds.includes('stitches')) b.wounds.push('stitches');
     b.hp = Math.max(1, Math.min(b.hp - 2, effMaxHp(b)));
-    return { text: `Операция не удалась: конечность не спасти, приходится ампутировать — ${LIMB_NAMES[limb].toLowerCase()} утрачена навсегда. Протез можно поставить у протезиста в Среднем городе форта. [${rollTxt}]`, roll: r };
+    const eye = limb.startsWith('eye');
+    return { text: `Операция не удалась: ${eye ? 'глаз не спасти' : 'конечность не спасти, приходится ампутировать'} — ${LIMB_NAMES[limb].toLowerCase()} ${eye ? 'утрачен' : 'утрачена'} навсегда. Протез поставят в клинике Среднего города форта. [${rollTxt}]`, roll: r };
   }
   b.hp = Math.max(1, b.hp - 2);
   return { text: `Операция не удалась: «${w.name}» осталась, ${b.name} теряет 2 ОЗ. [${rollTxt}]`, roll: r };

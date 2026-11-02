@@ -60,6 +60,7 @@ export const ABILITIES: Record<string, { name: string; desc: string }> = {
   medkit:     { name: 'Аптечка', desc: '1 ОД. Себе или соседу: +6 ОЗ и бонус Медицины. Поднимает тяжелораненого.' },
   painkiller: { name: 'Обезбол.', desc: '1 ОД. Себе: +3 ОЗ и +1 кураж.' },
   aim:        { name: 'Прицельный выстрел', desc: '2 ОД. Выстрел с +4 к броску атаки.' },
+  galvanic:   { name: 'Гальв. разряд', desc: 'Без ОД, раз за бой (гальваническая рука). Следующий удар в ближнем бою: +2 к атаке и урону. После удара — проверка Силы КС 12, провал: −1 ОЗ.' },
 };
 
 export interface UnitBase {
@@ -78,7 +79,9 @@ export interface UnitBase {
   horror?: number;       // бонус к спасброску против ужаса
   med?: number;          // бонус Медицины (перевязка, операции)
   wounds?: string[];     // ранения (см. wounds.ts)
-  limbs?: Partial<Record<'armR' | 'armL' | 'legR' | 'legL', string>>; // утраченные конечности и протезы (см. prosthetics.ts)
+  limbs?: Partial<Record<'armR' | 'armL' | 'legR' | 'legL' | 'eyeR' | 'eyeL', string>>; // утраченные части тела и протезы (см. prosthetics.ts)
+  fleshDue?: number;      // плотяная рука: когда (G.clock) нужен тканевый раствор
+  fleshReject?: boolean;  // плотяная рука: отторжение
   equip?: Equip;         // снаряжение (см. items.ts) — у бойцов отряда
   look?: string;         // ключ стиля фигурки с учётом снаряжения
   abil?: Record<string, number>;
