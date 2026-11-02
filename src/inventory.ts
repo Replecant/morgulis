@@ -126,17 +126,18 @@ const sg = (n: number) => (n >= 0 ? `+${n}` : `−${-n}`);
 
 // ------------------------------------------------------------ раскладка «человечка»
 // координаты ячеек слотов (левый верхний угол) и точки на теле, к которым ведут линии
+// «человечек» 360×320: ячейки по бокам, линии к частям тела пиксельной фигурки (масштаб 6)
 const SLOT_POS: Record<Slot, { x: number; y: number; ax: number; ay: number; side: 'l' | 'r' }> = {
-  head:  { x: 30, y: 26, ax: 214, ay: 128, side: 'l' },
-  body:  { x: 30, y: 122, ax: 210, ay: 218, side: 'l' },
-  hands: { x: 30, y: 218, ax: 176, ay: 262, side: 'l' },
-  legs:  { x: 30, y: 314, ax: 206, ay: 330, side: 'l' },
-  charm: { x: 336, y: 26, ax: 216, ay: 182, side: 'r' },
-  main:  { x: 336, y: 122, ax: 262, ay: 246, side: 'r' },
-  side:  { x: 336, y: 218, ax: 166, ay: 236, side: 'r' },
-  belt:  { x: 336, y: 314, ax: 214, ay: 266, side: 'r' },
+  head:  { x: 10, y: 10, ax: 180, ay: 130, side: 'l' },
+  body:  { x: 10, y: 86, ax: 176, ay: 190, side: 'l' },
+  hands: { x: 10, y: 162, ax: 138, ay: 204, side: 'l' },
+  legs:  { x: 10, y: 238, ax: 172, ay: 252, side: 'l' },
+  charm: { x: 294, y: 10, ax: 184, ay: 172, side: 'r' },
+  main:  { x: 294, y: 86, ax: 224, ay: 200, side: 'r' },
+  side:  { x: 294, y: 162, ax: 156, ay: 222, side: 'r' },
+  belt:  { x: 294, y: 238, ax: 190, ay: 214, side: 'r' },
 };
-const CELL = 64;
+const CELL = 56;
 
 type Sel = { from: 'stash'; idx: number } | { from: 'slot'; slot: Slot } | null;
 
@@ -228,12 +229,12 @@ export const Inventory = {
     }));
 
     // «человечек»
-    const fig = h('canvas', { width: 200, height: 330, class: 'doll-fig' });
+    const fig = h('canvas', { width: 160, height: 220, class: 'doll-fig' });
     const fc = fig.getContext('2d')!;
-    const glow = fc.createRadialGradient(100, 170, 10, 100, 170, 150);
+    const glow = fc.createRadialGradient(80, 130, 10, 80, 130, 110);
     glow.addColorStop(0, 'rgba(159,211,106,0.10)'); glow.addColorStop(1, 'rgba(159,211,106,0)');
-    fc.fillStyle = glow; fc.fillRect(0, 0, 200, 330);
-    drawFigure(fc, b.look ?? b.kind, 100, 316, 8, { t: 0 });
+    fc.fillStyle = glow; fc.fillRect(0, 0, 160, 220);
+    drawFigure(fc, b.look ?? b.kind, 80, 212, 6, { t: 0 });
 
     const svgLines = SLOT_ORDER.map((s) => {
       const p = SLOT_POS[s];
@@ -242,7 +243,7 @@ export const Inventory = {
       return `<path d="M${sx},${sy} L${(sx + p.ax) / 2},${sy} L${p.ax},${p.ay}" class="ln${on ? ' on' : ''}"/><circle cx="${p.ax}" cy="${p.ay}" r="3" class="dot${on ? ' on' : ''}"/>`;
     }).join('');
     const doll = h('div', { class: 'doll' });
-    doll.innerHTML = `<svg class="doll-svg" viewBox="0 0 430 400">${svgLines}</svg>`;
+    doll.innerHTML = `<svg class="doll-svg" viewBox="0 0 360 320">${svgLines}</svg>`;
     doll.append(fig);
     for (const s of SLOT_ORDER) doll.append(this.slotCell(s, eq[s], valid.includes(s)));
 
@@ -283,7 +284,7 @@ export const Inventory = {
     root.replaceChildren(h('div', { class: 'inv-box' },
       h('div', { class: 'inv-top' }, h('h2', {}, 'Снаряжение'), tabs, h('button', { class: 'btn', onclick: () => this.close() }, 'Закрыть [I]')),
       h('div', { class: 'inv-main' }, h('div', { class: 'inv-left' }, doll, stats), right),
-      h('div', { class: 'inv-hint' }, 'Перетащите вещь на ячейку или из ячейки в обоз · клик — выбрать, клик по подсвеченной ячейке — надеть · двойной клик — надеть/снять · ПКМ по ячейке — снять'),
+      h('div', { class: 'inv-hint' }, 'Перетащите вещь на ячейку или в обоз · клик — выбрать, клик по подсвеченной ячейке — надеть · двойной клик — надеть/снять · ПКМ — снять'),
     ));
   },
 
@@ -299,7 +300,7 @@ export const Inventory = {
     cell.onclick = () => {
       if (this.sel?.from === 'stash') { if (!this.equipFromStash(this.sel.idx, slot)) flash(cell); return; }
       if (this.sel?.from === 'slot' && this.sel.slot !== slot) { this.moveSlot(this.sel.slot, slot); return; }
-      this.sel = it ? { from: 'slot', slot } : null; this.render();
+      this.sel = it ? { from: 'slot', slot } : null; this.hover = null; this.render();
     };
     cell.ondblclick = () => this.unequip(slot);
     cell.oncontextmenu = (e) => { e.preventDefault(); this.unequip(slot); };
@@ -325,7 +326,7 @@ export const Inventory = {
     const it = ITEMS[id];
     const selected = this.sel?.from === 'stash' && this.sel.idx === idx;
     const cell = h('div', { class: 'scell' + (selected ? ' sel' : ''), draggable: 'true', title: it.name, style: `border-color:${KIND_COLOR[it.kind]}` }, iconCanvas(it, 46));
-    cell.onclick = () => { this.sel = selected ? null : { from: 'stash', idx }; this.render(); };
+    cell.onclick = () => { this.sel = selected ? null : { from: 'stash', idx }; this.hover = null; this.render(); };
     cell.ondblclick = () => this.autoEquip(idx);
     cell.onmouseenter = () => { this.hover = it; this.updateDetail(); };
     cell.onmouseleave = () => { this.hover = null; this.updateDetail(); };
@@ -393,7 +394,7 @@ export const Inventory = {
         const slot = this.sel.slot;
         btns.append(h('button', { class: 'btn', onclick: () => this.unequip(slot) }, 'Снять в обоз'));
       }
-      box.append(btns);
+      box.querySelector('.dh')!.append(btns); // кнопки — в шапке описания, чтобы не уезжали за край
     }
   },
 };
