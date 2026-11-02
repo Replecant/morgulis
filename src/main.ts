@@ -260,7 +260,7 @@ function frame(now: number) {
   else if (G.mode === 'world') World.draw(ctx, G.time);
   else Explore.draw(ctx, G.time);
   if (G.mode === 'world' && (hudT += dt) > 0.5) { hudT = 0; refreshHud(); }
-  Music.update(dt, G.mode === 'world');
+  Music.update(dt, G.mode !== 'combat'); // музыка играет везде, кроме боя
   requestAnimationFrame(frame);
 }
 
