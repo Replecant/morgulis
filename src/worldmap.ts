@@ -23,7 +23,7 @@ export const LOCS: Loc[] = [
   { id: 'airship', name: 'Руины дирижабля', kind: 'poi', x: 930, y: 520, talk: 'poi_airship', desc: 'Остов огромного воздушного корабля.' },
   { id: 'post', name: 'Разрушенный пост', kind: 'poi', x: 1150, y: 905, talk: 'poi_post', desc: 'Руины имперского поста между трактом и путями.' },
   { id: 'bones', name: 'Старые кости', kind: 'poi', x: 760, y: 430, talk: 'poi_bones', desc: 'Скелет исполинского жука.' },
-  { id: 'lorry', name: 'Остов грузовика', kind: 'poi', x: 1380, y: 800, talk: 'poi_lorry', desc: 'Брошенная имперская машина у тракта.' },
+  { id: 'lorry', name: 'Остов грузовика', kind: 'poi', x: 1270, y: 690, talk: 'poi_lorry', desc: 'Брошенный имперский грузовик в ложбине, в стороне от тракта.' },
   { id: 'flare', name: 'Газовый факел', kind: 'poi', x: 230, y: 640, talk: 'poi_flare', desc: 'Вечный огонь над старой скважиной.' },
 ];
 const ROADS: number[][][] = [
@@ -47,6 +47,7 @@ function polyAt(pts: number[][], s: number): Pt & { dx: number } {
   return { x: pts[0][0], y: pts[0][1], dx: 0 };
 }
 
+const FIND_R = 170;         // с какого расстояния отряд замечает примечательное место
 const SPEED = 55;          // пикселей карты в час по бездорожью
 const ROAD_BONUS = 1.7;    // по дороге быстрее
 const HOURS_PER_SEC = 1.2; // сколько игровых часов проходит за секунду пути
@@ -69,6 +70,7 @@ export const World = {
   onArrive: (_l: Loc) => {},
   onEncounter: () => {},
   onPatrol: () => {},
+  onDiscover: (_l: Loc) => {},
   patrols: [] as Patrol[],
   onDay: () => {},
   lastDay: 0,
@@ -106,10 +108,16 @@ export const World = {
     this.party.x = this.party.tx = l.x; this.party.y = this.party.ty = l.y + 30;
     this.party.moving = false; this.pending = null;
     this.updateLocation();
+    this.discover();
   },
 
-  locAt(x: number, y: number, r = 26) { return LOCS.find((l) => Math.hypot(l.x - x, l.y - y) < (l.kind === 'fort' ? 70 : r)) ?? null; },
-  nearLoc() { return LOCS.find((l) => dist(l, this.party) < (l.kind === 'fort' ? 90 : 40)) ?? null; },
+  /** Примечательные места видны на карте, только когда отряд их нашёл — подошёл близко. */
+  known(l: Loc) { return l.kind !== 'poi' || !!G.flags['found_' + l.id]; },
+  discover() {
+    for (const l of LOCS) if (l.kind === 'poi' && !G.flags['found_' + l.id] && dist(l, this.party) < FIND_R) { G.flags['found_' + l.id] = true; this.onDiscover(l); }
+  },
+  locAt(x: number, y: number, r = 26) { return LOCS.find((l) => this.known(l) && Math.hypot(l.x - x, l.y - y) < (l.kind === 'fort' ? 70 : r)) ?? null; },
+  nearLoc() { return LOCS.find((l) => this.known(l) && dist(l, this.party) < (l.kind === 'fort' ? 90 : 40)) ?? null; },
   updateLocation() {
     const l = this.nearLoc();
     G.location = l ? `У места: ${l.name}` : onRoad(this.party) ? 'Тракт' : 'Серая пустошь';
@@ -149,6 +157,7 @@ export const World = {
     }
     if (moved) {
       G.clock += dt * HOURS_PER_SEC;
+      this.discover();
       this.updateLocation();
       const day = Math.floor(G.clock / 24);
       if (day > this.lastDay) { this.lastDay = day; this.onDay(); }
@@ -204,6 +213,10 @@ export const World = {
     const cx = this.cam.x, cy = this.cam.y, lx = cx / 2, ly = cy / 2;
     const v = (this.view ??= new PixelView(LW, LH)), lc = v.c;
     lc.drawImage(this.bg!, lx, ly, LW, LH, 0, 0, LW, LH);
+    for (const l of LOCS) { // найденные примечательности
+      const ic = POI_ICONS.get(l.id);
+      if (ic && this.known(l)) lc.drawImage(ic.cv, ic.ox - lx, ic.oy - ly);
+    }
     const X = (wx: number) => Math.round(wx / 2 - lx), Y = (wy: number) => Math.round(wy / 2 - ly);
 
     // дым над фортом — пиксельные клубы с растром
@@ -213,11 +226,11 @@ export const World = {
       ditherDisc(lc, sx, sy, r, '#3c463a', 0.55 * (1 - k));
     }
     const fl = LOCS.find((l) => l.id === 'flare')!;
-    pixelFlame(lc, X(fl.x), Y(fl.y) - 13, t);
+    if (this.known(fl)) pixelFlame(lc, X(fl.x), Y(fl.y) - 13, t); // зарево видно издалека, сам факел — когда найден
 
     // метки примечательностей
     for (const l of LOCS) {
-      if (l.kind !== 'poi') continue;
+      if (l.kind !== 'poi' || !this.known(l)) continue;
       const hv = this.hover === l || this.pending === l;
       if (hv) ditherRing(lc, X(l.x), Y(l.y), 12, '#e8d090');
     }
@@ -278,6 +291,7 @@ export const World = {
 
     // подписи (чёткий текст поверх пиксельного слоя)
     for (const l of LOCS) {
+      if (!this.known(l)) continue;
       const x = l.x - cx, y = l.y - cy + (l.kind === 'fort' ? 110 : l.id === 'richmord' ? 70 : l.kind === 'village' ? 44 : 30);
       if (x < -100 || x > VW + 100 || y < -40 || y > VH + 40) continue;
       const hv = this.hover === l || this.pending === l;
@@ -355,6 +369,8 @@ function stamp(c: CanvasRenderingContext2D, x: number, y: number, w: number, h: 
   if (edge) outline(cv, INK);
   c.drawImage(cv, Math.round(x - w / 2 - 1), Math.round(y - h - 1));
 }
+
+const POI_ICONS = new Map<string, { cv: HTMLCanvasElement; ox: number; oy: number }>();
 
 function renderBackground(): HTMLCanvasElement {
   const cv = document.createElement('canvas'); cv.width = BW; cv.height = BH;
@@ -450,7 +466,14 @@ function renderBackground(): HTMLCanvasElement {
   // атмосферные руины — без подписей и событий
   drawRuins(c, r);
   // значки мест
-  for (const l of LOCS) drawLocIcon(c, l, r);
+  for (const l of LOCS) {
+    if (l.kind !== 'poi') { drawLocIcon(c, l, r); continue; }
+    // примечательности — на отдельных холстах: показываются, когда найдены
+    const ox = Math.round(l.x / 2) - 40, oy = Math.round(l.y / 2) - 40, ic = document.createElement('canvas'); ic.width = 80; ic.height = 64;
+    const ictx = ic.getContext('2d')!; ictx.imageSmoothingEnabled = false; ictx.translate(-ox, -oy);
+    drawLocIcon(ictx, l, r);
+    POI_ICONS.set(l.id, { cv: ic, ox, oy });
+  }
   // края региона тонут во мгле — растровое затемнение
   edgeFog(c, BW, BH);
   return cv;
@@ -504,7 +527,7 @@ const RUINS: { kind: string; x: number; y: number }[] = [
   { kind: 'railcar', x: 560, y: 935 },
   { kind: 'wall', x: 980, y: 210 },
   { kind: 'farm', x: 130, y: 460 },
-  { kind: 'tank', x: 1760, y: 1150 },
+  { kind: 'tank', x: 1420, y: 1010 },
   { kind: 'wall', x: 860, y: 1110 },
   { kind: 'tower', x: 160, y: 820 },
 ];
@@ -573,12 +596,19 @@ function drawRuins(c: CanvasRenderingContext2D, r: () => number) {
           prect(s, 9, 9, 3, 2, stoneD); prect(s, 25, 10, 2, 1, stoneD);
         });
         break;
-      case 'tank': // подбитый танк
-        stamp(c, x, y + 6, 30, 14, (s) => {
-          prect(s, 2, 7, 24, 6, '#2e2e2a'); for (let k = 0; k < 6; k++) prect(s, 3 + k * 4, 9, 2, 2, '#4a4a44'); // гусеница
-          prect(s, 4, 3, 19, 5, '#4a4a3c'); prect(s, 4, 3, 19, 1, '#5e5e4c');
-          prect(s, 9, 0, 8, 4, '#44443a'); prect(s, 17, 1, 9, 1, '#3a3a32'); ppx(s, 26, 2, '#3a3a32');   // башня, ствол опущен
-          prect(s, 12, 4, 3, 2, dark); prect(s, 27, 11, 2, 2, '#2e2e2a');                              // пробоина, слетевший трак
+      case 'tank': // подбитая сухопутная машина ранних лет: ромб с гусеницей по всему корпусу, пушка в бортовом спонсоне
+        stamp(c, x, y + 7, 34, 16, (s) => {
+          const tank = pixelize(34, 16, (v) => {
+            v.fillStyle = '#26261f'; v.beginPath(); v.moveTo(1, 12); v.lineTo(6, 2); v.lineTo(25, 2); v.lineTo(33, 9); v.lineTo(28, 15); v.lineTo(4, 15); v.closePath(); v.fill(); // гусеница по контуру
+            v.fillStyle = '#56523f'; v.beginPath(); v.moveTo(4, 11.5); v.lineTo(7.5, 4); v.lineTo(24, 4); v.lineTo(30, 9); v.lineTo(26.5, 13); v.lineTo(6, 13); v.closePath(); v.fill(); // борт
+          });
+          s.drawImage(tank, 0, 0);
+          for (let k = 0; k < 7; k++) ppx(s, 6 + k * 3, 2, '#3e3e34');                  // траки сверху
+          for (let k = 0; k < 6; k++) ppx(s, 8 + k * 3, 6, '#6e6a52');                  // заклёпки
+          prect(s, 12, 8, 7, 4, '#46432f'); prect(s, 12, 8, 7, 1, '#625e48');            // спонсон
+          prect(s, 19, 9, 6, 1, '#3a3a30'); ppx(s, 25, 10, '#3a3a30');                   // короткий ствол, опущен
+          prect(s, 7, 7, 3, 3, dark); ppx(s, 10, 8, dark);                                // пробоина
+          prect(s, 31, 14, 3, 1, '#26261f'); ppx(s, 33, 13, '#26261f');                   // слетевшие траки
         });
         break;
     }
@@ -665,10 +695,21 @@ function drawLocIcon(c: CanvasRenderingContext2D, l: Loc, r: () => number) {
         pline(s, 2, 9, 22, 8, '#d0cab6'); pellipse(s, 25, 9, 3, 3, '#c8c2ae'); ppx(s, 25, 9, '#1a1814'); ppx(s, 27, 8, '#1a1814');
       });
       break;
-    case 'lorry':
-      stamp(c, x, y + 4, 18, 11, (s) => {
-        prect(s, 0, 3, 11, 5, '#4a3424'); prect(s, 0, 3, 11, 1, '#6a4a30'); prect(s, 11, 1, 6, 7, '#5a3a24'); prect(s, 13, 2, 3, 2, '#1c1c1a');
-        pellipse(s, 3, 8, 2, 2, '#121110'); pellipse(s, 13, 8, 2, 2, '#121110'); ppx(s, 3, 8, '#4a4a44'); ppx(s, 13, 8, '#4a4a44');
+    case 'lorry': // ранний грузовик: капот-коробка, открытая кабина под навесом, кузов с брезентом, колёса со спицами
+      stamp(c, x, y + 5, 26, 15, (s) => {
+        prect(s, 1, 9, 24, 2, '#2e241a');                                       // рама
+        prect(s, 1, 2, 12, 7, '#5a5440'); prect(s, 1, 2, 12, 1, '#6e6850');     // брезентовый верх кузова
+        for (let k = 0; k < 4; k++) prect(s, 2 + k * 3, 3, 1, 6, '#48432f');    // дуги тента
+        prect(s, 1, 8, 12, 1, '#4a3424');                                       // борт
+        prect(s, 14, 2, 1, 7, '#3a2a1c'); prect(s, 14, 2, 6, 1, '#3a2a1c'); prect(s, 19, 2, 1, 4, '#3a2a1c'); // навес кабины на стойках
+        prect(s, 15, 6, 4, 3, '#4a3424');                                       // сиденье
+        prect(s, 20, 5, 5, 4, '#4e3a28'); prect(s, 20, 5, 5, 1, '#6a4e34'); prect(s, 24, 6, 1, 2, '#8a8a80'); // капот, решётка
+        prect(s, 16, 4, 1, 2, '#2a2a28');                                       // руль
+        for (const [wx, wr] of [[5, 3], [21, 2]] as [number, number][]) {      // колёса со спицами, литая резина
+          pellipse(s, wx, 11, wr, wr, '#141210'); ppx(s, wx, 11, '#7a7a70');
+          ppx(s, wx - 1, 11, '#4a4a44'); ppx(s, wx + 1, 11, '#4a4a44'); ppx(s, wx, 10, '#4a4a44'); ppx(s, wx, 12, '#4a4a44');
+        }
+        prect(s, 8, 1, 3, 1, '#2a261c'); ppx(s, 9, 2, '#2a261c');               // дыра в брезенте
       });
       break;
     case 'flare':
