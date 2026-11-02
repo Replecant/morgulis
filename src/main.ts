@@ -100,6 +100,7 @@ World.onEncounter = () => Dialog.start('enc_band');
 World.onPatrol = () => Dialog.start('enc_patrol');
 World.onDiscover = (l) => toast(`Замечено: ${l.name}`);
 World.onDead = () => Dialog.start('enc_dead');
+World.onGas = (msg) => { toast(msg); refreshHud(); };
 World.onDay = () => { // раз в сутки отряд ест
   if (G.supplies.ration > 0) { G.supplies.ration--; toast(`${clockText()}: отряд съел паёк (осталось ${G.supplies.ration})`); }
   else { G.squad.forEach((s) => (s.hp = Math.max(1, s.hp - 2))); Dialog.start('hunger'); }

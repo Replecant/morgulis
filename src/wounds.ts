@@ -25,6 +25,7 @@ export const WOUNDS: Record<string, Wound> = {
   ankle:    { id: 'ankle', name: 'Вывих лодыжки', heavy: false, desc: '−1 к перемещению.', mods: { move: -1 } },
   concuss:  { id: 'concuss', name: 'Контузия', heavy: false, desc: 'Звон в ушах: −2 к стойкости против ужаса.', mods: { horror: -2 } },
   stitches: { id: 'stitches', name: 'Свежие швы', heavy: false, desc: 'После операции: −1 к Защите.', mods: { def: -1 } },
+  gassed:   { id: 'gassed', name: 'Отравление газом', heavy: false, desc: 'Кашель и резь в глазах: −1 к атакам, −2 к макс. ОЗ.', mods: { atkM: -1, atkR: -1, maxHp: -2 } },
   // тяжёлые — только операция
   bullet:   { id: 'bullet', name: 'Пуля в плече', heavy: true, desc: '−2 к атакам, −2 к макс. ОЗ.', mods: { atkM: -2, atkR: -2, maxHp: -2 } },
   ribs:     { id: 'ribs', name: 'Сломанные рёбра', heavy: true, desc: '−1 к Защите, −2 к макс. ОЗ.', mods: { def: -1, maxHp: -2 } },
@@ -43,6 +44,14 @@ export function woundMods(b: UnitBase): Required<WoundMods> {
 }
 /** Максимум ОЗ с учётом ранений. */
 export const effMaxHp = (b: UnitBase) => Math.max(1, b.maxHp + woundMods(b).maxHp);
+
+/** Нанести конкретное ранение (если его ещё нет). */
+export function addWoundId(b: UnitBase, id: string): boolean {
+  const have = b.wounds ?? (b.wounds = []);
+  if (have.includes(id)) return false;
+  have.push(id); b.hp = Math.min(b.hp, effMaxHp(b));
+  return true;
+}
 
 /** Нанести ранение (не дублируя уже имеющиеся). */
 export function addWound(b: UnitBase, heavy: boolean): Wound | null {

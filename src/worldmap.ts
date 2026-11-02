@@ -7,6 +7,8 @@ import { G } from './state';
 import { seeded, TAU, clamp, dist, Pt } from './util';
 import { PixelView, LW, LH, PS, PLight, applyLight, prect, ppx, pline, pellipse, pshadow, outline, pixelize, shade } from './px';
 import { miniSprite } from './sprites';
+import { hasTool } from './state';
+import { addWoundId } from './wounds';
 
 const VW = 960, VH = 640;
 export const WW = 1920, WH = 1280;
@@ -45,7 +47,7 @@ const RAIL: number[][] = [[WX0, 870], [-500, 885], [0, 900], [300, 890], [440, 8
 // патрули барона: первый ходит по тракту Эшфорд — форт, второй — от форта к Ричморду
 const PATROL_PATHS: number[][][] = [ROADS[0], [...ROADS[0].slice(2).reverse(), ...ROADS[1].slice(1)]];
 const PATROL_SPEED = 36;   // пикселей карты в час
-interface Patrol { path: number[][]; len: number; s: number; dir: 1 | -1; wait: number; cool: number; speed: number }
+interface Patrol { path: number[][]; len: number; s: number; dir: 1 | -1; wait: number; speed: number }
 const polyLen = (pts: number[][]) => pts.reduce((a, pt, i) => (i ? a + Math.hypot(pt[0] - pts[i - 1][0], pt[1] - pts[i - 1][1]) : 0), 0);
 function polyAt(pts: number[][], s: number): Pt & { dx: number } {
   for (let i = 1; i < pts.length; i++) {
@@ -64,6 +66,8 @@ const DEAD_START: [string, string[], number, number][] = [
   ['trench3', ['dead_sapper', 'dead_soldier', 'dead_gas'], -760, 950],
 ];
 const inFront = (q: Pt) => q.x > WX0 + 40 && q.x < FRONT_X - 20 && q.y > 80 && q.y < WH - 80;
+// едкие облака: плывут над пустошью по ветру; без противогаза газ обжигает лёгкие
+interface Cloud { x: number; y: number; r: number; vx: number; vy: number; seed: number }
 const FIND_R = 170;         // с какого расстояния отряд замечает примечательное место
 const SPEED = 55;          // пикселей карты в час по бездорожью
 const ROAD_BONUS = 1.7;    // по дороге быстрее
@@ -89,6 +93,10 @@ export const World = {
   onPatrol: () => {},
   onDiscover: (_l: Loc) => {},
   onDead: (_g: DeadGroup) => {},
+  onGas: (_msg: string) => {},
+  clouds: [] as Cloud[],
+  inGas: false, gasDose: 0, filterUse: 0,
+  pendingPatrol: null as Patrol | null,
   dead: [] as DeadGroup[],
   deadHit: null as DeadGroup | null,
   patrols: [] as Patrol[],
@@ -100,11 +108,14 @@ export const World = {
     this.band = { x: 1050, y: 1080, tx: 1050, ty: 1080, alive: true, respawn: 0, calm: 0, seen: false };
     this.lastDay = Math.floor(G.clock / 24);
     // первый выходит из Эшфорда к форту, второй — из форта к Ричморду: идут навстречу и расходятся
+    this.clouds = [[200, 300], [760, 1080], [1250, 560], [-300, 420], [-650, 900], [1560, 1120], [900, 180]].map(([x, y], i) => ({
+      x, y, r: 70 + ((i * 37) % 50), vx: 9 + (i % 3) * 3, vy: ((i % 2) * 2 - 1) * 2, seed: i * 1.9 }));
+    this.inGas = false; this.gasDose = 0; this.filterUse = 0;
     this.dead = DEAD_START.map(([id, kinds, x, y]) => ({ id, kinds, x, y, tx: x, ty: y, alive: true, respawn: 0, calm: 0, seen: false }));
-    this.patrols = PATROL_PATHS.map((path, i) => { const len = polyLen(path); return { path, len, s: i ? 0 : len * 0.2, dir: 1 as const, wait: 0, cool: 0, speed: i ? PATROL_SPEED * 1.15 : PATROL_SPEED * 0.9 }; });
+    this.patrols = PATROL_PATHS.map((path, i) => { const len = polyLen(path); return { path, len, s: i ? 0 : len * 0.2, dir: 1 as const, wait: 0, speed: i ? PATROL_SPEED * 1.15 : PATROL_SPEED * 0.9 }; });
   },
   patrolPos(pt: Patrol) { return polyAt(pt.path, pt.s); },
-  /** Патрули идут по дорогам туда и обратно, на концах отдыхают. Встретив отряд — останавливают его. */
+  /** Патрули идут по дорогам туда и обратно, на концах отдыхают. Сами отряд не останавливают — с ними можно заговорить. */
   updatePatrols(dt: number) {
     const hours = dt * HOURS_PER_SEC, p = this.party;
     for (const pt of this.patrols) {
@@ -112,12 +123,6 @@ export const World = {
       else {
         pt.s += pt.dir * pt.speed * hours;
         if (pt.s >= pt.len || pt.s <= 0) { pt.s = clamp(pt.s, 0, pt.len); pt.dir = pt.dir === 1 ? -1 : 1; pt.wait = 3 + Math.random() * 3; }
-      }
-      if (G.clock >= pt.cool && dist(this.patrolPos(pt), p) < 24) {
-        pt.cool = G.clock + 18;
-        p.moving = false; this.pending = null; G.keys.clear();
-        this.onPatrol();
-        return;
       }
     }
   },
@@ -141,21 +146,36 @@ export const World = {
   nearLoc() { return LOCS.find((l) => this.known(l) && dist(l, this.party) < (l.kind === 'fort' ? 90 : 40)) ?? null; },
   updateLocation() {
     const l = this.nearLoc();
-    G.location = l ? `У места: ${l.name}` : this.party.x < FRONT_X ? 'Старый фронт' : onRoad(this.party) ? 'Тракт' : 'Серая пустошь';
+    G.location = l ? `У места: ${l.name}` : this.inCloud(this.party) ? 'Едкое облако' : this.party.x < FRONT_X ? 'Старый фронт' : onRoad(this.party) ? 'Тракт' : 'Серая пустошь';
   },
 
+  patrolNear(q: Pt, r: number) { return this.patrols.find((pt) => dist(this.patrolPos(pt), q) < r) ?? null; },
   click(mx: number, my: number) {
     const x = mx + this.cam.x, y = my + this.cam.y;
+    // клик по патрулю — подойти и заговорить
+    const pt = this.patrolNear({ x, y: y + 8 }, 22);
+    if (pt) { this.pending = null; this.pendingPatrol = pt; const q = this.patrolPos(pt); this.party.tx = q.x; this.party.ty = q.y; this.party.moving = true; return; }
+    this.pendingPatrol = null;
     const l = this.locAt(x, y);
     if (l) { this.pending = l; this.party.tx = l.x; this.party.ty = l.y + (l.kind === 'fort' ? 60 : 0); }
     else { this.pending = null; this.party.tx = clamp(x, WX0 + 10, WW - 10); this.party.ty = clamp(y, 10, WH - 10); }
     this.party.moving = true;
   },
   hoverAt(mx: number, my: number) { this.hover = this.locAt(mx + this.cam.x, my + this.cam.y); },
-  interactKey() { const l = this.nearLoc(); if (l) this.onArrive(l); },
+  interactKey() {
+    const l = this.nearLoc();
+    if (l) { this.onArrive(l); return; }
+    if (this.patrolNear(this.party, 45)) { this.party.moving = false; this.onPatrol(); }
+  },
 
   update(dt: number) {
     const p = this.party, k = G.keys;
+    // идём к патрулю — догоняем его и заговариваем
+    if (this.pendingPatrol) {
+      const q = this.patrolPos(this.pendingPatrol);
+      p.tx = q.x; p.ty = q.y;
+      if (dist(q, p) < 26) { this.pendingPatrol = null; p.moving = false; G.keys.clear(); this.onPatrol(); return; }
+    }
     let vx = 0, vy = 0;
     if (k.has('ArrowLeft') || k.has('KeyA')) vx -= 1;
     if (k.has('ArrowRight') || k.has('KeyD')) vx += 1;
@@ -167,7 +187,7 @@ export const World = {
       const n = Math.hypot(vx, vy);
       p.x = clamp(p.x + (vx / n) * speed * dt, WX0 + 10, WW - 10); p.y = clamp(p.y + (vy / n) * speed * dt, 10, WH - 10);
       if (vx) p.flip = vx < 0;
-      p.moving = false; this.pending = null; moved = speed * dt;
+      p.moving = false; this.pending = null; this.pendingPatrol = null; moved = speed * dt;
     } else if (p.moving) {
       const d = Math.hypot(p.tx - p.x, p.ty - p.y), stepLen = Math.min(d, speed * dt);
       if (d > 0.5) { p.x += ((p.tx - p.x) / d) * stepLen; p.y += ((p.ty - p.y) / d) * stepLen; if (Math.abs(p.tx - p.x) > 1) p.flip = p.tx < p.x; moved = stepLen; }
@@ -184,6 +204,7 @@ export const World = {
       if (day > this.lastDay) { this.lastDay = day; this.onDay(); }
       this.updatePatrols(dt);
       this.updateDead(dt);
+      this.updateClouds(dt);
       this.updateBand(dt);
     }
   },
@@ -249,6 +270,34 @@ export const World = {
       if (chase && d < 20) { p.moving = false; this.pending = null; G.keys.clear(); this.deadHit = g; this.onDead(g); return; }
     }
   },
+  /** Облака дрейфуют; если отряд внутри — противогаз тратит фильтры, иначе газ отравляет. */
+  updateClouds(dt: number) {
+    const hours = dt * HOURS_PER_SEC, p = this.party;
+    for (const cl of this.clouds) {
+      cl.x += cl.vx * hours; cl.y += cl.vy * hours + Math.sin(G.clock * 0.3 + cl.seed) * 0.4 * hours;
+      if (cl.x > WW + 160) { cl.x = WX0 - 160; cl.y = 150 + Math.random() * (WH - 300); }
+      if (cl.y < 60 || cl.y > WH - 60) cl.vy = -cl.vy;
+    }
+    const inside = this.clouds.some((cl) => dist(cl, p) < cl.r * 0.8);
+    const mask = hasTool('gasmask') && G.supplies.filter > 0;
+    if (inside && !this.inGas) this.onGas(mask ? 'Едкое облако. Вы натягиваете противогаз.' : 'Едкое облако! Без противогаза газ обжигает лёгкие — выбирайтесь скорее.');
+    this.inGas = inside;
+    if (!inside) return;
+    if (mask) {
+      this.filterUse += hours;
+      if (this.filterUse >= 3) { this.filterUse = 0; G.supplies.filter--; this.onGas(`Фильтр противогаза отработал (осталось ${G.supplies.filter}).`); }
+      return;
+    }
+    this.gasDose += hours;
+    while (this.gasDose >= 1) {
+      this.gasDose -= 1;
+      let poisoned = false;
+      for (const b of G.squad) { b.hp = Math.max(1, b.hp - 2); if (addWoundId(b, 'gassed')) poisoned = true; }
+      this.onGas(poisoned ? 'Отравление газом: кашель, резь в глазах (−2 ОЗ, −1 к атакам до привала).' : 'Газ жжёт лёгкие: −2 ОЗ.');
+    }
+  },
+  inCloud(q: Pt) { return this.clouds.some((cl) => dist(cl, q) < cl.r * 0.8); },
+
   killDead() { const g = this.deadHit; if (g) { g.alive = false; g.respawn = G.clock + 48; } },
   /** Оторвались от мертвецов: они на время теряют след и бредут прочь. */
   calmDead(hours: number) {
@@ -334,6 +383,15 @@ export const World = {
     const pm = p.moving || ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'KeyA', 'KeyD', 'KeyW', 'KeyS'].some((kk) => G.keys.has(kk));
     mini(G.squad[0]?.look ?? 'pc', X(p.x), Y(p.y), p.flip, fr(pm));
 
+    // едкие облака — клубы растром, медленно клубятся
+    for (const cl of this.clouds) {
+      const sx = X(cl.x), sy = Y(cl.y), rr = cl.r / 2;
+      if (sx < -rr - 20 || sx > LW + rr + 20 || sy < -rr - 20 || sy > LH + rr + 20) continue;
+      for (let k = 0; k < 6; k++) {
+        const a = k * 1.05 + cl.seed + t * 0.08, d = rr * (k ? 0.45 : 0);
+        ditherDisc(lc, sx + Math.cos(a) * d, sy + Math.sin(a) * d * 0.6, rr * (k ? 0.6 : 0.8), k % 2 ? '#8a9a3a' : '#a4b04a', 0.5, 1);
+      }
+    }
     // свет
     const lights: PLight[] = [];
     const L = (wx: number, wy: number, r: number, a: number, color?: string) => lights.push({ x: X(wx), y: Y(wy), r, a, color });
@@ -389,8 +447,9 @@ export const World = {
       c.textAlign = 'left';
     });
     const near = this.nearLoc();
-    if (near && !p.moving) {
-      const label = `[E] ${near.name}`;
+    const nearPt = !near && !p.moving ? this.patrolNear(p, 45) : null;
+    if ((near || nearPt) && !p.moving) {
+      const label = `[E] ${near ? near.name : 'Заговорить с патрулём'}`;
       c.font = '13px "Old Standard TT", serif';
       const w = c.measureText(label).width + 14, x = p.x - cx - w / 2, y = p.y - cy - 58;
       c.fillStyle = 'rgba(8,12,7,0.85)'; c.fillRect(x, y, w, 18); c.strokeStyle = '#c09a52'; c.strokeRect(x + 0.5, y + 0.5, w - 1, 17);
@@ -401,12 +460,12 @@ export const World = {
 
 const BAY = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5].map((q) => (q + 0.5) / 16);
 /** Полупрозрачный диск честным растром: пиксели либо есть, либо нет. */
-function ditherDisc(c: CanvasRenderingContext2D, cx: number, cy: number, r: number, col: string, a: number) {
+function ditherDisc(c: CanvasRenderingContext2D, cx: number, cy: number, r: number, col: string, a: number, soft = 0.6) {
   c.fillStyle = col;
   const x0 = Math.floor(cx - r), x1 = Math.ceil(cx + r), y0 = Math.floor(cy - r), y1 = Math.ceil(cy + r);
   for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
     const d = Math.hypot(x - cx, y - cy) / r;
-    if (d < 1 && a * (1 - d * d * 0.6) > BAY[(y & 3) * 4 + (x & 3)]) c.fillRect(x, y, 1, 1);
+    if (d < 1 && a * (1 - d * d * soft) > BAY[(y & 3) * 4 + (x & 3)]) c.fillRect(x, y, 1, 1);
   }
 }
 function ditherRing(c: CanvasRenderingContext2D, cx: number, cy: number, r: number, col: string) {
