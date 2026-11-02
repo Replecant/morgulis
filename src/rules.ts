@@ -207,6 +207,24 @@ export function check(bonus: number, dc: number): CheckResult {
 /** Вероятность успеха проверки (для подсказок в интерфейсе). */
 export const checkChance = (bonus: number, dc: number) => Math.min(95, Math.max(5, (21 - (dc - bonus)) * 5));
 
+/** Готовый герой для быстрого старта: случайные пол и имя, черты под профессию. */
+export function quickCharacter(prof: ProfId): Character {
+  const c = newCharacter();
+  const rnd = <T>(a: T[]) => a[Math.floor(Math.random() * a.length)];
+  c.gender = Math.random() < 0.5 ? 'm' : 'f';
+  c.first = rnd(NAMES[c.gender]); c.last = rnd(NAMES.last);
+  c.age = 22 + Math.floor(Math.random() * 25);
+  c.hair = rnd(HAIR); c.skin = rnd(SKIN);
+  c.prof = prof;
+  const p = PROFESSIONS[prof];
+  // ключевая черта +3, следующая по важности +2 (всего 5 очков)
+  const second: Record<AttrKey, AttrKey> = { str: 'dex', dex: 'wil', int: 'wil', wil: 'dex' };
+  c.attrs[p.key] = 3; c.attrs[second[p.key]] = 2;
+  c.extraSkills = [SKILL_ORDER.find((s) => !p.skills.includes(s) && (s === 'perception' || s === 'athletics' || s === 'shooting'))!];
+  c.talent = 'tough';
+  return c;
+}
+
 export const fullName = (c: Character) => `${c.first} ${c.last}`.trim();
 export const g = (c: Character | null | undefined, m: string, f: string) => (c?.gender === 'f' ? f : m);
 

@@ -3,7 +3,7 @@
 // ============================================================
 import { Book, h, Spread } from './book';
 import { drawAsh, vignette, drawDeadTree } from './gfx';
-import { ATTRS, ATTR_ORDER, PROFESSIONS, PROF_ORDER, DC, DC_NAMES, LEVEL_XP, mastery } from './rules';
+import { ATTRS, ATTR_ORDER, PROFESSIONS, PROF_ORDER, DC, DC_NAMES, LEVEL_XP, mastery, ProfId } from './rules';
 import { seeded, TAU } from './util';
 
 const W = 960, H = 640;
@@ -125,7 +125,7 @@ const ARCH_SVG = `
   <path d="M60,540 H380" stroke="#5a4a2a"/>
 </svg>`;
 
-export interface MenuHandlers { onNew: () => void; onRules: () => void; onAbout: () => void }
+export interface MenuHandlers { onNew: () => void; onQuick: (prof: ProfId) => void; onRules: () => void; onAbout: () => void }
 
 export function showMainMenu(host: HTMLElement, hd: MenuHandlers) {
   const item = (label: string, fn: () => void) => h('button', { class: 'mitem', onclick: fn }, h('span', { class: 'orn' }, '❦'), label, h('span', { class: 'orn r' }, '❦'));
@@ -137,6 +137,16 @@ export function showMainMenu(host: HTMLElement, hd: MenuHandlers) {
       h('div', { class: 'mrule' }, '✦'),
       h('nav', { class: 'mnav' },
         item('Новая игра', hd.onNew),
+        item('Быстрый старт', () => {
+          // список профессий вместо пунктов меню
+          const nav = arch.querySelector('.mnav')!;
+          nav.replaceChildren(
+            h('div', { class: 'mquick' }, 'Готовый герой — выберите профессию:'),
+            h('div', { class: 'mprofs' }, ...PROF_ORDER.map((id) =>
+              h('button', { class: 'mprof', onclick: () => hd.onQuick(id) }, h('span', { class: 'emb' }, PROFESSIONS[id].emblem), PROFESSIONS[id].name))),
+            item('‹ Назад', () => showMainMenu(host, hd)),
+          );
+        }),
         item('Правила', hd.onRules),
         item('Об игре', hd.onAbout)),
       h('div', { class: 'mver' }, 'прототип · v0.2'),

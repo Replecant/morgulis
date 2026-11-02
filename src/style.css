@@ -442,3 +442,8 @@ body { font-family: 'Old Standard TT', Georgia, serif; color: var(--text); }
 .tinfo { margin-top: 8px; min-height: 48px; border: 1px solid #2a3220; padding: 6px 10px; font-size: 13px; color: #cfd0b8; background: #0e120b; }
 .tinfo .b { color: #e6dcb8; font-weight: 700; }
 .sq.res .coin { color: var(--brass); font-weight: 700; }
+.mquick { color: #9a9070; font-style: italic; font-size: 14px; margin-bottom: 6px; }
+.mprofs { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 8px; margin-bottom: 6px; }
+.mprof { background: rgba(20, 26, 16, 0.6); border: 1px solid #5a4a2a; color: #cfc6a6; font-family: 'Playfair Display SC', serif; font-size: 15px; padding: 5px 10px; cursor: pointer; text-align: left; }
+.mprof .emb { color: #8a7444; margin-right: 8px; display: inline-block; width: 16px; text-align: center; }
+.mprof:hover { border-color: var(--green); color: var(--green); }

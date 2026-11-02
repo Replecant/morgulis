@@ -13,7 +13,7 @@ import { Inventory } from './inventory';
 import { Trade, resetShops } from './trade';
 import { drawMenuBg, showMainMenu, showAbout, openRules } from './menu';
 import { openCreation } from './creation';
-import { Character, fullName, newCharacter } from './rules';
+import { Character, fullName, newCharacter, quickCharacter, PROF_ORDER, ProfId } from './rules';
 import { rest } from './wounds';
 import { $ } from './util';
 
@@ -125,6 +125,7 @@ function showTitle() {
   $('hint').textContent = '';
   showMainMenu(layer, {
     onNew: () => { G.mode = 'create'; openCreation(layer, newGame, showTitle); },
+    onQuick: (prof) => newGame(quickCharacter(prof)),
     onRules: () => openRules(layer, showTitle),
     onAbout: () => showAbout(layer, showTitle),
   });
@@ -230,7 +231,10 @@ function frame(now: number) {
   requestAnimationFrame(frame);
 }
 
-showTitle();
+// быстрый старт для тестов: ?quick (солдат) или ?quick=medic
+const quick = new URLSearchParams(location.search).get('quick');
+if (quick !== null) newGame(quickCharacter(PROF_ORDER.includes(quick as ProfId) ? (quick as ProfId) : 'soldier'));
+else showTitle();
 requestAnimationFrame(frame);
 
 // отладка: ?debug в адресе даёт доступ к состоянию из консоли
