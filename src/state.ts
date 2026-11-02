@@ -49,7 +49,6 @@ export function journal(): { text: string; done: boolean }[] {
   if (f.valveTaken) out.push({ text: f.valveDone ? 'Клапан для Иды Кроу' : f.hasValve ? 'Отнести клапан Иде Кроу (Эшфорд)' : 'Найти клапан на старой насосной (юг Эшфорда)', done: !!f.valveDone });
   if (f.beetleTaken) out.push({ text: f.beetleDone ? 'Жучиха Мэг вернулась в Ричморд' : 'Найти сбежавшую жучиху Мэг (на карте — «Старые кости»)', done: !!f.beetleDone });
   if (f.feedTaken) out.push({ text: f.feedDone ? 'Грибной корм доставлен в Ричморд' : 'Отвезти ящик грибного корма Уоллесу в Ричморд', done: !!f.feedDone });
-  if (f.heardScav) out.push({ text: f.scavDone ? 'Разрушенный пост свободен' : 'Мародёры у разрушенного поста (на карте — между трактом и путями)', done: !!f.scavDone });
   return out;
 }
 

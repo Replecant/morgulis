@@ -136,7 +136,7 @@ export interface BattleDef {
   map: string[];
   players: [number, number][];
   /** ammo — сколько зарядов на бой (иначе — без счёта), extra — добавочное оружие, move — поправка хода */
-  enemies: { t: string; x: number; y: number; ammo?: Record<string, number>; extra?: string[]; move?: number; note?: string }[];
+  enemies: { t: string; x: number; y: number; name?: string; ammo?: Record<string, number>; extra?: string[]; move?: number; note?: string }[];
   lights: [number, number, number, string][]; // x, y, радиус(px), цвет
 }
 
@@ -198,8 +198,8 @@ export function battleDef(id: string, _flags: Record<string, boolean | undefined
         players: [[2, 7], [2, 9], [1, 6], [1, 8]],
         // то, что видно при проверке «Внимания» у костра, правда всегда: пороховница пуста, второй хромает
         enemies: [
-          { t: 'scav_gun', x: 18, y: 4, ammo: { musket: 1 }, extra: ['buttstock'], note: 'Мародёр перехватывает пустое ружьё прикладом вперёд.' },
-          { t: 'scav_knife', x: 15, y: 8, move: -1 },
+          { t: 'scav_gun', x: 18, y: 4, name: 'Оборванец с ружьём', ammo: { musket: 1 }, extra: ['buttstock'], note: 'Оборванец перехватывает пустое ружьё прикладом вперёд.' },
+          { t: 'scav_knife', x: 15, y: 8, name: 'Оборванец с ножом', move: -1 },
         ],
         lights: [[13, 6, 170, '#f0a050'], [4, 10, 110, '#e8c070']],
       };

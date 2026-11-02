@@ -133,6 +133,7 @@ export const Combat = {
       const u = mkUnit(e.extra ? { ...base, weapons: [...base.weapons, ...e.extra] } : base, 'enemy', e.x, e.y);
       if (e.ammo) Object.assign(u.ammo, e.ammo);
       if (e.move) u.move = Math.max(1, u.move + e.move);
+      if (e.name) u.name = e.name;
       u.emptyNote = e.note;
       this.units.push(u);
     }
