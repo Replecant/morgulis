@@ -12,6 +12,7 @@ import { setPcStyle, applyEquipLooks } from './gfx';
 import { Inventory } from './inventory';
 import { Sheet } from './sheet';
 import { Music } from './music';
+import { Pause } from './pause';
 import { frameReady, whenFrameReady, frameUrl } from './frames';
 import { Trade, resetShops } from './trade';
 import { drawMenuBg, showMainMenu, showAbout, openRules } from './menu';
@@ -43,7 +44,7 @@ function toScene(id: string, at?: { x: number; y: number }) {
   refreshHud();
 }
 function hint() {
-  if (G.mode === 'world') $('hint').textContent = 'Клик — идти · клик по месту — войти · WASD — идти · E — войти рядом · Q — лечение и лагерь · I — снаряжение · C — персонаж · M — музыка';
+  if (G.mode === 'world') $('hint').textContent = 'Клик — идти · клик по месту — войти · WASD — идти · E — войти рядом · Q — лечение и лагерь · I — снаряжение · C — персонаж · Esc — меню';
   else exploreHint();
 }
 
@@ -173,7 +174,14 @@ function toCanvas(e: MouseEvent) {
 const roaming = () => G.mode === 'explore' || G.mode === 'world';
 
 window.addEventListener('keydown', (e) => {
-  if (e.code === 'KeyM' && G.mode !== 'create') { toast(Music.toggle() ? 'Музыка выключена [M]' : 'Музыка включена [M]'); return; }
+  if (e.code === 'KeyM' && G.mode !== 'create') { toast(Music.toggle() ? 'Музыка выключена [M]' : 'Музыка включена [M]'); if (Pause.open) Pause.render(); return; }
+  if (Pause.open) { if (e.code === 'Escape') Pause.close(); return; }
+  // Esc вне окон — меню паузы (в бою: сначала отменяет выбранное действие)
+  const anyWindow = Dialog.active || Trade.open || Inventory.open || Sheet.open || squadOpen() || !!$('screen').innerHTML;
+  if (e.code === 'Escape' && !anyWindow && (roaming() || G.mode === 'combat')) {
+    const sel = Combat.sel, plain = !sel || (Combat.action.type === 'w' && Combat.action.key === sel.weapons[0]);
+    if (G.mode !== 'combat' || plain) { G.keys.clear(); Pause.show(() => { combatShow(false); showTitle(); }); return; }
+  }
   if (Dialog.active) { e.preventDefault(); Dialog.key(e); return; }
   if (Trade.open) { if (e.code === 'Escape') Trade.close(); return; }
   if (e.code === 'KeyI' && roaming() && !squadOpen()) {
@@ -244,7 +252,7 @@ function frame(now: number) {
   last = now;
   G.time += dt;
   Dialog.update(dt);
-  const free = !Dialog.active && !squadOpen() && !Inventory.open && !Trade.open && !Sheet.open;
+  const free = !Dialog.active && !squadOpen() && !Inventory.open && !Trade.open && !Sheet.open && !Pause.open;
   if (G.mode === 'explore' && free) Explore.update(dt);
   if (G.mode === 'world' && free) World.update(dt);
   if (G.mode === 'combat') { Combat.update(dt); Combat.draw(ctx, G.time); }
@@ -264,5 +272,5 @@ requestAnimationFrame(frame);
 
 // отладка: ?debug в адресе даёт доступ к состоянию из консоли
 if (new URLSearchParams(location.search).has('debug')) {
-  (window as any).morgulis = { G, Combat, Explore, World, Dialog, startBattle, newGame, newCharacter, openSquad, Inventory, Trade, Sheet, Music, toScene, toWorld };
+  (window as any).morgulis = { G, Combat, Explore, World, Dialog, startBattle, newGame, newCharacter, openSquad, Inventory, Trade, Sheet, Music, Pause, toScene, toWorld };
 }

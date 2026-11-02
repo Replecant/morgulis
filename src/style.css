@@ -498,3 +498,18 @@ body { font-family: 'Old Standard TT', Georgia, serif; color: var(--text); }
 .sh-age { font-size: 12px; color: var(--dim); margin-top: 6px; text-align: center; }
 .sh-foot { grid-column: 1 / -1; display: flex; gap: 10px; align-items: center; margin-top: 6px; }
 .sh-info { flex: 1; font-size: 12px; color: #b9b49a; font-style: italic; min-height: 32px; display: flex; align-items: center; border-top: 1px solid #3a3220; padding-top: 4px; line-height: 1.25; }
+
+/* ---------- Меню паузы ---------- */
+#pause { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.72); z-index: 40; }
+.pause-box { width: 380px; padding: 22px 30px 18px; text-align: center; background: rgba(8, 12, 7, 0.94); border: 1px solid #8a7444; box-shadow: 0 0 0 4px rgba(6, 9, 6, 0.9), 0 0 0 5px #5a4a2a, 0 10px 40px #000; }
+.pause-box h2 { font-family: 'Playfair Display SC', serif; color: #ddd3ae; letter-spacing: 6px; margin: 0 0 16px; font-size: 26px; }
+.prow { display: flex; justify-content: space-between; color: #b9b49a; font-size: 14px; }
+.prow .pv { color: var(--brass); }
+.pslider { width: 100%; margin: 8px 0 10px; accent-color: #9a8048; cursor: pointer; }
+.pcheck { display: block; text-align: left; color: #b9b49a; font-size: 13px; cursor: pointer; }
+.pcheck i { color: var(--dim); }
+.pcheck input { accent-color: #9a8048; vertical-align: middle; }
+.pbtns { display: flex; flex-direction: column; align-items: center; margin-top: 16px; gap: 2px; }
+.pconfirm { color: #e0a070; font-size: 13px; margin-top: 6px; }
+.pconfirm .btn { margin-top: 6px; }
+.phint { margin-top: 10px; font-size: 11px; color: var(--dim); }
