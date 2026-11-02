@@ -22,7 +22,6 @@ const NEXT: Record<WeatherKind, [WeatherKind, number][]> = {
   storm: [['rain', 4], ['overcast', 2], ['storm', 1]],
 };
 
-const BAY = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5].map((q) => (q + 0.5) / 16);
 
 export const Weather = {
   kind: 'clear' as WeatherKind,
@@ -71,22 +70,16 @@ export const Weather = {
   /** Дальность обзора на карте (находки мест). */
   sightK() { return this.kind === 'fog' ? 0.55 : this.kind === 'storm' ? 0.75 : 1; },
 
-  /** Поверх освещённого кадра низкого разрешения: туман, дождь, отблеск молнии. ox/oy — сдвиг камеры (для неподвижного тумана). */
-  draw(c: CanvasRenderingContext2D, w: number, h: number, t: number, ox = 0, oy = 0) {
+  /** Поверх освещённого кадра низкого разрешения: туман, дождь, отблеск молнии. ox/oy — сдвиг камеры (сейчас не нужен: дымка экранная). */
+  draw(c: CanvasRenderingContext2D, w: number, h: number, t: number, _ox = 0, _oy = 0) {
     const k = this.kind;
-    if (k === 'fog' || k === 'storm' || k === 'rain') { // клубы тумана растром (в дождь — лёгкая дымка)
-      const n = k === 'fog' ? 18 : 6, a0 = k === 'fog' ? 0.5 : 0.22;
-      c.fillStyle = k === 'fog' ? '#5e665c' : '#3e4644';
-      for (let i = 0; i < n; i++) {
-        const R = 60 + (i * 37) % 50;
-        const cx = ((i * 173 + t * (3 + (i % 3)) - ox * 0.6) % (w + 2 * R) + w + 2 * R) % (w + 2 * R) - R;
-        const cy = ((i * 97 - oy * 0.6) % (h + 2 * R) + h + 2 * R) % (h + 2 * R) - R;
-        const ry = R * 0.55;
-        for (let y = Math.max(0, Math.floor(cy - ry)); y <= Math.min(h - 1, cy + ry); y++) for (let x = Math.max(0, Math.floor(cx - R)); x <= Math.min(w - 1, cx + R); x++) {
-          const d = Math.hypot((x - cx) / R, (y - cy) / ry);
-          if (d < 1 && a0 * (1 - d * d) > BAY[(y & 3) * 4 + (x & 3)]) c.fillRect(x, y, 1, 1);
-        }
-      }
+    if (k === 'fog' || k === 'storm' || k === 'rain') { // дымка на весь экран: ровная пелена, к краям гуще, медленно «дышит»
+      const fog = k === 'fog', br = Math.sin(t * 0.35) * 0.03;
+      const col = fog ? '128,138,126' : '62,72,72';
+      c.fillStyle = `rgba(${col},${(fog ? 0.24 : 0.1) + br})`; c.fillRect(0, 0, w, h);
+      const g = c.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.2, w / 2, h / 2, Math.hypot(w, h) * 0.55);
+      g.addColorStop(0, `rgba(${col},0)`); g.addColorStop(1, `rgba(${col},${fog ? 0.5 : 0.22})`);
+      c.fillStyle = g; c.fillRect(0, 0, w, h);
     }
     if (k === 'rain' || k === 'storm') { // косые струи и брызги
       const n = k === 'storm' ? 220 : 120, sx = k === 'storm' ? 70 : 30, sy = k === 'storm' ? 260 : 200, len = k === 'storm' ? 6 : 4;
