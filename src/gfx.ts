@@ -237,9 +237,6 @@ export function drawSky(c: Ctx, t: number, w: number, h: number) {
   c.beginPath(); c.arc(sx, sy, 19 * p, 0, TAU); c.fill();
   c.fillStyle = 'rgba(70,100,50,0.5)';
   c.beginPath(); c.ellipse(sx + 2, sy, 6, 9 * p, 0, 0, TAU); c.fill(); // «зрачок»
-  c.strokeStyle = 'rgba(40,60,30,0.65)'; c.lineWidth = 1;
-  c.beginPath(); c.moveTo(sx - 15, sy - 10); c.lineTo(sx - 5, sy - 3); c.lineTo(sx - 9, sy + 6);
-  c.moveTo(sx + 12, sy - 13); c.lineTo(sx + 7, sy - 2); c.stroke();
   for (let i = 0; i < 5; i++) {
     const cx = ((i * 290 + t * (4 + i)) % 1300) - 150;
     c.fillStyle = 'rgba(16,22,14,0.55)';

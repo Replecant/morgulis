@@ -246,7 +246,7 @@ export const Combat = {
       if (!target || target.team !== 'player' || target === u || dist(u, target) > 6.5) return T('Выберите союзника в радиусе 6');
       this.run(async () => {
         u.abil.rally--; u.ap -= 1; target.ap = Math.min(3, target.ap + 1);
-        this.float(u, '«Вперёд, за Империю!»', '#e8d070');
+        this.float(u, '«Отряд, вперёд!»', '#e8d070');
         await sleep(300);
         this.float(target, '+1 ОД', '#e8d070');
         this.hooks.log(`${u.name} поднимает дух: ${target.name} получает +1 ОД.`);
@@ -425,7 +425,6 @@ export const Combat = {
       let d = randInt(w.dmg[0], w.dmg[1]);
       const crit = Math.random() < 0.12;
       if (crit) d = Math.ceil(d * 1.5);
-      if (t.demonic && a.team === 'player' && G.flags.blessed) d += 1;
       this.hooks.log(`${a.name} → ${t.name}: ${w.name}, ${crit ? 'КРИТ! ' : ''}${d} урона (${ch}%)`);
       await this.damage(t, d, crit);
       if (w.splash) {
@@ -485,7 +484,7 @@ export const Combat = {
   async whisper(u: Unit, t: Unit) {
     this.float(u, '«Смотри в Око…»', '#b58cff');
     await this.projectile(u, t, '#b58cff', 500);
-    if (Math.random() < 0.75) {
+    if (Math.random() < (G.flags.salts ? 0.3 : 0.75)) {
       t.terror = true;
       this.float(t, 'Ужас!', '#b58cff');
       this.hooks.log(`Шёпот Бездны: ${t.name} охвачен ужасом (в следующем ходу 1 ОД).`);
@@ -733,7 +732,6 @@ export const Combat = {
           if (cv) lines.push(cv >= 40 ? 'Цель в полном укрытии' : 'Цель в половинном укрытии');
         } else lines.push(w.type === 'melee' ? 'Слишком далеко для ближнего боя' : 'Вне досягаемости / не видно');
       }
-      if (u.demonic && G.flags.blessed) lines.push('Благословение: +1 урон');
     }
     c.font = '13px "Old Standard TT", Georgia, serif';
     const w = Math.max(...lines.map((l) => c.measureText(l).width)) + 14;

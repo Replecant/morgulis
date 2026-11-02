@@ -16,10 +16,10 @@ export interface Weapon {
 }
 
 export const WEAPONS: Record<string, Weapon> = {
-  revolver:  { name: 'Револьвер «Уэбли»', type: 'ranged', range: 7, opt: 4, acc: 78, dmg: [3, 5], ammo: 6 },
+  revolver:  { name: 'Служебный револьвер', type: 'ranged', range: 7, opt: 4, acc: 78, dmg: [3, 5], ammo: 6 },
   saber:     { name: 'Офицерская сабля', type: 'melee', acc: 88, dmg: [4, 7] },
   carbine:   { name: 'Карабин', type: 'ranged', range: 8, opt: 5, acc: 70, dmg: [3, 5], ammo: 4 },
-  rifle:     { name: 'Винтовка «Ли-Метфорд»', type: 'ranged', range: 11, opt: 8, acc: 72, dmg: [4, 6], ammo: 5 },
+  rifle:     { name: 'Магазинная винтовка', type: 'ranged', range: 11, opt: 8, acc: 72, dmg: [4, 6], ammo: 5 },
   bayonet:   { name: 'Штык', type: 'melee', acc: 82, dmg: [2, 4] },
   pitchfork: { name: 'Вилы', type: 'melee', acc: 72, dmg: [2, 4] },
   musket:    { name: 'Старое ружьё', type: 'ranged', range: 7, opt: 3, acc: 58, dmg: [2, 4] },
