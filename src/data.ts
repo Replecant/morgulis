@@ -16,17 +16,26 @@ export interface Weapon {
   ignoreCover?: boolean;
   splash?: [number, number];
   magic?: boolean;
+  ammoType?: 'ammo_pistol' | 'ammo_rifle' | 'ammo_shell'; // чем перезаряжается (нет — заряды только на бой)
+  shot?: boolean;      // дробь: −1 урона за клетку дальше оптимальной
+  pierce?: boolean;    // пробивает броню
 }
 
 export const WEAPONS: Record<string, Weapon> = {
-  revolver:  { name: 'Служебный револьвер', type: 'ranged', range: 7, opt: 4, atk: 1, dmg: [3, 5], ammo: 6 },
+  revolver:  { name: 'Револьвер', type: 'ranged', range: 7, opt: 4, atk: 1, dmg: [3, 5], ammo: 6, ammoType: 'ammo_pistol' },
+  autopistol:{ name: 'Самозарядный пистолет', type: 'ranged', range: 6, opt: 4, atk: 1, dmg: [2, 5], ammo: 8, ammoType: 'ammo_pistol' },
   saber:     { name: 'Офицерская сабля', type: 'melee', atk: 1, dmg: [4, 7] },
-  carbine:   { name: 'Карабин', type: 'ranged', range: 8, opt: 5, atk: 0, dmg: [3, 5], ammo: 4 },
-  rifle:     { name: 'Магазинная винтовка', type: 'ranged', range: 11, opt: 8, atk: 1, dmg: [4, 6], ammo: 5 },
+  carbine:   { name: 'Карабин', type: 'ranged', range: 8, opt: 5, atk: 0, dmg: [3, 5], ammo: 4, ammoType: 'ammo_rifle' },
+  rifle:     { name: 'Армейская винтовка', type: 'ranged', range: 11, opt: 8, atk: 1, dmg: [4, 6], ammo: 5, ammoType: 'ammo_rifle' },
+  huntrifle: { name: 'Охотничья винтовка', type: 'ranged', range: 13, opt: 10, atk: 2, dmg: [5, 7], ammo: 3, ammoType: 'ammo_rifle' },
+  shotgun2:  { name: 'Двуствольный дробовик', type: 'ranged', range: 5, opt: 2, atk: 1, dmg: [5, 8], ammo: 2, ammoType: 'ammo_shell', shot: true },
+  pumpshot:  { name: 'Помповый дробовик', type: 'ranged', range: 5, opt: 2, atk: 1, dmg: [4, 7], ammo: 5, ammoType: 'ammo_shell', shot: true },
+  flamer:    { name: 'Огнемёт', type: 'ranged', range: 4, opt: 4, atk: 2, dmg: [4, 6], ammo: 3, ignoreCover: true, splash: [2, 3] },
+  exprifle:  { name: 'Экспериментальная винтовка', type: 'ranged', range: 12, opt: 9, atk: 2, dmg: [6, 8], ammo: 4, ammoType: 'ammo_rifle', pierce: true },
   bayonet:   { name: 'Штык', type: 'melee', atk: 0, dmg: [2, 4] },
   knife:     { name: 'Нож', type: 'melee', atk: 1, dmg: [2, 4] },
   wrench:    { name: 'Тяжёлый гаечный ключ', type: 'melee', atk: 0, dmg: [3, 5] },
-  sawnoff:   { name: 'Обрез', type: 'ranged', range: 4, opt: 2, atk: 0, dmg: [4, 7], ammo: 2 },
+  sawnoff:   { name: 'Обрез', type: 'ranged', range: 4, opt: 2, atk: 0, dmg: [4, 7], ammo: 2, ammoType: 'ammo_shell', shot: true },
   axe:       { name: 'Пожарный топор', type: 'melee', atk: 0, dmg: [3, 7] },
   fists:     { name: 'Кулаки', type: 'melee', atk: 0, dmg: [1, 2] },
   pitchfork: { name: 'Вилы', type: 'melee', atk: 0, dmg: [2, 4] },
@@ -37,11 +46,14 @@ export const WEAPONS: Record<string, Weapon> = {
 };
 
 export const ABILITIES: Record<string, { name: string; desc: string }> = {
-  reload:  { name: 'Перезарядка', desc: '1 ОД. Полностью перезарядить оружие.' },
-  rally:   { name: 'Командный клич', desc: '1 ОД. Союзник в радиусе 6 получает +1 ОД. Раз за бой.' },
-  grenade: { name: 'Взрывчатка', desc: 'Завершает ход. Взрыв 3×3, урон 3–5 — и своим тоже!' },
-  bandage: { name: 'Перевязка', desc: '1 ОД. +5 ОЗ себе или соседнему союзнику.' },
-  aim:     { name: 'Прицельный выстрел', desc: '2 ОД. Выстрел с +4 к броску атаки.' },
+  reload:     { name: 'Перезарядка', desc: '1 ОД. Дозарядить оружие патронами из запаса.' },
+  rally:      { name: 'Командный клич', desc: '1 ОД. Союзник в радиусе 6 получает +1 ОД. Раз за бой.' },
+  grenade:    { name: 'Граната', desc: 'Завершает ход. Взрыв 3×3, урон 3–5 — и своим тоже!' },
+  smoke:      { name: 'Дым', desc: '1 ОД. Дымовое облако 3×3 на два хода: закрывает обзор, стоящим в дыму +3 к Защите.' },
+  bandage:    { name: 'Бинт', desc: '1 ОД. Себе или соседу: +3 ОЗ и бонус Медицины. Поднимает тяжелораненого.' },
+  medkit:     { name: 'Аптечка', desc: '1 ОД. Себе или соседу: +6 ОЗ и бонус Медицины. Поднимает тяжелораненого.' },
+  painkiller: { name: 'Обезбол.', desc: '1 ОД. Себе: +3 ОЗ и +1 кураж.' },
+  aim:        { name: 'Прицельный выстрел', desc: '2 ОД. Выстрел с +4 к броску атаки.' },
 };
 
 export interface UnitBase {

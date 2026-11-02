@@ -1,14 +1,14 @@
 // ============================================================
 //  Интерфейс: диалоговое окно, HUD, боевая панель, экраны
 // ============================================================
-import { G, journal } from './state';
+import { G, journal, gearBonus, hasTool } from './state';
 import { DIALOGS, SPEAKERS, DNode, Choice, fmt } from './dialogs';
 import { drawFigure } from './gfx';
 import { Combat } from './combat';
 import { $ } from './util';
 import { clockText } from './worldmap';
 import { skillBonus, check, checkChance, SKILLS } from './rules';
-import { effMaxHp, woundsOf, bestHealer, bandageAmount, bandage, surgery, rest } from './wounds';
+import { effMaxHp, woundsOf, bestHealer, bandageAmount, medkitAmount, bandage, useMedkit, surgery, rest } from './wounds';
 import { COURAGE_MAX } from './combat';
 
 // ------------------------------------------------------------ Диалоги
@@ -74,7 +74,7 @@ export const Dialog = {
         b.innerHTML = `<span class="n">${i + 1}.</span>`;
         b.append(fmt(c.t));
         if (c.check && G.pc) {
-          const bonus = skillBonus(G.pc, c.check.skill);
+          const bonus = skillBonus(G.pc, c.check.skill) + gearBonus(c.check.skill);
           b.append(Object.assign(document.createElement('span'), { className: 'chk', textContent: ` (${SKILLS[c.check.skill].name}, КС ${c.check.dc} · шанс ${checkChance(bonus, c.check.dc)}%)` }));
         }
         b.onclick = (e) => { e.stopPropagation(); this.choose(i); };
@@ -92,7 +92,7 @@ export const Dialog = {
     const c = this.choices[i];
     if (!c) return;
     if (c.check && G.pc) { // проверка навыка: d20 + бонус против КС
-      const bonus = skillBonus(G.pc, c.check.skill), res = check(bonus, c.check.dc);
+      const bonus = skillBonus(G.pc, c.check.skill) + gearBonus(c.check.skill), res = check(bonus, c.check.dc);
       const tag = `[${SKILLS[c.check.skill].name}: d20 (${res.roll}) ${bonus >= 0 ? '+' : '−'} ${Math.abs(bonus)} = ${res.total} против ${c.check.dc} — ${res.success ? 'успех' : 'провал'}] `;
       return this.goto(res.success ? c.check.ok : c.check.fail, tag);
     }
@@ -152,7 +152,7 @@ export function refreshHud() {
     const max = effMaxHp(s), w = woundsOf(s);
     const marks = w.map((x) => `<span class="wd ${x.heavy ? 'heavy' : ''}" title="${x.name}: ${x.desc}">✚</span>`).join('');
     return `<div class="sq">${s.name} ${marks}<div class="hp"><span style="width:${(s.hp / s.maxHp) * 100}%"></span><i style="width:${((s.maxHp - max) / s.maxHp) * 100}%"></i></div><div class="hpn">${s.hp}/${max}</div></div>`;
-  }).join('') + `<div class="sq res" title="Бинты · медикаменты · пайки">Бинты ${G.supplies.bandages} · Медик. ${G.supplies.medicine} · Пайки ${G.supplies.rations}<div class="hpn">[Q] лечение · [I] снаряжение</div></div>`;
+  }).join('') + `<div class="sq res" title="Шиллинги · бинты · аптечки · пайки"><b class="coin">${G.money} ш.</b> · Бинты ${G.supplies.bandage} · Аптечки ${G.supplies.medkit} · Пайки ${G.supplies.ration}<div class="hpn">[Q] лечение · [I] снаряжение</div></div>`;
 }
 
 // ------------------------------------------------------------ Отряд: лечение
@@ -165,8 +165,8 @@ export function openSquad(onClose: () => void) {
     const box = document.createElement('div');
     box.className = 'squad-box';
     box.innerHTML = `<h2>Отряд</h2>
-      <div class="sup">Бинты: <b>${G.supplies.bandages}</b> · Медикаменты: <b>${G.supplies.medicine}</b> · Пайки: <b>${G.supplies.rations}</b>
-      <span class="healer">Лекарь: ${healer.name} (Медицина ${healer.bonus >= 0 ? '+' : ''}${healer.bonus}) — перевязка +${bandageAmount(healer.bonus)} ОЗ, операция d20 против 13</span></div>`;
+      <div class="sup">Бинты: <b>${G.supplies.bandage}</b> · Аптечки: <b>${G.supplies.medkit}</b> · Антисептик: <b>${G.supplies.antiseptic}</b> · Пайки: <b>${G.supplies.ration}</b>
+      <span class="healer">Лекарь: ${healer.name} (Медицина ${healer.bonus >= 0 ? '+' : ''}${healer.bonus}) — бинт +${bandageAmount(healer.bonus)} ОЗ, аптечка +${medkitAmount(healer.bonus)} ОЗ и снимает лёгкую рану, операция d20 против 13 ${hasTool('surgerykit') ? '(хирургический набор есть)' : '— <b style="color:#e07060">нужен хирургический набор</b>'}</span></div>`;
     for (const s of G.squad) {
       const max = effMaxHp(s);
       const row = document.createElement('div');
@@ -176,9 +176,13 @@ export function openSquad(onClose: () => void) {
       const acts = document.createElement('div'); acts.className = 'macts';
       const bb = document.createElement('button');
       bb.className = 'btn'; bb.textContent = 'Перевязать (−1 бинт)';
-      bb.disabled = s.hp >= max || G.supplies.bandages <= 0;
+      bb.disabled = s.hp >= max || G.supplies.bandage <= 0;
       bb.onclick = () => { log = bandage(s) ?? ''; render(); };
-      acts.append(bb);
+      const mb = document.createElement('button');
+      mb.className = 'btn'; mb.textContent = 'Аптечка (−1)';
+      mb.disabled = G.supplies.medkit <= 0 || (s.hp >= max && !woundsOf(s).some((w) => !w.heavy));
+      mb.onclick = () => { log = useMedkit(s) ?? ''; render(); };
+      acts.append(bb, ' ', mb);
       row.append(acts);
       const wl = document.createElement('div'); wl.className = 'wlist';
       const ws = woundsOf(s);
@@ -189,8 +193,9 @@ export function openSquad(onClose: () => void) {
         it.innerHTML = `<b>${w.name}</b> — ${w.desc} <i>${w.heavy ? 'нужна операция' : 'пройдёт после привала'}</i>`;
         if (w.heavy) {
           const ob = document.createElement('button');
-          ob.className = 'btn'; ob.textContent = 'Оперировать (−1 медикаменты)';
-          ob.disabled = G.supplies.medicine <= 0;
+          ob.className = 'btn'; ob.textContent = 'Оперировать (−1 антисептик)';
+          ob.disabled = G.supplies.antiseptic <= 0 || !hasTool('surgerykit');
+          ob.title = hasTool('surgerykit') ? '' : 'Нужен хирургический набор';
           ob.onclick = () => { log = surgery(s, w.id).text; render(); };
           it.append(' ', ob);
         }
@@ -203,7 +208,7 @@ export function openSquad(onClose: () => void) {
     const rb = document.createElement('button');
     rb.className = 'btn'; rb.textContent = 'Разбить привал (−1 паёк)';
     rb.title = 'Каждый восстанавливает половину недостающих ОЗ, лёгкие ранения заживают.';
-    rb.disabled = G.supplies.rations <= 0;
+    rb.disabled = G.supplies.ration <= 0;
     rb.onclick = () => { log = rest(); render(); };
     const cb = document.createElement('button');
     cb.className = 'btn'; cb.textContent = 'Закрыть [Q]';

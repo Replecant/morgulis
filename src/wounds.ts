@@ -1,9 +1,10 @@
 // ============================================================
 //  Ранения и лечение как ресурс
 //  ОЗ сами не восстанавливаются. Лечение тратит бинты, пайки
-//  и медикаменты. Тяжёлые ранения снимает только операция.
+//  аптечки и антисептик. Тяжёлые ранения снимает только операция
+//  (нужен хирургический набор).
 // ============================================================
-import { G } from './state';
+import { G, hasTool, gearBonus } from './state';
 import { UnitBase } from './data';
 import { check, CheckResult } from './rules';
 import { pick } from './util';
@@ -55,7 +56,6 @@ export function addWound(b: UnitBase, heavy: boolean): Wound | null {
 }
 
 // ------------------------------------------------------------ запасы
-export const SUPPLY_NAMES: Record<keyof typeof G.supplies, string> = { bandages: 'Бинты', medicine: 'Медикаменты', rations: 'Пайки' };
 
 /** Лучший лекарь отряда (бонус Медицины) — он перевязывает и оперирует. */
 export function bestHealer(): { name: string; bonus: number } {
@@ -64,23 +64,39 @@ export function bestHealer(): { name: string; bonus: number } {
   return best.bonus < 0 ? { name: 'без лекаря', bonus: 0 } : best;
 }
 export const bandageAmount = (medBonus: number) => 3 + Math.max(0, medBonus);
+export const medkitAmount = (medBonus: number) => 6 + Math.max(0, medBonus);
 
 // ------------------------------------------------------------ лечение вне боя
 export function bandage(b: UnitBase): string | null {
-  if (G.supplies.bandages <= 0) return 'Бинты кончились.';
+  if (G.supplies.bandage <= 0) return 'Бинты кончились.';
   const max = effMaxHp(b);
   if (b.hp >= max) return `${b.name} не нуждается в перевязке.`;
-  G.supplies.bandages--;
+  G.supplies.bandage--;
   const healer = bestHealer();
   const h = Math.min(bandageAmount(healer.bonus), max - b.hp);
   b.hp += h;
   return `${healer.name} перевязывает: ${b.name} +${h} ОЗ.`;
 }
 
+/** Аптечка вне боя: больше ОЗ и снимает одно лёгкое ранение. */
+export function useMedkit(b: UnitBase): string | null {
+  if (G.supplies.medkit <= 0) return 'Аптечек нет.';
+  const light = woundsOf(b).filter((w) => !w.heavy);
+  const max = effMaxHp(b);
+  if (b.hp >= max && !light.length) return `${b.name} не нуждается в аптечке.`;
+  G.supplies.medkit--;
+  const healer = bestHealer();
+  const h = Math.min(medkitAmount(healer.bonus), max - b.hp);
+  b.hp += h;
+  let txt = `${healer.name} открывает аптечку: ${b.name} +${h} ОЗ.`;
+  if (light.length) { b.wounds = (b.wounds ?? []).filter((id) => id !== light[0].id); txt += ` «${light[0].name}» обработана.`; }
+  return txt;
+}
+
 /** Привал: половина недостающих ОЗ, лёгкие раны заживают. */
 export function rest(): string {
-  if (G.supplies.rations <= 0) return 'Нет пайков — на голодный желудок раны не заживают.';
-  G.supplies.rations--;
+  if (G.supplies.ration <= 0) return 'Нет пайков — на голодный желудок раны не заживают.';
+  G.supplies.ration--;
   G.clock += 8; // привал занимает ночь
   const healed: string[] = [];
   for (const b of G.squad) {
@@ -95,9 +111,11 @@ export function rest(): string {
 
 /** Операция: d20 + Медицина лекаря против 13. Успех — тяжёлая рана становится «швами». */
 export function surgery(b: UnitBase, woundId: string): { text: string; roll?: CheckResult } {
-  if (G.supplies.medicine <= 0) return { text: 'Нет медикаментов для операции.' };
-  G.supplies.medicine--;
+  if (!hasTool('surgerykit')) return { text: 'Без хирургического набора оперировать нельзя.' };
+  if (G.supplies.antiseptic <= 0) return { text: 'Нет антисептика для операции.' };
+  G.supplies.antiseptic--;
   const healer = bestHealer();
+  healer.bonus += gearBonus('medicine');
   const r = check(healer.bonus, 13);
   const w = WOUNDS[woundId];
   const rollTxt = `d20 (${r.roll}) ${healer.bonus >= 0 ? '+' : '−'} ${Math.abs(healer.bonus)} = ${r.total} против 13`;

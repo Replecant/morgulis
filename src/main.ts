@@ -10,6 +10,7 @@ import { Combat, CT } from './combat';
 import { Dialog, refreshHud, exploreHint, toast, combatShow, combatLog, combatPanel, screen, hideScreen, openSquad, closeSquad, squadOpen } from './ui';
 import { updateAsh, setPcStyle, applyEquipLooks } from './gfx';
 import { Inventory } from './inventory';
+import { Trade, resetShops } from './trade';
 import { drawMenuBg, showMainMenu, showAbout, openRules } from './menu';
 import { openCreation } from './creation';
 import { Character, fullName, newCharacter } from './rules';
@@ -94,7 +95,7 @@ Explore.onExit = (scene) => toWorld(scene);
 World.onArrive = (l) => Dialog.start(l.talk);
 World.onEncounter = () => Dialog.start('enc_band');
 World.onDay = () => { // раз в сутки отряд ест
-  if (G.supplies.rations > 0) { G.supplies.rations--; toast(`${clockText()}: отряд съел паёк (осталось ${G.supplies.rations})`); }
+  if (G.supplies.ration > 0) { G.supplies.ration--; toast(`${clockText()}: отряд съел паёк (осталось ${G.supplies.ration})`); }
   else { G.squad.forEach((s) => (s.hp = Math.max(1, s.hp - 2))); Dialog.start('hunger'); }
   refreshHud();
 };
@@ -102,6 +103,7 @@ Dialog.onClose = () => { refreshHud(); if (G.mode === 'explore' || G.mode === 'w
 Dialog.onAction = (act) => {
   if (act.startsWith('enter:')) toScene(act.slice(6));
   else if (act === 'rest') { toast(rest()); refreshHud(); }
+  else if (act.startsWith('trade:')) { G.keys.clear(); Trade.show(act.slice(6), () => { refreshHud(); hint(); }); }
   else if (act === 'battle_scav') startBattle('ruins');
   else if (act === 'battle_band') startBattle('waste');
   else if (act === 'band_calm') World.calmBand(24);
@@ -131,6 +133,7 @@ function showTitle() {
 function newGame(pc: Character) {
   layer.replaceChildren();
   resetGame(pc);
+  resetShops();
   setPcStyle(pc);
   applyEquipLooks(G.squad);
   Explore.init();
@@ -151,6 +154,7 @@ const roaming = () => G.mode === 'explore' || G.mode === 'world';
 
 window.addEventListener('keydown', (e) => {
   if (Dialog.active) { e.preventDefault(); Dialog.key(e); return; }
+  if (Trade.open) { if (e.code === 'Escape') Trade.close(); return; }
   if (e.code === 'KeyI' && roaming() && !squadOpen()) {
     if (Inventory.open) Inventory.close(); else { G.keys.clear(); Inventory.show(() => { refreshHud(); hint(); }); }
     return;
@@ -215,7 +219,7 @@ function frame(now: number) {
   G.time += dt;
   updateAsh(dt, 960, 640);
   Dialog.update(dt);
-  const free = !Dialog.active && !squadOpen() && !Inventory.open;
+  const free = !Dialog.active && !squadOpen() && !Inventory.open && !Trade.open;
   if (G.mode === 'explore' && free) Explore.update(dt);
   if (G.mode === 'world' && free) World.update(dt);
   if (G.mode === 'combat') { Combat.update(dt); Combat.draw(ctx, G.time); }
@@ -231,5 +235,5 @@ requestAnimationFrame(frame);
 
 // отладка: ?debug в адресе даёт доступ к состоянию из консоли
 if (new URLSearchParams(location.search).has('debug')) {
-  (window as any).morgulis = { G, Combat, Explore, World, Dialog, startBattle, newGame, newCharacter, openSquad, Inventory, toScene, toWorld };
+  (window as any).morgulis = { G, Combat, Explore, World, Dialog, startBattle, newGame, newCharacter, openSquad, Inventory, Trade, toScene, toWorld };
 }

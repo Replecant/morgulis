@@ -1,6 +1,7 @@
 import { makeSquad, UnitBase } from './data';
 import { Character, newCharacter } from './rules';
-import { START_STASH } from './items';
+import { START_STASH, PROF_START, CONS_ORDER, ConsId } from './items';
+import type { SkillKey } from './rules';
 
 export type Mode = 'title' | 'create' | 'world' | 'explore' | 'combat' | 'end';
 
@@ -10,6 +11,7 @@ export const G = {
   pc: null as Character | null,
   squad: [] as UnitBase[],
   supplies: newSupplies(),
+  money: 0,                // шиллинги
   stash: [] as string[],   // общий обоз отряда (id предметов)
   location: '',            // название места, где стоит игрок
   clock: 8,                // игровое время в часах с начала (день 1, 08:00)
@@ -19,8 +21,13 @@ export const G = {
 };
 
 
-export interface Supplies { bandages: number; medicine: number; rations: number }
-export function newSupplies(): Supplies { return { bandages: 3, medicine: 0, rations: 2 }; }
+export type Supplies = Record<ConsId, number>;
+export function newSupplies(): Supplies {
+  const s = {} as Supplies;
+  for (const id of CONS_ORDER) s[id] = 0;
+  s.ration = 2;
+  return s;
+}
 
 export function resetGame(pc: Character = newCharacter()) {
   G.flags = {};
@@ -28,6 +35,10 @@ export function resetGame(pc: Character = newCharacter()) {
   G.supplies = newSupplies();
   G.stash = [...START_STASH];
   G.pc = pc;
+  const st = PROF_START[pc.prof];
+  G.money = st.money;
+  G.stash.push(...st.tools);
+  for (const [k, v] of Object.entries(st.cons)) G.supplies[k as ConsId] += v!;
   G.squad = makeSquad(pc);
 }
 
@@ -39,4 +50,15 @@ export function journal(): { text: string; done: boolean }[] {
   if (f.feedTaken) out.push({ text: f.feedDone ? 'Грибной корм доставлен в Ричморд' : 'Отвезти ящик грибного корма Уоллесу в Ричморд', done: !!f.feedDone });
   if (f.heardScav) out.push({ text: f.scavDone ? 'Разрушенный пост свободен' : 'Мародёры у разрушенного поста (на карте — между трактом и путями)', done: !!f.scavDone });
   return out;
+}
+
+/** Есть ли у отряда предмет (спецснаряжение лежит в обозе). */
+export const hasTool = (id: string) => G.stash.includes(id) || G.squad.some((b) => Object.values(b.equip ?? {}).includes(id));
+
+/** Бонус спецснаряжения к проверке навыка. */
+export function gearBonus(skill: SkillKey): number {
+  if (skill === 'mechanics' && hasTool('tools')) return 2;
+  if (skill === 'stealth' && hasTool('lockpicks')) return 2;
+  if (skill === 'medicine' && hasTool('surgerykit')) return 2;
+  return 0;
 }

@@ -7,7 +7,8 @@ import { G } from './state';
 import { WEAPONS, ENEMIES, ABILITIES, battleDef, BattleDef, UnitBase } from './data';
 import { bfs, pathTo, lineTiles, BfsMap, DIRS8, Pt, clamp, cheb, dist, lerp, pick, randInt, seeded, sleep, TAU } from './util';
 import { check, checkChance, CheckResult } from './rules';
-import { woundMods, effMaxHp, addWound, bandageAmount, WOUNDS } from './wounds';
+import { woundMods, effMaxHp, addWound, bandageAmount, medkitAmount, WOUNDS } from './wounds';
+import { AMMO_NAME } from './items';
 import { equipStats } from './items';
 import { drawFigure, Lighting, Light, drawDeadTree, drawCrate, drawAsh, vignette } from './gfx';
 
@@ -26,7 +27,10 @@ export interface Unit {
   hp: number; maxHp: number; move: number; ap: number;
   atkM: number; atkR: number; def: number; armor: number; dmgM: number; horror: number; med: number;
   courage: number;      // боевой кураж 0–3
-  reloads: number;      // перезарядок осталось (зависит от патронташа)
+  grenadeCap: number;   // сколько гранат можно применить за бой (патронташ)
+  thrown: number;       // сколько уже брошено
+  quick: boolean; quickUsed: boolean; // патронташ: бесплатная перезарядка раз в ход
+  blast: boolean;       // сапёрный доспех: урон от взрывов вдвое меньше
   rallyCharm: boolean;  // медальон: поднятый встаёт с половиной ОЗ
   exposed: boolean;     // раскрылся после рискованного манёвра: −2 к Защите до своего хода
   downed: boolean;      // тяжело ранен (боец отряда на 0 ОЗ) — можно спасти
@@ -59,7 +63,6 @@ function mkUnit(b: UnitBase, team: Unit['team'], x: number, y: number): Unit {
   // снаряжение бойцов отряда: оружие, броня, бонусы, патронташ, оберег
   const e = player && b.equip ? equipStats(b) : null;
   const abil = { ...(b.abil ?? {}) };
-  if (e?.grenades) abil.grenade = (abil.grenade ?? 0) + e.grenades;
   const u: Unit = {
     uid: ++UID, team, base: b, name: b.name, kind: b.look ?? b.kind, x, y, px: x * CT + CT / 2, py: y * CT + CT / 2,
     hp: b.hp, maxHp: player ? effMaxHp(b) : b.maxHp, move: Math.max(2, b.move + m.move + (e?.move ?? 0)), ap: 0,
@@ -67,7 +70,7 @@ function mkUnit(b: UnitBase, team: Unit['team'], x: number, y: number): Unit {
     atkM: b.atkM + m.atkM + (e?.atkM ?? 0), atkR: b.atkR + m.atkR + (e?.atkR ?? 0), def: b.def + m.def + (e?.def ?? 0),
     armor: (b.armor ?? 0) + (e?.armor ?? 0), dmgM: b.dmgM ?? 0,
     horror: (b.horror ?? 0) + m.horror + (e?.horror ?? 0), med: b.med ?? 0,
-    courage: Math.min(COURAGE_MAX, e?.courage ?? 0), reloads: e ? e.reloads : 99, rallyCharm: !!e?.rally,
+    courage: Math.min(COURAGE_MAX, e?.courage ?? 0), grenadeCap: e?.grenades ?? 0, thrown: 0, quick: !!e?.quick, quickUsed: false, blast: !!e?.blast, rallyCharm: !!e?.rally,
     exposed: false, downed: false,
     ai: b.ai, leader: !!b.leader, demonic: !!b.demonic,
     dead: false, fled: false, terror: false, flip: team === 'enemy', flash: 0, seed: Math.random() * 10, cd: { summon: 0, whisper: 0 },
@@ -103,6 +106,7 @@ export const Combat = {
   bg: null as HTMLCanvasElement | null,
   light: null as Lighting | null,
   circle: null as { x: number; y: number; r: number } | null,
+  smoke: [] as { x: number; y: number; turns: number }[],
 
   // ---------------------------------------------------------- запуск
   start(id: BattleDef['id']) {
@@ -110,7 +114,7 @@ export const Combat = {
     this.def = def;
     this.map = def.map.map((r) => r.padEnd(CW, '.').slice(0, CW).split(''));
     this.units = []; this.fx = []; this.parts = []; this.floats = []; this.anims = [];
-    this.ended = false; this.busy = false; this.round = 1; this.sel = null; this.reach = null;
+    this.ended = false; this.busy = false; this.round = 1; this.sel = null; this.reach = null; this.smoke = [];
     G.squad.forEach((s, i) => {
       const [x, y] = def.players[i];
       const u = mkUnit(s, 'player', x, y);
@@ -132,7 +136,8 @@ export const Combat = {
   free(x: number, y: number) { return this.walk(x, y) && !this.unitAt(x, y) && !this.downedAt(x, y); },
   downedAt(x: number, y: number) { return this.units.find((u) => u.downed && u.x === x && u.y === y); },
   alive(team: Unit['team']) { return this.units.filter((u) => !u.dead && u.team === team); },
-  blocksLos(x: number, y: number) { const t = this.tile(x, y); return !t || !!TILE[t]?.los; },
+  blocksLos(x: number, y: number) { const t = this.tile(x, y); return !t || !!TILE[t]?.los || this.inSmoke(x, y); },
+  inSmoke(x: number, y: number) { return this.smoke.some((s) => Math.abs(s.x - x) <= 1 && Math.abs(s.y - y) <= 1); },
   los(a: Pt, b: Pt) {
     const pts = lineTiles(a.x, a.y, b.x, b.y);
     for (let i = 1; i < pts.length - 1; i++) if (this.blocksLos(pts[i].x, pts[i].y)) return false;
@@ -164,6 +169,7 @@ export const Combat = {
       if (d > w.range! + 0.01 || !this.los(from, t)) return null;
       bonus += att.atkR - Math.floor(Math.max(0, d - w.opt!) / 2);
       if (!w.ignoreCover) dc += this.coverDef(this.coverOf(t, from));
+      if (this.inSmoke(t.x, t.y)) dc += 3;
     }
     return { bonus, dc, chance: checkChance(bonus, dc) };
   },
@@ -172,8 +178,10 @@ export const Combat = {
   // ---------------------------------------------------------- ход игрока
   async startPlayerTurn() {
     this.turn = 'player';
+    for (const s of this.smoke) s.turns--;
+    this.smoke = this.smoke.filter((s) => s.turns > 0);
     for (const u of this.alive('player')) {
-      u.exposed = false;
+      u.exposed = false; u.quickUsed = false;
       u.ap = u.terror ? 1 : 2;
       if (u.terror) this.float(u, 'Ужас: 1 ОД', '#b58cff');
       u.terror = false;
@@ -236,14 +244,22 @@ export const Combat = {
       const desc = W_.type === 'melee' ? `Ближний бой · урон ${W_.dmg[0]}–${W_.dmg[1]} · атака ${ab(u.atkM + W_.atk)}` : `Дальность ${W_.range} · урон ${W_.dmg[0]}–${W_.dmg[1]} · атака ${ab(u.atkR + W_.atk)}`;
       out.push({ kind: 'w', key: w, label: W_.name + ammo, desc, disabled: false, active: this.action.type === 'w' && this.action.key === w });
     }
-    if (Object.keys(u.ammo).length) out.push({ kind: 'a', key: 'reload', label: `${ABILITIES.reload.name} (${u.reloads})`, desc: `${ABILITIES.reload.desc} Запас зарядов зависит от патронташа.`, disabled: u.ap < 1 || u.reloads <= 0 || Object.entries(u.ammo).every(([w, n]) => n >= WEAPONS[w].ammo!), active: false });
+    const types = [...new Set(u.weapons.map((w) => WEAPONS[w].ammoType).filter(Boolean))] as string[];
+    if (u.team === 'player' && types.length) {
+      const freeReload = u.quick && !u.quickUsed;
+      out.push({
+        kind: 'a', key: 'reload', label: `${ABILITIES.reload.name} (${types.map((t) => `${AMMO_NAME[t]} ${G.supplies[t as keyof typeof G.supplies]}`).join(', ')})`,
+        desc: `${ABILITIES.reload.desc}${freeReload ? ' Патронташ: сейчас без траты ОД.' : ''}`,
+        disabled: (u.ap < 1 && !freeReload) || !this.reloadable(u).length, active: false,
+      });
+    }
+    if (u.team === 'player') {
+      const S = G.supplies, cap = u.thrown >= u.grenadeCap;
+      const cons: [string, number, boolean][] = [['grenade', S.grenade, cap], ['smoke', S.smoke, cap], ['bandage', S.bandage, u.ap < 1], ['medkit', S.medkit, u.ap < 1], ['painkiller', S.painkiller, u.ap < 1]];
+      for (const [k, n, block] of cons) if (n > 0) out.push({ kind: 'a', key: k, label: `${ABILITIES[k].name} (${n})`, desc: ABILITIES[k].desc + (k === 'grenade' || k === 'smoke' ? ` Брошено за бой: ${u.thrown}/${u.grenadeCap} (зависит от патронташа).` : ''), disabled: block, active: this.action.type === 'a' && this.action.key === k });
+    }
     for (const k of Object.keys(u.abil)) {
       const n = u.abil[k];
-      if (k === 'bandage') {
-        const nb = G.supplies.bandages;
-        out.push({ kind: 'a', key: k, label: `${ABILITIES[k].name} (${nb})`, desc: `${ABILITIES[k].desc} Тратит бинт из запасов отряда. Поднимает тяжелораненого соседа.`, disabled: nb <= 0 || u.ap < 1, active: this.action.type === 'a' && this.action.key === k });
-        continue;
-      }
       out.push({ kind: 'a', key: k, label: ABILITIES[k].name + (n < 10 ? ` (${n})` : ''), desc: ABILITIES[k].desc, disabled: n <= 0 || (k === 'aim' && u.ap < 2), active: this.action.type === 'a' && this.action.key === k });
     }
     if (u.team === 'player') for (const k of COURAGE_ORDER) {
@@ -261,11 +277,26 @@ export const Combat = {
     if (b.kind === 'c') { this.action = { type: 'c', key: b.key }; this.computeReach(); this.hooks.panel(); return; }
     if (b.key === 'reload') {
       this.run(async () => {
-        for (const w in u.ammo) u.ammo[w] = WEAPONS[w].ammo!;
-        u.ap -= 1; u.reloads--;
+        const got: string[] = [];
+        for (const w of this.reloadable(u)) {
+          const t = WEAPONS[w].ammoType!, need = WEAPONS[w].ammo! - u.ammo[w], take = Math.min(need, G.supplies[t]);
+          u.ammo[w] += take; G.supplies[t] -= take; got.push(`${WEAPONS[w].name} +${take}`);
+        }
+        if (u.quick && !u.quickUsed) u.quickUsed = true; else u.ap -= 1;
         this.float(u, 'Перезарядка', '#d8c890');
-        this.hooks.log(`${u.name} перезаряжает оружие. Запасных зарядов: ${u.reloads}.`);
+        this.hooks.log(`${u.name} перезаряжает: ${got.join(', ')}.`);
         await sleep(350);
+      });
+      return;
+    }
+    if (b.key === 'painkiller') {
+      this.run(async () => {
+        G.supplies.painkiller--; u.ap -= 1;
+        const h = Math.min(3, u.maxHp - u.hp); u.hp += h;
+        this.float(u, `+${h}`, '#8fdc7a');
+        this.gainCourage(u, 'боль отступила');
+        this.hooks.log(`${u.name} принимает обезболивающее.`);
+        await sleep(400);
       });
       return;
     }
@@ -273,6 +304,10 @@ export const Combat = {
     this.hooks.panel();
   },
 
+  /** Оружие, которое можно дозарядить патронами из запаса. */
+  reloadable(u: Unit) {
+    return u.weapons.filter((w) => { const W_ = WEAPONS[w]; return W_.ammoType && u.ammo[w] < W_.ammo! && G.supplies[W_.ammoType] > 0; });
+  },
   canFire(u: Unit, w: string, quiet = false) {
     if (WEAPONS[w].ammo && u.ammo[w] <= 0) { if (!quiet) this.hooks.toast('Нет патронов — нужна перезарядка'); return false; }
     return true;
@@ -348,20 +383,36 @@ export const Combat = {
         this.hooks.log(`${u.name} поднимает дух: ${target.name} получает +1 ОД.`);
         await sleep(400);
       });
-    } else if (key === 'bandage') {
+    } else if (key === 'bandage' || key === 'medkit') {
+      const kit = key === 'medkit';
       if (!target || target.team !== 'player' || cheb(u, target) > 1) return T('Выберите себя или соседнего союзника');
-      if (G.supplies.bandages <= 0) return T('Бинты кончились');
+      if ((kit ? G.supplies.medkit : G.supplies.bandage) <= 0) return T(kit ? 'Аптечек нет' : 'Бинты кончились');
       if (!target.downed && target.hp >= target.maxHp) return T('Союзник не ранен');
       this.run(async () => {
-        G.supplies.bandages--; u.ap -= 1;
-        if (target.downed) this.revive(target, bandageAmount(u.med));
-        else { const h = Math.min(bandageAmount(u.med), target.maxHp - target.hp); target.hp += h; this.float(target, `+${h}`, '#8fdc7a'); }
-        this.hooks.log(`${u.name} перевязывает ${target === u ? 'себя' : target.name}. Бинтов осталось: ${G.supplies.bandages}.`);
+        if (kit) G.supplies.medkit--; else G.supplies.bandage--;
+        u.ap -= 1;
+        const amount = kit ? medkitAmount(u.med) : bandageAmount(u.med);
+        if (target.downed) this.revive(target, amount);
+        else { const h = Math.min(amount, target.maxHp - target.hp); target.hp += h; this.float(target, `+${h}`, '#8fdc7a'); }
+        this.hooks.log(`${u.name}: ${kit ? 'аптечка' : 'перевязка'} — ${target === u ? 'себе' : target.name}.`);
         await sleep(400);
       });
-    } else if (key === 'grenade') {
-      if (cheb(u, { x: tx, y: ty }) > 5) return T('Слишком далеко (макс. 5 клеток)');
-      this.run(async () => { u.abil.grenade--; await this.grenade(u, tx, ty); u.ap = 0; });
+    } else if (key === 'grenade' || key === 'smoke') {
+      const range = key === 'smoke' ? 6 : 5;
+      if (cheb(u, { x: tx, y: ty }) > range) return T(`Слишком далеко (макс. ${range} клеток)`);
+      if (u.thrown >= u.grenadeCap) return T('Больше гранат за этот бой не достать — нужен патронташ получше');
+      this.run(async () => {
+        u.thrown++;
+        if (key === 'grenade') { G.supplies.grenade--; await this.grenade(u, tx, ty); u.ap = 0; }
+        else {
+          G.supplies.smoke--; u.ap -= 1;
+          this.float(u, 'Дым!', '#c8c8c0');
+          this.smoke.push({ x: tx, y: ty, turns: 2 });
+          this.burst(tx * CT + CT / 2, ty * CT + CT / 2, '#9a9a90', 40, 60);
+          this.hooks.log(`${u.name} бросает дымовую гранату.`);
+          await sleep(400);
+        }
+      });
     }
   },
 
@@ -600,9 +651,10 @@ export const Combat = {
     else { this.muzzle(a, t, hit); await sleep(140); }
     if (hit) {
       let d = randInt(w.dmg[0], w.dmg[1]) + (w.type === 'melee' ? a.dmgM : 0) + (opts.dmg ?? 0);
+      if (w.shot) d = Math.max(1, d - Math.max(0, Math.floor(dist(a, t) - w.opt!))); // дробь теряет силу
       const crit = roll.crit; // натуральная 20: полуторный урон, броня не спасает
       if (crit) d = Math.ceil(d * 1.5);
-      const absorbed = crit ? 0 : Math.min(d - 1, t.armor);
+      const absorbed = crit || w.pierce ? 0 : Math.min(d - 1, t.armor);
       d -= absorbed;
       this.hooks.log(`${a.name} → ${t.name}: ${w.name}, ${crit ? 'КРИТ! ' : ''}${d} урона${absorbed ? ` (броня −${absorbed})` : ''} [${rollTxt}]`);
       await this.damage(t, d, crit);
@@ -705,7 +757,7 @@ export const Combat = {
     this.burst(x, y, '#ffb050', 40, 160); this.burst(x, y, '#555', 30, 90);
     this.fx.push({ type: 'ring', x1: x, y1: y, x2: 0, y2: 0, color: '#ffb050', life: 0.4, max: 0.4 });
     this.hooks.log(`${u.name} бросает взрывчатку!`);
-    for (const o of this.units.filter((o) => !o.dead && cheb(o, { x: tx, y: ty }) <= 1)) await this.damage(o, randInt(3, 5), false);
+    for (const o of this.units.filter((o) => !o.dead && cheb(o, { x: tx, y: ty }) <= 1)) { const d = randInt(3, 5); await this.damage(o, o.blast ? Math.ceil(d / 2) : d, false); }
     await sleep(350);
   },
 
@@ -836,18 +888,18 @@ export const Combat = {
           }
         }
       }
-      if ((this.action.type === 'a' && (this.action.key === 'rally' || this.action.key === 'bandage')) || (brave && this.action.key === 'rescue')) {
+      if ((this.action.type === 'a' && (this.action.key === 'rally' || this.action.key === 'bandage' || this.action.key === 'medkit')) || (brave && this.action.key === 'rescue')) {
         for (const p of this.units.filter((x) => x.team === 'player' && (!x.dead || x.downed))) {
           const k = this.action.key;
           const ok = k === 'rally' ? !p.dead && p !== sel && dist(sel, p) <= 6.5
-            : k === 'bandage' ? cheb(sel, p) <= 1 && (p.downed || p.hp < p.maxHp)
+            : k === 'bandage' || k === 'medkit' ? cheb(sel, p) <= 1 && (p.downed || p.hp < p.maxHp)
             : p.downed && (cheb(sel, p) === 1 || !!this.chargeTile(sel, p));
           if (ok) { c.strokeStyle = '#8fdc7a'; c.lineWidth = 2; c.strokeRect(p.x * CT + 2, p.y * CT + 2, CT - 4, CT - 4); }
         }
       }
-      if (this.action.type === 'a' && this.action.key === 'grenade' && hov) {
-        const ok = cheb(sel, hov) <= 5;
-        c.fillStyle = ok ? 'rgba(255,150,60,0.25)' : 'rgba(120,120,120,0.2)';
+      if (this.action.type === 'a' && (this.action.key === 'grenade' || this.action.key === 'smoke') && hov) {
+        const ok = cheb(sel, hov) <= (this.action.key === 'smoke' ? 6 : 5);
+        c.fillStyle = !ok ? 'rgba(120,120,120,0.2)' : this.action.key === 'smoke' ? 'rgba(200,200,190,0.25)' : 'rgba(255,150,60,0.25)';
         c.fillRect((hov.x - 1) * CT, (hov.y - 1) * CT, CT * 3, CT * 3);
       }
       for (const e of this.alive('enemy')) {
@@ -861,6 +913,14 @@ export const Combat = {
     }
 
     // юниты
+    for (const sm of this.smoke) { // дымовые облака
+      for (let i = 0; i < 9; i++) {
+        const px = (sm.x - 1 + (i % 3)) * CT + CT / 2, py = (sm.y - 1 + Math.floor(i / 3)) * CT + CT / 2;
+        const g = c.createRadialGradient(px, py, 4, px, py, CT * 0.9);
+        g.addColorStop(0, `rgba(150,150,140,${0.55 * Math.min(1, sm.turns / 2 + 0.3)})`); g.addColorStop(1, 'rgba(150,150,140,0)');
+        c.fillStyle = g; c.fillRect(px - CT, py - CT, CT * 2, CT * 2);
+      }
+    }
     const vis = this.units.filter((u) => !u.fled).sort((a, b) => (a.dead === b.dead ? a.py - b.py : a.dead ? -1 : 1));
     for (const u of vis) drawFigure(c, u.kind, u.px, u.py + 15, 1.2, { t, flip: u.flip, dead: u.dead, flash: u.flash, seed: u.seed });
 

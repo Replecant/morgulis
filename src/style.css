@@ -396,7 +396,7 @@ body { font-family: 'Old Standard TT', Georgia, serif; color: var(--text); }
 .inv-filters { margin: 6px 0; }
 .inv-filters .chip { border-color: #3a4430; color: var(--dim); background: none; font-size: 12px; padding: 2px 8px; }
 .inv-filters .chip.on { background: #2a3220; color: #e6dcb8; border-color: var(--brass); }
-.stash-grid { display: grid; grid-template-columns: repeat(6, 56px); gap: 6px; align-content: start; padding: 6px; background: #0c100a; border: 1px solid #2a3220; height: 254px; overflow-y: auto; }
+.stash-grid { display: grid; grid-template-columns: repeat(6, 56px); gap: 6px; align-content: start; padding: 6px; background: #0c100a; border: 1px solid #2a3220; height: 196px; overflow-y: auto; }
 .stash-grid.drop-ok { border-color: var(--green); background: #121a0e; }
 .scell { width: 56px; height: 56px; border: 1px solid #3a4430; background: #151b11; display: flex; align-items: center; justify-content: center; cursor: grab; }
 .scell:hover { background: #1c2416; }
@@ -414,3 +414,31 @@ body { font-family: 'Old Standard TT', Georgia, serif; color: var(--text); }
 #objective .q { font-size: 13px; margin-top: 2px; }
 #objective .q.dim { color: var(--dim); font-style: italic; }
 .choice .chk { color: var(--brass); font-size: 12px; }
+
+.inv-supplies { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; margin-top: 6px; min-height: 34px; }
+.inv-supplies .money { color: var(--brass); font-size: 14px; margin-right: 6px; white-space: nowrap; }
+.inv-supplies .money b { font-size: 17px; }
+.sup-cell { position: relative; width: 34px; height: 34px; border: 1px solid #2a3220; background: #10140d; display: flex; align-items: center; justify-content: center; }
+.sup-cell span { position: absolute; right: 1px; bottom: -1px; font-size: 11px; color: #e6dcb8; text-shadow: 0 0 2px #000, 0 0 2px #000; }
+
+/* ---------- Торговля ---------- */
+#trade { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.65); z-index: 22; }
+.trade-box { width: 900px; height: 600px; background: var(--panel); border: 1px solid var(--line); box-shadow: 0 10px 40px #000; padding: 12px 16px; display: flex; flex-direction: column; }
+.ttop { display: flex; align-items: center; gap: 14px; }
+.ttop h2 { margin: 0; flex: 1; font-family: 'Playfair Display SC', serif; color: var(--brass); letter-spacing: 2px; font-size: 19px; }
+.tmoney { font-size: 15px; } .tmoney b { color: var(--brass); font-size: 18px; }
+.tcols { display: flex; gap: 12px; flex: 1; min-height: 0; margin-top: 8px; }
+.tcol { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.th { font-family: 'Playfair Display SC', serif; color: var(--dim); letter-spacing: 1px; font-size: 13px; margin-bottom: 4px; }
+.tlist { flex: 1; overflow-y: auto; border: 1px solid #2a3220; background: #0c100a; padding: 4px; }
+.trow { display: grid; grid-template-columns: 40px 1fr 54px 76px; align-items: center; gap: 6px; padding: 3px 4px; border-bottom: 1px solid #1a2014; }
+.trow:hover { background: #151b11; }
+.ticv { border: 1px solid #2a3220; background: #10140d; }
+.trow .tn b { display: block; font-size: 13px; color: #e6dcb8; font-weight: 400; }
+.trow .tn span { font-size: 11px; color: var(--dim); }
+.trow .tp { color: var(--brass); text-align: right; font-size: 13px; }
+.trow .btn { padding: 3px 6px; font-size: 12px; }
+.tempty { color: var(--dim); font-style: italic; padding: 8px; font-size: 13px; }
+.tinfo { margin-top: 8px; min-height: 48px; border: 1px solid #2a3220; padding: 6px 10px; font-size: 13px; color: #cfd0b8; background: #0e120b; }
+.tinfo .b { color: #e6dcb8; font-weight: 700; }
+.sq.res .coin { color: var(--brass); font-weight: 700; }

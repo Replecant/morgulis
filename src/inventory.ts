@@ -4,14 +4,14 @@
 // ============================================================
 import { G } from './state';
 import { UnitBase } from './data';
-import { ITEMS, Item, ItemKind, SLOTS, SLOT_ORDER, Slot, KIND_NAMES, canEquip, equipStats, itemStatLines } from './items';
+import { ITEMS, Item, ItemKind, SLOTS, SLOT_ORDER, Slot, KIND_NAMES, canEquip, equipStats, itemStatLines, CONSUMABLES, CONS_ORDER, Consumable } from './items';
 import { woundMods, effMaxHp } from './wounds';
 import { drawFigure, applyEquipLooks } from './gfx';
 import { h } from './book';
 import { $, TAU } from './util';
 
 // ------------------------------------------------------------ иконки предметов
-const KIND_COLOR: Record<ItemKind, string> = { weapon: '#a07a4a', head: '#7a8a6a', body: '#6a7a8a', hands: '#8a7a5a', legs: '#7a6a5a', charm: '#9a7ab0', belt: '#a08a50' };
+export const KIND_COLOR: Record<ItemKind, string> = { tool: '#6a8a8a', weapon: '#a07a4a', head: '#7a8a6a', body: '#6a7a8a', hands: '#8a7a5a', legs: '#7a6a5a', charm: '#9a7ab0', belt: '#a08a50' };
 
 export function drawItemIcon(c: CanvasRenderingContext2D, icon: string, S = 52) {
   c.save();
@@ -46,6 +46,33 @@ export function drawItemIcon(c: CanvasRenderingContext2D, icon: string, S = 52) 
     case 'belt': R(6, 22, 40, 8, leather); R(12, 18, 10, 14, '#4a3018'); R(30, 18, 10, 14, '#4a3018'); R(23, 23, 6, 6, '#c09a52'); break;
     case 'bandolier': L([10, 8, 42, 44], leather, 8); for (let i = 0; i < 6; i++) R(13 + i * 5, 12 + i * 5.5, 3, 6, '#c0a060'); break;
     case 'belt_gren': R(6, 22, 40, 8, leather); R(10, 18, 12, 14, '#4a3018'); c.fillStyle = '#3a3a34'; c.beginPath(); c.arc(36, 24, 7, 0, TAU); c.fill(); L([36, 17, 38, 12], '#888', 2); break;
+    case 'autopistol': R(12, 18, 28, 7, '#2a2a28'); R(13, 19, 26, 2, steel); L([16, 25, 12, 40], wood, 6); R(22, 25, 4, 6, '#1a1a18'); break;
+    case 'pump': L([6, 40, 30, 22], wood, 7); L([26, 24, 48, 10], steel, 3.5); L([30, 25, 40, 18], '#4a3420', 5); break;
+    case 'flamer': c.fillStyle = '#6a3a20'; c.beginPath(); c.roundRect(6, 14, 14, 30, 6); c.fill(); R(8, 12, 10, 4, '#444'); L([18, 34, 30, 30, 46, 20], '#555', 4); c.fillStyle = '#f0a040'; c.beginPath(); c.arc(47, 19, 3, 0, TAU); c.fill(); break;
+    case 'exprifle': L([6, 42, 46, 10], '#2a3034', 5); L([28, 26, 48, 8], '#8aa0a8', 2.5); c.fillStyle = '#6ad0e0'; c.beginPath(); c.arc(20, 32, 3, 0, TAU); c.fill(); R(24, 22, 10, 3, '#b08a40'); break;
+    case 'clothes': c.fillStyle = '#5a5040'; c.beginPath(); c.moveTo(16, 10); c.lineTo(36, 10); c.lineTo(38, 42); c.lineTo(14, 42); c.closePath(); c.fill(); R(22, 10, 8, 32, '#4a3a2a'); L([16, 10, 8, 24], '#5a5040', 6); L([36, 10, 44, 24], '#5a5040', 6); break;
+    case 'jacket': c.fillStyle = '#4a3020'; c.beginPath(); c.moveTo(14, 10); c.lineTo(38, 10); c.lineTo(40, 40); c.lineTo(12, 40); c.closePath(); c.fill(); for (const [x, y] of [[16, 16], [28, 16], [16, 28], [28, 28]]) R(x, y, 8, 8, '#6a4a30'); break;
+    case 'vest': c.fillStyle = '#5a5a44'; c.beginPath(); c.moveTo(14, 10); c.lineTo(38, 10); c.lineTo(38, 42); c.lineTo(14, 42); c.closePath(); c.fill(); c.strokeStyle = '#3a3a2a'; c.lineWidth = 1.5; for (let y = 14; y < 42; y += 5) { c.beginPath(); c.moveTo(14, y); c.lineTo(38, y); c.stroke(); } break;
+    case 'sapper': c.fillStyle = '#5a5c5e'; c.beginPath(); c.moveTo(10, 8); c.lineTo(42, 8); c.lineTo(40, 34); c.lineTo(26, 44); c.lineTo(12, 34); c.closePath(); c.fill(); R(14, 34, 8, 12, '#4a4c4e'); R(30, 34, 8, 12, '#4a4c4e'); c.strokeStyle = '#8a8c8e'; c.lineWidth = 2; for (let y = 14; y < 34; y += 6) { c.beginPath(); c.moveTo(14, y); c.lineTo(38, y); c.stroke(); } break;
+    case 'gasmask': c.fillStyle = '#2b2d28'; c.beginPath(); c.ellipse(26, 24, 14, 16, 0, 0, TAU); c.fill(); c.fillStyle = '#8fbf5a'; c.beginPath(); c.arc(20, 20, 4, 0, TAU); c.arc(32, 20, 4, 0, TAU); c.fill(); R(21, 34, 10, 10, '#555'); break;
+    case 'toolbox': R(8, 22, 36, 20, '#6a4a28'); R(8, 22, 36, 4, '#7a5a30'); L([20, 22, 20, 14, 32, 14, 32, 22], '#444', 3); L([12, 18, 22, 8], steel, 2.5); break;
+    case 'picks': for (let i = 0; i < 4; i++) L([12 + i * 6, 40, 16 + i * 6, 10], steel, 1.6); R(10, 34, 24, 8, leather); break;
+    case 'surgkit': R(8, 18, 36, 24, '#2a1a12'); L([18, 18, 22, 10, 30, 10, 34, 18], '#2a1a12', 3); R(22, 26, 8, 3, '#e0dcc8'); R(24.5, 23, 3, 9, '#e0dcc8'); break;
+    case 'grimoire': R(12, 8, 28, 36, '#2a1612'); R(14, 10, 2, 32, '#c8b88a'); c.strokeStyle = '#8a7a4a'; c.lineWidth = 1.2; c.beginPath(); c.arc(28, 26, 7, 0, TAU); c.moveTo(28, 19); c.lineTo(28, 33); c.moveTo(21, 26); c.lineTo(35, 26); c.stroke(); break;
+    case 'ritual': R(10, 30, 8, 14, '#d8d0b0'); R(26, 26, 8, 18, '#d8d0b0'); c.fillStyle = '#f0c060'; c.beginPath(); c.arc(14, 27, 2.5, 0, TAU); c.arc(30, 23, 2.5, 0, TAU); c.fill(); c.fillStyle = '#b08040'; c.beginPath(); c.ellipse(40, 40, 8, 4, 0, 0, TAU); c.fill(); break;
+    case 'bandage': c.fillStyle = '#e0dcc8'; c.beginPath(); c.arc(26, 28, 13, 0, TAU); c.fill(); c.fillStyle = '#b8b4a0'; c.beginPath(); c.arc(26, 28, 5, 0, TAU); c.fill(); L([30, 16, 44, 10], '#e0dcc8', 5); break;
+    case 'medkit': R(8, 14, 36, 28, '#7a2a22'); R(8, 14, 36, 4, '#8a3a2a'); R(23, 20, 6, 18, '#e8e0d0'); R(17, 26, 18, 6, '#e8e0d0'); break;
+    case 'bottle': R(19, 18, 14, 26, '#3a5a4a'); R(23, 10, 6, 9, '#3a5a4a'); R(22, 7, 8, 4, '#6a4a2a'); R(21, 26, 10, 8, '#d8d0b0'); break;
+    case 'pills': R(14, 16, 24, 28, '#d8d0b0'); R(14, 12, 24, 6, '#5a4a3a'); for (const [x, y] of [[20, 26], [30, 30], [22, 36]]) { c.fillStyle = '#c86a4a'; c.beginPath(); c.ellipse(x, y, 3, 2, 0.4, 0, TAU); c.fill(); } break;
+    case 'ammo_p': case 'ammo_r': case 'ammo_s': {
+      const n = icon === 'ammo_s' ? 4 : 5, w = icon === 'ammo_s' ? 7 : 5, hh = icon === 'ammo_r' ? 28 : icon === 'ammo_s' ? 20 : 16;
+      for (let i = 0; i < n; i++) { const x = 10 + i * (w + 2.5), y = 42 - hh; R(x, y + hh * 0.3, w, hh * 0.7, icon === 'ammo_s' ? '#8a2a1e' : '#b08a40'); c.fillStyle = icon === 'ammo_s' ? '#c8a050' : '#8a6a3a'; c.beginPath(); c.ellipse(x + w / 2, y + hh * 0.3, w / 2, w / 2 + 2, 0, Math.PI, TAU); c.fill(); if (icon === 'ammo_s') R(x, y + hh - 4, w, 4, '#c8a050'); }
+      break;
+    }
+    case 'grenade': c.fillStyle = '#4a4e3a'; c.beginPath(); c.ellipse(26, 30, 11, 13, 0, 0, TAU); c.fill(); c.strokeStyle = '#2a2e1a'; c.lineWidth = 1; for (let y = 22; y < 42; y += 5) { c.beginPath(); c.moveTo(16, y); c.lineTo(36, y); c.stroke(); } R(22, 12, 8, 6, '#6a6a60'); L([30, 14, 38, 10], steel, 1.5); break;
+    case 'smoke': R(18, 16, 16, 28, '#5a5a54'); R(18, 22, 16, 4, '#c8c8c0'); R(22, 10, 8, 6, '#3a3a34'); c.fillStyle = 'rgba(200,200,190,0.6)'; c.beginPath(); c.arc(36, 12, 6, 0, TAU); c.arc(42, 8, 4, 0, TAU); c.fill(); break;
+    case 'filter': c.fillStyle = '#4a4a44'; c.beginPath(); c.roundRect(14, 14, 24, 28, 5); c.fill(); for (let i = 0; i < 3; i++) R(18, 20 + i * 7, 16, 2, '#2a2a26'); R(22, 8, 8, 7, '#6a6a60'); break;
+    case 'ration': R(10, 22, 32, 18, '#6a5030'); R(10, 22, 32, 4, '#7a6040'); c.fillStyle = '#8a3a22'; c.beginPath(); c.ellipse(26, 18, 10, 6, 0, 0, TAU); c.fill(); break;
     default: c.fillStyle = '#555'; c.fillRect(14, 14, 24, 24);
   }
   c.restore();
@@ -68,7 +95,7 @@ function memberStats(b: UnitBase) {
     atkR: b.atkR + m.atkR + e.atkR,
     move: Math.max(2, b.move + m.move + e.move),
     horror: (b.horror ?? 0) + m.horror + e.horror,
-    reloads: e.reloads,
+    grenades: e.grenades,
     courage: e.courage,
   };
 }
@@ -146,6 +173,7 @@ export const Inventory = {
   },
   autoEquip(idx: number) {
     const it = ITEMS[G.stash[idx]];
+    if (it.kind === 'tool') return; // спецснаряжение не надевается — работает из обоза
     const eq = G.squad[this.member].equip ?? {};
     let slot = SLOT_ORDER.find((s) => SLOTS[s].kind === it.kind)!;
     if (it.kind === 'weapon') slot = !eq.main ? 'main' : !eq.side ? 'side' : 'main';
@@ -200,13 +228,13 @@ export const Inventory = {
     const stats = h('div', { class: 'inv-stats' },
       ...([
         ['ОЗ', st.hp], ['Защита', st.def], ['Поглощение', st.armor], ['Атака вблизи', sg(st.atkM)],
-        ['Стрельба', sg(st.atkR)], ['Перемещение', st.move], ['Стойкость', sg(st.horror)], ['Перезарядок', st.reloads],
+        ['Стрельба', sg(st.atkR)], ['Перемещение', st.move], ['Стойкость', sg(st.horror)], ['Гранат за бой', st.grenades],
       ] as [string, string | number][]).map(([k, v]) => h('div', { class: 'st' }, h('span', {}, k), h('b', {}, String(v)))),
       st.courage ? h('div', { class: 'st wide' }, h('span', {}, 'Кураж в начале боя'), h('b', {}, '✦'.repeat(st.courage))) : null,
     );
 
     // обоз
-    const FILTERS: [typeof this.filter, string][] = [['all', 'Всё'], ['weapon', 'Оружие'], ['armor', 'Броня'], ['charm', 'Обереги'], ['belt', 'Патронташи']];
+    const FILTERS: [typeof this.filter, string][] = [['all', 'Всё'], ['weapon', 'Оружие'], ['armor', 'Броня'], ['charm', 'Обереги'], ['belt', 'Патронташи'], ['tool', 'Снаряжение']];
     const isArmor = (k: ItemKind) => k === 'head' || k === 'body' || k === 'hands' || k === 'legs';
     const shown = G.stash.map((id, idx) => ({ id, idx })).filter(({ id }) => {
       const k = ITEMS[id].kind;
@@ -225,6 +253,7 @@ export const Inventory = {
       h('div', { class: 'chips inv-filters' }, ...FILTERS.map(([k, label]) =>
         h('button', { class: 'chip' + (this.filter === k ? ' on' : ''), onclick: () => { this.filter = k; this.render(); } }, label))),
       grid,
+      this.suppliesRow(),
       this.detail(),
     );
 
@@ -287,6 +316,21 @@ export const Inventory = {
     document.querySelectorAll<HTMLElement>('#inv .slot').forEach((el, i) => el.classList.toggle('can', slots.includes(SLOT_ORDER[i])));
   },
 
+  /** Шиллинги и расходники отряда. */
+  suppliesRow(): HTMLElement {
+    const cells = CONS_ORDER.filter((id) => G.supplies[id] > 0).map((id) => {
+      const c = CONSUMABLES[id];
+      const cv = h('canvas', { width: 30, height: 30 });
+      drawItemIcon(cv.getContext('2d')!, c.icon, 30);
+      const el = h('div', { class: 'sup-cell', title: `${c.name}: ${G.supplies[id]}` }, cv, h('span', {}, String(G.supplies[id])));
+      el.onmouseenter = () => { this.hoverCons = c; this.updateDetail(); };
+      el.onmouseleave = () => { this.hoverCons = null; this.updateDetail(); };
+      return el;
+    });
+    return h('div', { class: 'inv-supplies' }, h('div', { class: 'money' }, h('b', {}, String(G.money)), ' ш.'), ...cells);
+  },
+  hoverCons: null as Consumable | null,
+
   detail(): HTMLElement {
     const box = h('div', { class: 'inv-detail' });
     this.fillDetail(box);
@@ -300,6 +344,13 @@ export const Inventory = {
     const selId = this.selId();
     const it = this.hover ?? (selId ? ITEMS[selId] : null);
     box.replaceChildren();
+    if (this.hoverCons) {
+      const c = this.hoverCons, cv = h('canvas', { width: 40, height: 40, class: 'icv' });
+      drawItemIcon(cv.getContext('2d')!, c.icon, 40);
+      box.append(h('div', { class: 'dh' }, cv, h('div', {}, h('b', {}, c.name), h('div', { class: 'dk' }, `Расходник · в запасе ${G.supplies[c.id]}`))),
+        h('div', { class: 'ddesc' }, c.desc), h('div', { class: 'dstats' }, `Цена: ${c.price} ш.${c.pack > 1 ? ` за ${c.pack} шт.` : ''}`));
+      return;
+    }
     if (!it) { box.append(h('div', { class: 'none' }, 'Наведите на вещь, чтобы увидеть её свойства.')); return; }
     const b = G.squad[this.member];
     const slots = this.validSlots(it.id);
