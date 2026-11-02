@@ -4,7 +4,7 @@
 // ============================================================
 import { G } from './state';
 import { h } from './book';
-import { $ } from './util';
+import { $, keepScroll } from './util';
 import { withFrame } from './frames';
 import { World, LOCS } from './worldmap';
 import { WOUNDS } from './wounds';
@@ -104,7 +104,7 @@ export const OccultMenu = {
         h('div', { class: 'oc-rh2' }, h('b', {}, `Ритуал: ${r.name}`), h('span', { class: 'oc-ss' }, `+${r.strain} · ${r.hours} ч`),
           h('button', { class: 'btn', disabled: !can, onclick: () => this.ritual(r) }, 'Провести')),
         h('div', { class: 'oc-desc' }, r.desc + (can ? '' : ' Нужно постичь хотя бы одно заклинание этой школы.'))));
-    $('occult').replaceChildren(h('div', { class: 'oc-box' },
+    keepScroll($('occult'), '.oc-list', () => $('occult').replaceChildren(h('div', { class: 'oc-box' },
       h('div', { class: 'oc-top' },
         h('h2', {}, 'Оккультизм'),
         h('button', { class: 'btn oc-close', onclick: () => this.close() }, '✕ [O]')),
@@ -114,6 +114,6 @@ export const OccultMenu = {
       tabs,
       h('div', { class: 'oc-role' }, `${S.emblem} ${S.name}. ${S.role}`),
       h('div', { class: 'oc-list' }, ...spells, ...rituals),
-      info));
+      info)));
   },
 };

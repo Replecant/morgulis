@@ -7,7 +7,7 @@ import { G } from './state';
 import { ITEMS, CONSUMABLES, CONS_ORDER, ConsId, sellPrice, KIND_NAMES, itemStatLines } from './items';
 import { drawItemIcon, KIND_COLOR } from './inventory';
 import { h } from './book';
-import { $ } from './util';
+import { $, keepScroll } from './util';
 import { withFrame } from './frames';
 
 interface Shop { name: string; greet: string; items: Record<string, number>; cons: ConsId[] }
@@ -176,13 +176,13 @@ export const Trade = {
     }
     if (!sell.length) sell.push(h('div', { class: 'tempty' }, 'Продавать нечего. Надетые вещи сначала снимите в окне снаряжения.'));
 
-    $('trade').replaceChildren(h('div', { class: 'trade-box' },
+    keepScroll($('trade'), '.tlist', () => $('trade').replaceChildren(h('div', { class: 'trade-box' },
       h('div', { class: 'ttop' }, h('h2', {}, shop.name), h('div', { class: 'tmoney' }, 'Ваши шиллинги: ', h('b', {}, String(G.money))),
         h('button', { class: 'btn', onclick: () => this.close() }, 'Закрыть [Esc]')),
       h('div', { class: 'tcols' },
         h('div', { class: 'tcol' }, h('div', { class: 'th' }, 'Товар'), h('div', { class: 'tlist' }, ...buy)),
         h('div', { class: 'tcol' }, h('div', { class: 'th' }, 'Ваш обоз — продажа за полцены'), h('div', { class: 'tlist' }, ...sell))),
       info,
-    ));
+    )));
   },
 };

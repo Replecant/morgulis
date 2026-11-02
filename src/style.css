@@ -439,7 +439,7 @@ body { font-family: 'Old Standard TT', Georgia, serif; color: var(--text); }
 .tcols { display: flex; gap: 12px; flex: 1; min-height: 0; margin-top: 8px; }
 .tcol { flex: 1; display: flex; flex-direction: column; min-width: 0; }
 .th { font-family: 'Playfair Display SC', serif; color: var(--dim); letter-spacing: 1px; font-size: 13px; margin-bottom: 4px; }
-.tlist { flex: 1; overflow-y: auto; border: 1px solid #3a4430; background: rgba(8, 11, 6, 0.6); padding: 4px; }
+.tlist { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; border: 1px solid #3a4430; background: rgba(8, 11, 6, 0.6); padding: 4px; }
 .trow { display: grid; grid-template-columns: 40px 1fr 54px 76px; align-items: center; gap: 6px; padding: 3px 4px; border-bottom: 1px solid #1a2014; }
 .trow:hover { background: #151b11; }
 .ticv { border: 1px solid #2a3220; background: #10140d; }
@@ -448,7 +448,7 @@ body { font-family: 'Old Standard TT', Georgia, serif; color: var(--text); }
 .trow .tp { color: var(--brass); text-align: right; font-size: 13px; }
 .trow .btn { padding: 3px 6px; font-size: 12px; }
 .tempty { color: var(--dim); font-style: italic; padding: 8px; font-size: 13px; }
-.tinfo { margin-top: 6px; min-height: 44px; border: 1px solid #3a4430; padding: 5px 10px; font-size: 13px; color: #cfd0b8; background: rgba(8, 11, 6, 0.6); }
+.tinfo { margin-top: 6px; flex: none; height: 52px; overflow-y: auto; box-sizing: border-box; /* постоянная высота: описание при наведении не сдвигает списки */ border: 1px solid #3a4430; padding: 5px 10px; font-size: 13px; color: #cfd0b8; background: rgba(8, 11, 6, 0.6); }
 .tinfo .b { color: #e6dcb8; font-weight: 700; }
 .sq.res .coin { color: var(--brass); font-weight: 700; }
 .mquick { color: #9a9070; font-style: italic; font-size: 14px; margin-bottom: 6px; }
@@ -535,7 +535,7 @@ body { font-family: 'Old Standard TT', Georgia, serif; color: var(--text); }
 .pr-h { font-family: 'Playfair Display SC', serif; color: #e6dcb8; font-size: 16px; display: flex; justify-content: space-between; align-items: baseline; }
 .pr-h span { font-family: 'Old Standard TT', serif; font-size: 13px; color: var(--brass); }
 .pr-eff { font-size: 12px; color: #b9b49a; font-style: italic; }
-.pr-list { flex: 1; overflow-y: auto; margin-top: 6px; padding-right: 4px; }
+.pr-list { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; margin-top: 6px; padding-right: 4px; }
 .pr-item { border: 1px solid #3a4430; background: rgba(8, 11, 6, 0.6); padding: 5px 8px; margin-bottom: 5px; }
 .pr-item.far { opacity: 0.55; }
 .pr-top { display: flex; gap: 8px; align-items: baseline; }
@@ -570,7 +570,7 @@ body { font-family: 'Old Standard TT', Georgia, serif; color: var(--text); }
 .oc-tab:hover { color: #e6dcb8; }
 .oc-tab.on { background: rgba(40, 30, 56, 0.8); border-color: #8a7ab0; color: #e6dcb8; }
 .oc-role { font-size: 12px; color: #b9b49a; font-style: italic; margin: 5px 0 4px; line-height: 1.25; }
-.oc-list { flex: 1; overflow-y: auto; min-height: 0; padding-right: 3px; }
+.oc-list { flex: 1; overflow-y: auto; overscroll-behavior: contain; min-height: 0; padding-right: 3px; }
 .oc-row { border: 1px solid #2a3220; background: rgba(8, 11, 6, 0.7); padding: 4px 7px; margin-bottom: 4px; }
 .oc-row.known { border-color: #8a7ab0; background: rgba(40, 30, 56, 0.45); }
 .oc-row.rit { border-color: #5a4a2a; }

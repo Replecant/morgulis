@@ -80,3 +80,10 @@ export function lineTiles(x0: number, y0: number, x1: number, y1: number): Pt[] 
 }
 
 export const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
+
+/** Перерисовать окно, сохранив прокрутку его списков (иначе после покупки список прыгает наверх). */
+export function keepScroll(root: HTMLElement, selector: string, redraw: () => void) {
+  const pos = [...root.querySelectorAll<HTMLElement>(selector)].map((el) => el.scrollTop);
+  redraw();
+  root.querySelectorAll<HTMLElement>(selector).forEach((el, i) => { if (pos[i]) el.scrollTop = pos[i]; });
+}

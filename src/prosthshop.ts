@@ -6,7 +6,7 @@
 // ============================================================
 import { G } from './state';
 import { h } from './book';
-import { $ } from './util';
+import { $, keepScroll } from './util';
 import { drawFigure, applyEquipLooks } from './gfx';
 import { withFrame } from './frames';
 import { ITEMS, CONSUMABLES } from './items';
@@ -109,10 +109,10 @@ export const ProsthShop = {
       h('div', { class: 'pr-desc' }, `${CONSUMABLES.tissue.desc} В запасе: ${G.supplies.tissue}.`),
       h('div', { class: 'pr-act' }, h('button', { class: 'btn', disabled: G.money < CONSUMABLES.tissue.price, onclick: () => this.buyTissue() }, 'Купить'))));
 
-    $('prosth').replaceChildren(h('div', { class: 'pr-box' },
+    keepScroll($('prosth'), '.pr-list', () => $('prosth').replaceChildren(h('div', { class: 'pr-box' },
       h('div', { class: 'pr-topbar' }, h('h2', {}, SHOP_NAMES[this.shop]), h('div', { class: 'tmoney' }, 'Шиллинги: ', h('b', {}, String(G.money))),
         h('button', { class: 'btn', onclick: () => this.close() }, 'Закрыть [Esc]')),
       h('div', { class: 'pr-main' }, doll, h('div', { class: 'pr-right' }, head, h('div', { class: 'pr-list' }, ...list))),
-      h('div', { class: 'pr-note' }, this.note)));
+      h('div', { class: 'pr-note' }, this.note))));
   },
 };
