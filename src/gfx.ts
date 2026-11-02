@@ -45,6 +45,16 @@ export const STYLES: Record<string, Style> = {
   grower: { coat: '#34402c', dress: true, hat: 'bonnet', hatC: '#26301e', skin: '#c8b498', hair: '#8a8a7a', longHair: true, weapon: 'goad' },
   picker: { coat: '#4a4a36', legs: '#2a2a20', belt: '#2a1d12', hat: 'flatcap', hatC: '#2e2e22', skin: '#cdb498', weapon: 'bag' },
   guard: { coat: '#2e3440', legs: '#1a1c22', belt: '#2a1d12', trim: '#8a8a8a', hat: 'helmet', hatC: '#3a3e46', skin: '#c0a488', weapon: 'rifle' },
+  // фоновые жители деревень
+  townsman: { coat: '#4a4438', legs: '#2a2620', hat: 'flatcap', hatC: '#2e2a22', skin: '#c4a888', beard: '#5a4a3a' },
+  townswoman: { coat: '#4a3e44', dress: true, apron: '#6a6050', hat: 'bonnet', hatC: '#3a3034', skin: '#d0b49a', hair: '#6a4a2a', longHair: true },
+  oldwoman: { coat: '#3a3634', dress: true, hat: 'bonnet', hatC: '#2a2624', skin: '#c8b4a0', hair: '#b0aca4', longHair: true },
+  oldman: { coat: '#3e3a30', legs: '#26231e', hat: 'flatcap', hatC: '#24221c', beard: '#c0bcb0', skin: '#c4b09c', weapon: 'pole' },
+  farmhand: { coat: '#4e4632', legs: '#2c281e', belt: '#2a1d12', hair: '#5a3a22', skin: '#c8a888', weapon: 'bag' },
+  pickerw: { coat: '#3e4a32', dress: true, apron: '#5a5a40', hat: 'bonnet', hatC: '#2e3626', skin: '#c8b49a', hair: '#5a3a22', longHair: true, weapon: 'bag' },
+  kidgirl: { coat: '#4a4a3a', dress: true, skin: '#d8c0a0', hair: '#8a6a3a', longHair: true, scale: 0.78 },
+  refugee: { coat: '#3a3a40', legs: '#22222a', hat: 'flatcap', hatC: '#2a2a30', skin: '#c0a48a', beard: '#4a3a2a', weapon: 'bag' },
+  refugee_w: { coat: '#4a3a3a', dress: true, hat: 'bonnet', hatC: '#2e2424', skin: '#ccb098', hair: '#3a2a1a', longHair: true, weapon: 'bag' },
 };
 
 /** Внешность персонажа игрока: пол, волосы, кожа, возраст и профессия. */

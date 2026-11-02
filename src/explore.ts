@@ -9,6 +9,7 @@ import { flicker } from './gfx';
 import { PixelView, applyLight, PLight, T, LW, LH, PS, ppx } from './px';
 import { drawSprite, beetleSprite } from './sprites';
 import { paintTile, paintRail, objSprite, drawPumpjack, drawCampfire } from './pxworld';
+import { FOLK, FolkDef } from './folk';
 
 /** Клетка на экране (низкое разрешение ×2). */
 export const ET = T * PS;
@@ -28,6 +29,12 @@ interface Obj {
 }
 interface Npc { id: string; name: string; kind: string; x: number; y: number; talk: string; cond?: () => boolean; seed: number; face?: number }
 interface Beetle { id: string; x: number; y: number; tx: number; ty: number; pen: { x0: number; y0: number; x1: number; y1: number } | null; dir: number; seed: number; wait: number; talk: string; name: string; scale: number; homeward?: boolean }
+/** Фоновый житель: координаты дробные (в клетках), идёт по маршруту, бросает реплики. */
+interface Folk {
+  def: FolkDef; id: string; name: string; kind: string; talk: string;
+  x: number; y: number; i: number; path: Pt[]; wait: number; flip: boolean; step: number;
+  bark: { text: string; t: number } | null; barkI: number; nextBark: number; hold: number; seed: number;
+}
 interface Walker { kind: string; x: number; y: number; rx: number; ry: number; fx: number; fy: number; flip: boolean }
 
 // ------------------------------------------------------------ области (для названий мест)
@@ -52,6 +59,7 @@ export const Explore = {
   objs: [] as Obj[],
   npcs: [] as Npc[],
   beetles: [] as Beetle[],
+  folk: [] as Folk[],
   chunks: new Map<number, HTMLCanvasElement>(),
   view: null as PixelView | null,
   player: null as unknown as Walker,
@@ -59,7 +67,7 @@ export const Explore = {
   trail: [] as Pt[],
   moveK: 1,
   path: [] as Pt[],
-  pending: null as Obj | Npc | Beetle | null,
+  pending: null as Obj | Npc | Beetle | Folk | null,
   onInteract: (_talk: string) => {},
   onLocation: (_name: string) => {},
   onExit: (_scene: string) => {},
@@ -226,6 +234,14 @@ export const Explore = {
       this.beetles.push({ id: 'b' + n, x, y, tx: x, ty: y, pen: p, dir: r() * TAU, seed: r() * 10, wait: r() * 3, talk: 'beetle', name: `Жук «${names[n++ % names.length]}»`, scale: 0.9 + r() * 0.3 });
     }
 
+    // ---------------- фоновые жители (точки маршрутов прижимаются к ближайшей свободной клетке)
+    this.folk = FOLK.map((d, k) => {
+      for (const st of d.route) { const f = this.freeNear(st.x, st.y); st.x = f.x; st.y = f.y; }
+      const s0 = d.route[0];
+      return { def: d, id: d.id, name: d.name, kind: d.kind, talk: 'folk:' + d.id, x: s0.x, y: s0.y, i: 0, path: [], wait: s0.wait * r(), flip: r() < 0.5, step: 0,
+        bark: null, barkI: Math.floor(r() * d.barks.length), nextBark: 4 + r() * 12, hold: 0, seed: k * 2.3 };
+    });
+
     // ---------------- игрок
     const mk = (kind: string, x: number, y: number): Walker => ({ kind, x, y, rx: x, ry: y, fx: x, fy: y, flip: false });
     this.player = mk('pc', 24, 58);
@@ -245,6 +261,7 @@ export const Explore = {
     this.followers = G.squad.slice(1).map((s) => mk(s.look ?? s.kind, p.x, p.y));
     this.trail = this.followers.map(() => ({ ...p }));
     this.path = []; this.pending = null; this.moveK = 1;
+    for (const f of this.folk) { f.bark = null; f.hold = 0; f.nextBark = 3 + Math.random() * 8; }
     // вернувшаяся жучиха Мэг появляется в загоне
     if (id === 'richmord' && G.flags.beetleDone && !this.beetles.some((b) => b.id === 'meg')) {
       const pen = PENS[0];
@@ -257,9 +274,21 @@ export const Explore = {
 
   inMap(x: number, y: number) { return x >= 0 && y >= 0 && x < MW && y < MH; },
   activeNpcs() { return this.npcs.filter((n) => !n.cond || n.cond()); },
-  thingAt(x: number, y: number): Obj | Npc | Beetle | null {
+  /** Жители текущей сцены. */
+  sceneFolk() { return this.folk.filter((f) => f.def.scene === this.scene); },
+  freeNear(x: number, y: number): Pt {
+    for (let r = 0; r < 6; r++) for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
+      if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
+      const nx = x + dx, ny = y + dy;
+      if (this.inMap(nx, ny) && !this.blocked(nx, ny)) return { x: nx, y: ny };
+    }
+    return { x, y };
+  },
+  thingAt(x: number, y: number): Obj | Npc | Beetle | Folk | null {
     const npc = this.activeNpcs().find((n) => n.x === x && n.y === y);
     if (npc) return npc;
+    const fk = this.sceneFolk().find((f) => Math.round(f.x) === x && Math.round(f.y) === y);
+    if (fk) return fk;
     const b = this.beetles.find((b) => Math.round(b.x - 0.5) === x && Math.round(b.y - 0.5) === y);
     if (b) return b;
     return this.objs.find((o) => o.talk && x >= o.x && x < o.x + o.w && y >= o.y && y < o.y + o.h) ?? null;
@@ -284,6 +313,7 @@ export const Explore = {
   // ========================================================== логика
   update(dt: number) {
     this.updateBeetles(dt);
+    this.updateFolk(dt);
     if (this.banner) { this.banner.t += dt; if (this.banner.t > 3) this.banner = null; }
     const p = this.player;
     if (this.moveK < 1) {
@@ -344,12 +374,12 @@ export const Explore = {
     }
   },
 
-  isAdjacent(it: Obj | Npc | Beetle) {
+  isAdjacent(it: Obj | Npc | Beetle | Folk) {
     const p = this.player;
     if ('w' in it && 'h' in it) return p.x >= it.x - 1 && p.x <= it.x + it.w && p.y >= it.y - 1 && p.y <= it.y + it.h && !(p.x >= it.x && p.x < it.x + it.w && p.y >= it.y && p.y < it.y + it.h);
     return Math.abs(Math.round(it.x - ('tx' in it ? 0.5 : 0)) - p.x) + Math.abs(Math.round(it.y - ('tx' in it ? 0.5 : 0)) - p.y) <= ('tx' in it ? 2 : 1);
   },
-  adjacentThing(): Obj | Npc | Beetle | null {
+  adjacentThing(): Obj | Npc | Beetle | Folk | null {
     const p = this.player;
     const facing: [number, number] = p.flip ? [-1, 0] : [1, 0];
     for (const [dx, dy] of [facing, ...DIRS4]) {
@@ -364,11 +394,48 @@ export const Explore = {
     const t = this.adjacentThing();
     if (t) this.interact(t);
   },
-  interact(t: Obj | Npc | Beetle) {
+  interact(t: Obj | Npc | Beetle | Folk) {
     if (!t.talk) return;
     this.lastInteract = performance.now();
     if ('kind' in t && !('w' in t)) this.player.flip = t.x < this.player.x;
+    if ('def' in t) { this.say(t, true); return; } // житель отвечает репликой, без окна диалога
     this.onInteract(t.talk);
+  },
+
+  /** Реплика жителя пузырём над головой. talk — обратился игрок: житель останавливается и поворачивается. */
+  say(f: Folk, talk = false) {
+    f.barkI = (f.barkI + 1) % f.def.barks.length;
+    f.bark = { text: f.def.barks[f.barkI], t: 0 };
+    f.nextBark = 18 + Math.random() * 20;
+    if (talk) { f.hold = 3.5; f.flip = this.player.x < f.x; }
+  },
+
+  updateFolk(dt: number) {
+    const p = this.player;
+    for (const f of this.sceneFolk()) {
+      if (f.bark && (f.bark.t += dt) > 4.5) f.bark = null;
+      const near = Math.abs(f.x - p.x) + Math.abs(f.y - p.y);
+      // сами заговаривают, когда герой рядом
+      f.nextBark -= dt;
+      if (f.nextBark <= 0) { if (near < 6 && G.mode === 'explore') this.say(f); else f.nextBark = 3 + Math.random() * 6; }
+      if (f.hold > 0) { f.hold -= dt; f.flip = p.x < f.x; continue; }
+      if (f.path.length) {
+        const n = f.path[0], dx = n.x - f.x, dy = n.y - f.y, d = Math.hypot(dx, dy), sp = (f.def.speed ?? 1.6) * dt;
+        if (Math.abs(dx) > 0.01) f.flip = dx < 0;
+        if (d <= sp) { f.x = n.x; f.y = n.y; f.path.shift(); } else { f.x += (dx / d) * sp; f.y += (dy / d) * sp; }
+        f.step += sp;
+        if (!f.path.length) f.wait = f.def.route[f.i].wait * (0.7 + Math.random() * 0.6);
+        continue;
+      }
+      f.wait -= dt;
+      if (f.wait > 0) continue;
+      // к следующей точке маршрута
+      f.i = (f.i + 1) % f.def.route.length;
+      const st = f.def.route[f.i], sx = Math.round(f.x), sy = Math.round(f.y);
+      const reach = bfs(MW, MH, sx, sy, (x, y) => this.inScene(x, y) && !this.block[y][x] && !this.activeNpcs().some((n) => n.x === x && n.y === y), null, DIRS4);
+      if (reach.has(st.y * MW + st.x)) f.path = pathTo(reach, MW, st.x, st.y).slice(1);
+      else f.wait = 1;
+    }
   },
 
   /** Клик в экранных координатах. */
@@ -432,7 +499,17 @@ export const Explore = {
     for (const n of this.activeNpcs()) {
       const near = Math.abs(n.x - p.x) + Math.abs(n.y - p.y) < 5;
       const bob = Math.sin(t * 1.6 + n.seed) > 0.75 ? 1 : 0;
-      ents.push({ y: n.y, d: () => drawSprite(c, n.kind, n.x * T + T / 2, n.y * T + T - 1, { flip: near ? p.x < n.x : n.x > 60, bob }) });
+      // вдалеке от героя именные жители иногда оглядываются
+      const flip = near ? p.x < n.x : Math.sin(t * 0.23 + n.seed * 3.1) > 0;
+      ents.push({ y: n.y, d: () => drawSprite(c, n.kind, n.x * T + T / 2, n.y * T + T - 1, { flip, bob }) });
+    }
+    for (const f of this.sceneFolk()) {
+      if (f.x * T < cx - 40 || f.x * T > cx + VW + 40 || f.y * T < cy - 50 || f.y * T > cy + VH + 40) continue;
+      const moving = f.path.length > 0 && f.hold <= 0;
+      const st = f.def.route[f.i], working = !moving && f.hold <= 0 && !!st.work;
+      const frame = moving ? [1, 0, 3, 0][Math.floor(f.step * 3.2) % 4] : 0;
+      const bob = working ? (Math.sin(t * 5 + f.seed) > 0 ? 1 : 0) : Math.sin(t * 1.4 + f.seed) > 0.8 ? 1 : 0;
+      ents.push({ y: f.y, d: () => drawSprite(c, f.kind, f.x * T + T / 2, f.y * T + T - 1, { flip: f.flip, frame, bob }) });
     }
     this.followers.forEach((f, i) => ents.push({ y: f.ry - 0.01, d: () => drawSprite(c, G.squad[i + 1]?.look ?? f.kind, f.rx * T + T / 2, f.ry * T + T - 1, { flip: f.flip, frame: wf }) }));
     ents.push({ y: p.ry, d: () => drawSprite(c, G.squad[0]?.look ?? 'pc', p.rx * T + T / 2, p.ry * T + T - 1, { flip: p.flip, frame: wf, bob: !walking && Math.sin(t * 1.6) > 0.75 ? 1 : 0 }) });
@@ -473,7 +550,7 @@ export const Explore = {
     applyLight(c, VW, VH, lights, 0.6, [0.82, 1, 0.76]);
     v.present(out);
 
-    if (G.mode === 'explore') this.drawPrompts(out, cx, cy);
+    if (G.mode === 'explore') { this.drawBarks(out, cx, cy); this.drawPrompts(out, cx, cy); }
     if (this.banner) this.drawBanner(out);
   },
 
@@ -493,6 +570,31 @@ export const Explore = {
       c.strokeStyle = it === adj ? '#c09a52' : '#4b5838'; c.lineWidth = 1; c.strokeRect(ix - w / 2 + 0.5, iy + 0.5, w - 1, 17);
       c.fillStyle = '#e0dcc0'; c.textAlign = 'center'; c.fillText(label, ix, iy + 13); c.textAlign = 'left';
       if (it === hv) break;
+    }
+  },
+
+  /** Реплики жителей — пузыри над головой, чёткий текст поверх пиксельного мира. */
+  drawBarks(c: CanvasRenderingContext2D, cx: number, cy: number) {
+    c.font = 'italic 13px "Old Standard TT", Georgia, serif';
+    for (const f of this.sceneFolk()) {
+      if (!f.bark) continue;
+      const a = Math.min(1, f.bark.t * 5, (4.5 - f.bark.t) * 2);
+      const words = f.bark.text.split(' '), lines: string[] = [];
+      let cur = '';
+      for (const w of words) { const tst = cur ? cur + ' ' + w : w; if (c.measureText(tst).width > 230 && cur) { lines.push(cur); cur = w; } else cur = tst; }
+      lines.push(cur);
+      const w = Math.max(...lines.map((l) => c.measureText(l).width)) + 16, h = lines.length * 16 + 8;
+      const hx = (f.x * T + T / 2 - cx) * PS, hy = (f.y * T - 30 - cy) * PS;
+      const x = clamp(hx - w / 2, 6, 954 - w), y = Math.max(6, hy - h - 8);
+      c.save(); c.globalAlpha = Math.max(0, a);
+      c.fillStyle = 'rgba(14,18,11,0.92)'; c.fillRect(x, y, w, h);
+      c.strokeStyle = '#8a7a52'; c.lineWidth = 1; c.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+      // хвостик к говорящему
+      c.fillStyle = 'rgba(14,18,11,0.92)'; c.beginPath(); c.moveTo(hx - 5, y + h - 1); c.lineTo(hx + 5, y + h - 1); c.lineTo(hx, y + h + 7); c.fill();
+      c.strokeStyle = '#8a7a52'; c.beginPath(); c.moveTo(hx - 5, y + h); c.lineTo(hx, y + h + 7); c.lineTo(hx + 5, y + h); c.stroke();
+      c.fillStyle = '#e0dcc0';
+      lines.forEach((l, k) => c.fillText(l, x + 8, y + 17 + k * 16));
+      c.restore();
     }
   },
 
