@@ -9,6 +9,7 @@ import { PixelView, LW, LH, PS, PLight, applyLight, prect, ppx, pline, pellipse,
 import { miniSprite } from './sprites';
 import { hasTool } from './state';
 import { addWoundId } from './wounds';
+import { Debug } from './debug';
 
 const VW = 960, VH = 640;
 export const WW = 1920, WH = 1280;
@@ -173,6 +174,12 @@ export const World = {
   patrolNear(q: Pt, r: number) { return this.patrols.find((pt) => dist(this.patrolPos(pt), q) < r) ?? null; },
   click(mx: number, my: number) {
     const x = mx + this.cam.x, y = my + this.cam.y;
+    if (Debug.clickTp) { // отладка: мгновенный перенос в точку
+      this.party.x = this.party.tx = clamp(x, WX0 + 10, WW - 10); this.party.y = this.party.ty = clamp(y, 10, WH - 10);
+      this.party.moving = false; this.pending = null; this.pendingPatrol = null;
+      this.updateLocation(); this.discover();
+      return;
+    }
     // клик по патрулю — подойти и заговорить
     const pt = this.patrolNear({ x, y: y + 8 }, 22);
     if (pt) { this.pending = null; this.pendingPatrol = pt; const q = this.patrolPos(pt); this.party.tx = q.x; this.party.ty = q.y; this.party.moving = true; return; }
@@ -204,7 +211,7 @@ export const World = {
     if (k.has('ArrowUp') || k.has('KeyW')) vy -= 1;
     if (k.has('ArrowDown') || k.has('KeyS')) vy += 1;
     let moved = 0;
-    const speed = SPEED * (onRoad(p) ? ROAD_BONUS : 1) * HOURS_PER_SEC;
+    const speed = SPEED * (onRoad(p) ? ROAD_BONUS : 1) * HOURS_PER_SEC * Debug.speed;
     if (vx || vy) {
       const n = Math.hypot(vx, vy);
       p.x = clamp(p.x + (vx / n) * speed * dt, WX0 + 10, WW - 10); p.y = clamp(p.y + (vy / n) * speed * dt, 10, WH - 10);
@@ -245,7 +252,7 @@ export const World = {
     const d = dist(b, p);
     // при патруле рядом мародёры не нападают и уходят подальше от дороги
     const patrolNear = this.nearPatrol(b, 200);
-    const chase = d < 230 && G.clock >= b.calm && !patrolNear && !this.nearPatrol(p, 220) && !LOCS.some((l) => l.kind !== 'poi' && dist(l, p) < 110);
+    const chase = !Debug.invisible && d < 230 && G.clock >= b.calm && !patrolNear && !this.nearPatrol(p, 220) && !LOCS.some((l) => l.kind !== 'poi' && dist(l, p) < 110);
     if (patrolNear) {
       const pt = this.patrols.reduce((a, q) => (dist(this.patrolPos(q), b) < dist(this.patrolPos(a), b) ? q : a));
       const pp = this.patrolPos(pt), a = Math.atan2(b.y - pp.y, b.x - pp.x);
@@ -279,7 +286,7 @@ export const World = {
       }
       const d = dist(g, p);
       g.seen = d < 320;
-      const chase = d < 190 && G.clock >= g.calm && inFront(p);
+      const chase = !Debug.invisible && d < 190 && G.clock >= g.calm && inFront(p);
       if (chase) { g.tx = p.x; g.ty = p.y; }
       else if (dist(g, { x: g.tx, y: g.ty }) < 4) {
         for (let k = 0; k < 8; k++) {

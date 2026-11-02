@@ -5,7 +5,7 @@
 import './style.css';
 import { G, resetGame } from './state';
 import { Explore } from './explore';
-import { World, clockText } from './worldmap';
+import { World, clockText, LOCS } from './worldmap';
 import { Combat, CT } from './combat';
 import { Dialog, refreshHud, exploreHint, toast, combatShow, combatLog, combatPanel, screen, hideScreen, openSquad, closeSquad, squadOpen } from './ui';
 import { setPcStyle, applyEquipLooks } from './gfx';
@@ -13,6 +13,7 @@ import { Inventory } from './inventory';
 import { Sheet } from './sheet';
 import { Music } from './music';
 import { Pause } from './pause';
+import { Debug } from './debug';
 import { ProsthShop } from './prosthshop';
 import { OccultMenu } from './occultmenu';
 import { hasProsth, type Shop } from './prosthetics';
@@ -104,6 +105,20 @@ Explore.onLocation = () => refreshHud();
 Explore.onExit = (scene) => toWorld(scene);
 World.onArrive = (l) => Dialog.start(l.talk);
 World.onEncounter = () => Dialog.start('enc_band');
+// ---------------------------------------------------------------- отладка (F2)
+Debug.load();
+Debug.places = LOCS.map((l) => ({ id: l.id, name: l.name, group: l.x < -900 ? 'Земли баронессы' : l.x < 120 ? 'Поле сражений' : 'Земли барона' }));
+Debug.onTeleport = (id) => {
+  if (G.mode === 'combat' || G.mode === 'title' || G.mode === 'create') { toast('Телепорт — только на карте или в сцене'); return; }
+  const l = LOCS.find((x) => x.id === id)!;
+  if (Dialog.active) Dialog.close();
+  if (l.kind === 'poi') G.flags['found_' + l.id] = true;
+  toWorld();
+  World.party.x = World.party.tx = l.x; World.party.y = World.party.ty = l.y + (l.kind === 'fort' ? 60 : 30);
+  World.party.moving = false; World.pending = null;
+  World.updateLocation(); World.discover(); refreshHud();
+  toast(`Телепорт: ${l.name}`);
+};
 World.onPatrol = (owner) => Dialog.start(owner === 'baroness' ? 'enc_bpatrol' : 'enc_patrol');
 World.onDiscover = (l) => toast(`Замечено: ${l.name}`);
 World.onDead = () => Dialog.start('enc_dead');
@@ -122,6 +137,7 @@ function fleshCare() {
 }
 World.onDay = () => { // раз в сутки отряд ест
   fleshCare();
+  if (Debug.noHunger) { refreshHud(); return; } // отладка: голода нет
   if (G.supplies.ration > 0) { G.supplies.ration--; toast(`${clockText()}: отряд съел паёк (осталось ${G.supplies.ration})`); }
   else { G.squad.forEach((s) => (s.hp = Math.max(1, s.hp - 2))); Dialog.start('hunger'); }
   refreshHud();
@@ -191,6 +207,7 @@ function toCanvas(e: MouseEvent) {
 const roaming = () => G.mode === 'explore' || G.mode === 'world';
 
 window.addEventListener('keydown', (e) => {
+  if (e.code === 'F2') { e.preventDefault(); if (G.mode !== 'title' && G.mode !== 'create') Debug.toggle(); return; }
   if (e.code === 'KeyM' && G.mode !== 'create') { toast(Music.toggle() ? 'Музыка выключена [M]' : 'Музыка включена [M]'); if (Pause.open) Pause.render(); return; }
   if (Pause.open) { if (e.code === 'Escape') Pause.close(); return; }
   // Esc вне окон — меню паузы (в бою: сначала отменяет выбранное действие)
@@ -299,5 +316,5 @@ requestAnimationFrame(frame);
 
 // отладка: ?debug в адресе даёт доступ к состоянию из консоли
 if (new URLSearchParams(location.search).has('debug')) {
-  (window as any).morgulis = { G, Combat, Explore, World, Dialog, startBattle, newGame, newCharacter, openSquad, Inventory, Trade, Sheet, Music, Pause, ProsthShop, OccultMenu, toScene, toWorld };
+  (window as any).morgulis = { G, Combat, Explore, World, Dialog, startBattle, newGame, newCharacter, openSquad, Inventory, Trade, Sheet, Music, Pause, ProsthShop, OccultMenu, Debug, toScene, toWorld };
 }

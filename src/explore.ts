@@ -10,6 +10,7 @@ import { PixelView, applyLight, PLight, T, LW, LH, PS, ppx } from './px';
 import { drawSprite, beetleSprite } from './sprites';
 import { paintTile, paintRail, objSprite, drawPumpjack, drawCampfire } from './pxworld';
 import { FOLK, FolkDef } from './folk';
+import { Debug } from './debug';
 
 /** Клетка на экране (низкое разрешение ×2). */
 export const ET = T * PS;
@@ -562,7 +563,7 @@ export const Explore = {
     if (this.banner) { this.banner.t += dt; if (this.banner.t > 3) this.banner = null; }
     const p = this.player;
     if (this.moveK < 1) {
-      this.moveK = Math.min(1, this.moveK + dt / 0.14);
+      this.moveK = Math.min(1, this.moveK + (dt * Debug.speed) / 0.14);
       for (const w of [p, ...this.followers]) { w.rx = lerp(w.fx, w.x, this.moveK); w.ry = lerp(w.fy, w.y, this.moveK); }
       if (this.moveK < 1) return;
       this.updateLocation();
