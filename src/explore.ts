@@ -26,6 +26,7 @@ interface Obj {
   sprite?: HTMLCanvasElement; sx?: number; sy?: number;     // спрайт и его смещение
   lights?: { x: number; y: number; r: number; color: string; a?: number }[];
   dynamic?: boolean;
+  boarded?: boolean;   // заколоченный дом: окна тёмные, забиты досками
 }
 interface Npc { id: string; name: string; kind: string; x: number; y: number; talk: string; cond?: () => boolean; seed: number; face?: number }
 interface Beetle { id: string; x: number; y: number; tx: number; ty: number; pen: { x0: number; y0: number; x1: number; y1: number } | null; dir: number; seed: number; wait: number; talk: string; name: string; scale: number; homeward?: boolean }
@@ -33,7 +34,7 @@ interface Beetle { id: string; x: number; y: number; tx: number; ty: number; pen
 interface Folk {
   def: FolkDef; id: string; name: string; kind: string; talk: string;
   x: number; y: number; i: number; path: Pt[]; wait: number; flip: boolean; step: number;
-  bark: { text: string; t: number } | null; barkI: number; nextBark: number; hold: number; seed: number;
+  bark: { text: string; t: number } | null; barkI: number; nextBark: number; hold: number; seed: number; blockT: number;
 }
 interface Walker { kind: string; x: number; y: number; rx: number; ry: number; fx: number; fy: number; flip: boolean }
 
@@ -41,12 +42,12 @@ interface Walker { kind: string; x: number; y: number; rx: number; ry: number; f
 const AREAS: { name: string; x0: number; y0: number; x1: number; y1: number }[] = [
   { name: 'Разъезд Эшфорд', x0: 6, y0: 55, x1: 37, y1: 63 },
   { name: 'Эшфорд', x0: 5, y0: 31, x1: 37, y1: 57 },
-  { name: 'Ричморд', x0: 57, y0: 5, x1: 93, y1: 31 },
+  { name: 'Ричморд', x0: 57, y0: 5, x1: 93, y1: 39 },
 ];
 /** Локальные сцены — участки большой карты. Уход за край сцены возвращает на глобальную карту. */
 export const SCENES: Record<string, { name: string; x0: number; y0: number; x1: number; y1: number; entry: Pt }> = {
   ashford:  { name: 'Эшфорд', x0: 3, y0: 30, x1: 37, y1: 63, entry: { x: 35, y: 43 } },
-  richmord: { name: 'Ричморд', x0: 55, y0: 3, x1: 94, y1: 31, entry: { x: 57, y: 20 } },
+  richmord: { name: 'Ричморд', x0: 55, y0: 3, x1: 94, y1: 39, entry: { x: 57, y: 20 } },
   fenmor:   { name: 'Фенмор', x0: 1, y0: 1, x1: 36, y1: 28, entry: { x: 19, y: 27 } },
   fortgate: { name: 'Ворота форта', x0: 86, y0: 38, x1: 103, y1: 66, entry: { x: 88, y: 49 } },
 };
@@ -88,7 +89,7 @@ export const Explore = {
 
     // деревни и загоны
     fill('g', 5, 31, 33, 26);
-    fill('g', 57, 5, 36, 26);
+    fill('g', 57, 5, 36, 34); // Ричморд с нижней улицей
     // Фенмор: болотистая низина с грибными грядками
     fill('m', 2, 2, 34, 26);
     for (const [x, y, rr] of [[3, 7, 1], [32, 7, 2], [32, 23, 2], [15, 25, 1], [26, 27, 1]]) blob('x', x, y, rr);
@@ -109,6 +110,7 @@ export const Explore = {
     };
     road([[0, 43], [22, 43], [40, 44], [56, 45], [72, 47], [88, 50], [101, 50]]);
     road([[54, 45], [54, 30], [58, 24], [60, 20], [92, 20]]);
+    road([[54, 32], [92, 32]]); // нижняя улица Ричморда
     road([[22, 43], [22, 57]]);
     road([[22, 43], [22, 30]]);
     road([[19, 28], [19, 14]]);
@@ -166,6 +168,19 @@ export const Explore = {
     for (const [x, y] of [[59, 11], [59, 15], [75, 8], [90, 13]]) B('feed', x, y, 2, 2, { name: 'Куча корма', talk: 'feed' });
     B('chitin', 78, 27, 2, 1, { name: 'Пустые панцири', talk: 'chitinpile' });
     for (const [x, y] of [[62, 21], [76, 21], [88, 21]]) B('lamp', x, y, 1, 1, { name: 'Фонарь', talk: 'lamp' });
+    // нижняя улица: жилые дома вперемешку с брошенными — многие уехали в форт
+    B('house', 59, 27, 4, 3, { name: 'Дом жуковода', talk: 'house_richmord2' });
+    B('house', 66, 27, 4, 3, { name: 'Заколоченный дом', talk: 'rich_empty', boarded: true });
+    B('farm', 82, 27, 4, 3, { name: 'Дом скорняка', talk: 'house_tanner' });
+    B('ruin', 88, 27, 4, 3, { name: 'Обгорелый дом', talk: 'rich_ruin' });
+    B('farm', 57, 34, 4, 3, { name: 'Дом кормовщиков', talk: 'house_richmord2' });
+    B('house', 63, 34, 4, 3, { name: 'Пустой дом', talk: 'rich_empty2', boarded: true });
+    B('ruin', 69, 34, 4, 3, { name: 'Развалины', talk: 'rich_ruin2' });
+    B('farm', 75, 34, 4, 3, { name: 'Дом старика Тома', talk: 'house_tom' });
+    B('house', 81, 34, 4, 3, { name: 'Заколоченный дом', talk: 'rich_empty', boarded: true });
+    B('house', 87, 34, 5, 3, { name: 'Бывший трактир', talk: 'rich_inn', boarded: true });
+    for (const [x, y] of [[63, 31], [74, 31], [86, 31]]) B('lamp', x, y, 1, 1, { name: 'Фонарь', talk: 'lamp' });
+    for (const [x, y] of [[64, 29], [80, 37], [92, 31]]) B('barrel', x, y, 1, 1);
 
     // Фенмор
     B('adit', 25, 2, 6, 3, { name: 'Грибная штольня', talk: 'adit' });
@@ -235,11 +250,12 @@ export const Explore = {
     }
 
     // ---------------- фоновые жители (точки маршрутов прижимаются к ближайшей свободной клетке)
-    this.folk = FOLK.map((d, k) => {
-      for (const st of d.route) { const f = this.freeNear(st.x, st.y); st.x = f.x; st.y = f.y; }
+    this.folk = [];
+    this.folk = FOLK.map((d0, k) => {
+      const d: FolkDef = { ...d0, route: d0.route.map((st) => ({ ...st, ...this.freeNear(st.x, st.y) })) };
       const s0 = d.route[0];
       return { def: d, id: d.id, name: d.name, kind: d.kind, talk: 'folk:' + d.id, x: s0.x, y: s0.y, i: 0, path: [], wait: s0.wait * r(), flip: r() < 0.5, step: 0,
-        bark: null, barkI: Math.floor(r() * d.barks.length), nextBark: 4 + r() * 12, hold: 0, seed: k * 2.3 };
+        bark: null, barkI: Math.floor(r() * d.barks.length), nextBark: 4 + r() * 12, hold: 0, seed: k * 2.3, blockT: 0 };
     });
 
     // ---------------- игрок
@@ -295,7 +311,28 @@ export const Explore = {
   },
   blocked(x: number, y: number) {
     if (!this.inMap(x, y)) return true;
-    return this.block[y][x] || this.activeNpcs().some((n) => n.x === x && n.y === y);
+    return this.block[y][x] || this.activeNpcs().some((n) => n.x === x && n.y === y) || this.folkAt(x, y);
+  },
+  /** Клетку занимает житель — стоит на ней или уже шагает в неё. */
+  folkAt(x: number, y: number, self?: Folk) {
+    return this.sceneFolk().some((f) => f !== self && ((Math.round(f.x) === x && Math.round(f.y) === y) || (f.path.length > 0 && f.path[0].x === x && f.path[0].y === y && Math.hypot(f.path[0].x - f.x, f.path[0].y - f.y) < 0.95)));
+  },
+  /** Клетки героя и отряда (во время шага — обе: откуда и куда). */
+  heroAt(x: number, y: number) {
+    for (const w of [this.player, ...this.followers]) {
+      if (w.x === x && w.y === y) return true;
+      if (this.moveK < 1 && Math.round(w.fx) === x && Math.round(w.fy) === y) return true;
+    }
+    return false;
+  },
+  /** Проложить путь жителя к текущей точке маршрута в обход героя и других жителей. */
+  repath(f: Folk) {
+    const st = f.def.route[f.i], sx = Math.round(f.x), sy = Math.round(f.y);
+    const ok = (x: number, y: number) => this.inScene(x, y) && !this.block[y][x] && !this.activeNpcs().some((n) => n.x === x && n.y === y) && !this.heroAt(x, y) && !this.folkAt(x, y, f);
+    const reach = bfs(MW, MH, sx, sy, ok, null, DIRS4);
+    if (reach.has(st.y * MW + st.x)) { f.path = pathTo(reach, MW, st.x, st.y).slice(1); return true; }
+    f.path = [];
+    return false;
   },
   areaAt(x: number, y: number): string {
     const a = AREAS.find((a) => x >= a.x0 && x <= a.x1 && y >= a.y0 && y <= a.y1);
@@ -420,7 +457,16 @@ export const Explore = {
       if (f.nextBark <= 0) { if (near < 6 && G.mode === 'explore') this.say(f); else f.nextBark = 3 + Math.random() * 6; }
       if (f.hold > 0) { f.hold -= dt; f.flip = p.x < f.x; continue; }
       if (f.path.length) {
-        const n = f.path[0], dx = n.x - f.x, dy = n.y - f.y, d = Math.hypot(dx, dy), sp = (f.def.speed ?? 1.6) * dt;
+        const n = f.path[0];
+        // впереди герой или другой житель — подождать, потом обойти
+        const entering = Math.hypot(n.x - f.x, n.y - f.y) > 0.95;
+        if (entering && (this.heroAt(n.x, n.y) || this.folkAt(n.x, n.y, f))) {
+          f.blockT += dt;
+          if (f.blockT > 1.2) { f.blockT = 0; if (!this.repath(f)) f.wait = 1 + Math.random(); }
+          continue;
+        }
+        f.blockT = 0;
+        const dx = n.x - f.x, dy = n.y - f.y, d = Math.hypot(dx, dy), sp = (f.def.speed ?? 1.6) * dt;
         if (Math.abs(dx) > 0.01) f.flip = dx < 0;
         if (d <= sp) { f.x = n.x; f.y = n.y; f.path.shift(); } else { f.x += (dx / d) * sp; f.y += (dy / d) * sp; }
         f.step += sp;
@@ -431,10 +477,7 @@ export const Explore = {
       if (f.wait > 0) continue;
       // к следующей точке маршрута
       f.i = (f.i + 1) % f.def.route.length;
-      const st = f.def.route[f.i], sx = Math.round(f.x), sy = Math.round(f.y);
-      const reach = bfs(MW, MH, sx, sy, (x, y) => this.inScene(x, y) && !this.block[y][x] && !this.activeNpcs().some((n) => n.x === x && n.y === y), null, DIRS4);
-      if (reach.has(st.y * MW + st.x)) f.path = pathTo(reach, MW, st.x, st.y).slice(1);
-      else f.wait = 1;
+      if (!this.repath(f)) f.wait = 1;
     }
   },
 

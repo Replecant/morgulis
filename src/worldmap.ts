@@ -222,7 +222,7 @@ export const World = {
 
     // подписи (чёткий текст поверх пиксельного слоя)
     for (const l of LOCS) {
-      const x = l.x - cx, y = l.y - cy + (l.kind === 'fort' ? 110 : l.kind === 'village' ? 44 : 30);
+      const x = l.x - cx, y = l.y - cy + (l.kind === 'fort' ? 110 : l.id === 'richmord' ? 70 : l.kind === 'village' ? 44 : 30);
       if (x < -100 || x > VW + 100 || y < -40 || y > VH + 40) continue;
       const hv = this.hover === l || this.pending === l;
       c.font = l.kind === 'poi' ? 'italic 13px "Old Standard TT", serif' : `bold ${l.kind === 'fort' ? 20 : 16}px "Playfair Display SC", serif`;
@@ -382,6 +382,8 @@ function renderBackground(): HTMLCanvasElement {
   }
   // дороги
   for (const rd of ROADS) { const pr = pts(rd); thick(pr, '#26221a', 6); thick(pr, '#6a604a', 4); thick(pr, '#7e7458', 2, [2, 5]); }
+  // атмосферные руины — без подписей и событий
+  drawRuins(c, r);
   // значки мест
   for (const l of LOCS) drawLocIcon(c, l, r);
   // края региона тонут во мгле — растровое затемнение
@@ -419,6 +421,105 @@ function hut(s: CanvasRenderingContext2D, x: number, y: number, roof = '#3a3e48'
   prect(s, x + 6, y + 7, 2, 4, '#2a2018');
 }
 
+/** Разрушенный домик 11×11: стены с провалами, остатки крыши, пустые окна. */
+function ruinHut(s: CanvasRenderingContext2D, x: number, y: number, wall = '#4e4636', roof = '#33353a') {
+  prect(s, x + 1, y + 5, 9, 6, wall); prect(s, x + 9, y + 5, 1, 6, shade(wall, -0.3));
+  for (let k = 0; k < 3; k++) prect(s, x + k, y + 5 - k, 5 - k, 1, roof);       // уцелела левая половина крыши
+  ppx(s, x + 6, y + 5, wall); ppx(s, x + 8, y + 6, '#0c0c0a');                  // зубчатый верх стены
+  prect(s, x + 2, y + 7, 2, 2, '#0c0c0a'); prect(s, x + 6, y + 7, 2, 4, '#0c0c0a'); // пустые проёмы
+  ppx(s, x + 10, y + 10, shade(wall, -0.2)); ppx(s, x + 11, y + 10, shade(wall, -0.35)); // обломки
+}
+
+const RUINS: { kind: string; x: number; y: number }[] = [
+  { kind: 'farm', x: 620, y: 650 },
+  { kind: 'chapel', x: 1490, y: 455 },
+  { kind: 'factory', x: 300, y: 1010 },
+  { kind: 'hamlet', x: 1250, y: 1120 },
+  { kind: 'tower', x: 1610, y: 650 },
+  { kind: 'railcar', x: 560, y: 935 },
+  { kind: 'wall', x: 980, y: 210 },
+  { kind: 'farm', x: 130, y: 460 },
+  { kind: 'tank', x: 1760, y: 1150 },
+  { kind: 'wall', x: 860, y: 1110 },
+  { kind: 'tower', x: 160, y: 820 },
+];
+
+function drawRuins(c: CanvasRenderingContext2D, r: () => number) {
+  const stone = '#5e5a50', stoneD = '#3e3b34', brick = '#5a3e30', brickD = '#3a2820', dark = '#0c0c0a';
+  for (const ru of RUINS) {
+    const x = Math.round(ru.x / 2), y = Math.round(ru.y / 2);
+    switch (ru.kind) {
+      case 'farm': // заброшенная усадьба: дом, сарай без крыши, повалившийся забор
+        stamp(c, x, y + 8, 34, 16, (s) => {
+          ruinHut(s, 1, 3, '#55503f');
+          prect(s, 15, 8, 9, 6, '#4a4234'); prect(s, 16, 9, 7, 5, dark); prect(s, 15, 7, 3, 1, '#4a4234'); prect(s, 21, 6, 3, 2, '#4a4234'); // сарай
+          for (let k = 0; k < 8; k++) if (k !== 3 && k !== 6) prect(s, 25 + k, 11 + (k % 3 === 0 ? 1 : 0), 1, 3 - (k % 2), '#4e4030'); // забор
+        });
+        break;
+      case 'chapel': // заброшенная часовня с обвалившимся шпилем
+        stamp(c, x, y + 10, 22, 28, (s) => {
+          prect(s, 3, 14, 15, 13, stone); prect(s, 16, 14, 2, 13, stoneD);
+          for (let k = 0; k < 6; k++) prect(s, 3 + k, 14 - k, 15 - k * 2, 1, k === 2 ? shade(stone, 0.2) : stoneD); // фронтон
+          prect(s, 9, 2, 4, 7, stone); prect(s, 10, 0, 2, 2, stone); prect(s, 12, 3, 1, 6, stoneD); // обломок башенки
+          prect(s, 7, 4, 1, 1, stoneD); ppx(s, 6, 6, stoneD);
+          prect(s, 9, 18, 3, 5, dark); ppx(s, 10, 17, dark);                               // стрельчатое окно
+          prect(s, 5, 23, 3, 4, dark); prect(s, 14, 21, 2, 2, dark);                        // пролом
+          prect(s, 18, 25, 3, 2, stoneD); ppx(s, 1, 26, stoneD); ppx(s, 2, 25, stone);      // осыпь
+        });
+        break;
+      case 'factory': // мёртвый завод: пилообразная крыша с провалами, обломанная труба
+        stamp(c, x, y + 8, 44, 34, (s) => {
+          prect(s, 2, 18, 34, 14, brick); prect(s, 2, 18, 34, 1, brickD);
+          for (let k = 0; k < 5; k++) { if (k === 2) continue; for (let t = 0; t < 5; t++) prect(s, 2 + k * 7 + t, 17 - t, 7 - t, 1, '#3a3a3e'); }
+          for (let k = 0; k < 6; k++) prect(s, 5 + k * 5, 23, 3, 4, k === 3 ? '#2a2018' : dark);  // окна, одно заколочено
+          prect(s, 16, 18, 6, 3, dark);                                                       // провал крыши
+          prect(s, 37, 4, 5, 28, brick); prect(s, 41, 4, 1, 28, brickD); prect(s, 37, 4, 2, 1, brickD); ppx(s, 40, 3, brick); // труба
+          for (let k = 0; k < 4; k++) prect(s, 37, 8 + k * 6, 5, 1, brickD);
+          prect(s, 0, 31, 44, 1, brickD); ppx(s, 36, 30, brick);
+        });
+        break;
+      case 'hamlet': // брошенный хутор
+        stamp(c, x, y + 10, 40, 22, (s) => {
+          ruinHut(s, 1, 2, '#544c3c'); ruinHut(s, 15, 9, '#4e4636'); ruinHut(s, 27, 3, '#585040');
+          prect(s, 12, 18, 2, 2, stoneD); ppx(s, 26, 20, stoneD); prect(s, 3, 19, 3, 1, '#4e4030');
+        });
+        break;
+      case 'tower': // разрушенная сторожевая башня
+        stamp(c, x, y + 6, 14, 30, (s) => {
+          prect(s, 3, 6, 8, 23, stone); prect(s, 9, 6, 2, 23, stoneD);
+          prect(s, 3, 4, 2, 2, stone); prect(s, 7, 3, 2, 3, stone); prect(s, 10, 5, 1, 1, stoneD); // зубчатый обломанный верх
+          prect(s, 5, 10, 2, 3, dark); prect(s, 6, 18, 2, 3, dark); prect(s, 4, 25, 3, 4, dark);
+          for (let k = 0; k < 4; k++) prect(s, 3, 9 + k * 6, 8, 1, stoneD);
+          prect(s, 11, 26, 3, 3, stoneD); ppx(s, 1, 28, stone);
+        });
+        break;
+      case 'railcar': // опрокинутый вагон у насыпи
+        stamp(c, x, y + 5, 28, 14, (s) => {
+          prect(s, 2, 2, 22, 8, '#4a3a2c'); prect(s, 2, 2, 22, 1, '#5e4a36'); prect(s, 2, 9, 22, 1, '#2e241c');
+          for (let k = 0; k < 4; k++) prect(s, 5 + k * 5, 4, 3, 3, dark);
+          for (const wx of [5, 19]) { prect(s, wx, 10, 4, 3, '#1c1c1a'); ppx(s, wx + 1, 11, '#5a5a54'); } // колёса кверху
+          prect(s, 24, 5, 3, 1, '#3a3028'); ppx(s, 0, 11, '#3a3028');
+        });
+        break;
+      case 'wall': // остатки каменной стены
+        stamp(c, x, y + 4, 34, 12, (s) => {
+          const hs = [6, 8, 7, 4, 0, 0, 3, 6, 9, 8, 5, 2, 0, 4, 7, 6, 3];
+          hs.forEach((h, k) => { if (h) { prect(s, k * 2, 11 - h, 2, h, k % 3 ? stone : stoneD); ppx(s, k * 2, 11 - h, shade(stone, 0.2)); } });
+          prect(s, 9, 9, 3, 2, stoneD); prect(s, 25, 10, 2, 1, stoneD);
+        });
+        break;
+      case 'tank': // подбитый танк
+        stamp(c, x, y + 6, 30, 14, (s) => {
+          prect(s, 2, 7, 24, 6, '#2e2e2a'); for (let k = 0; k < 6; k++) prect(s, 3 + k * 4, 9, 2, 2, '#4a4a44'); // гусеница
+          prect(s, 4, 3, 19, 5, '#4a4a3c'); prect(s, 4, 3, 19, 1, '#5e5e4c');
+          prect(s, 9, 0, 8, 4, '#44443a'); prect(s, 17, 1, 9, 1, '#3a3a32'); ppx(s, 26, 2, '#3a3a32');   // башня, ствол опущен
+          prect(s, 12, 4, 3, 2, dark); prect(s, 27, 11, 2, 2, '#2e2e2a');                              // пробоина, слетевший трак
+        });
+        break;
+    }
+  }
+}
+
 function drawLocIcon(c: CanvasRenderingContext2D, l: Loc, r: () => number) {
   const x = Math.round(l.x / 2), y = Math.round(l.y / 2);
   switch (l.id) {
@@ -431,7 +532,7 @@ function drawLocIcon(c: CanvasRenderingContext2D, l: Loc, r: () => number) {
       });
       break;
     case 'richmord':
-      stamp(c, x, y + 14, 56, 36, (s) => {
+      stamp(c, x, y + 26, 58, 48, (s) => {
         const pen = (px: number, py: number) => {
           prect(s, px, py, 22, 11, '#3a3428'); prect(s, px + 1, py + 1, 20, 9, '#4e4636');
           for (let k = 0; k < 22; k += 3) { prect(s, px + k, py - 2, 1, 2, '#5a4a32'); ppx(s, px + k, py + 11, '#5a4a32'); }
@@ -439,6 +540,8 @@ function drawLocIcon(c: CanvasRenderingContext2D, l: Loc, r: () => number) {
         };
         pen(1, 3); pen(32, 4);
         hut(s, 4, 22, '#4e3e30', '#6a5a44', false); hut(s, 18, 20, '#4e3e30', '#7a6650', true); hut(s, 32, 23, '#3a3e48', '#6a5a44', true); hut(s, 44, 20, '#4e3e30', '#6a5a44', true);
+        // нижняя улица — половина домов брошена
+        hut(s, 2, 34, '#3a3e48', '#5a4c3a', false); hut(s, 13, 35, '#4e3e30', '#6a5a44', true); ruinHut(s, 24, 34); hut(s, 35, 35, '#3a3e48', '#6a5a44', true); hut(s, 46, 34, '#4e3e30', '#5a4c3a', false);
       });
       break;
     case 'fenmor':

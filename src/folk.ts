@@ -69,6 +69,15 @@ export const FOLK: FolkDef[] = [
     ],
   },
   {
+    id: 'housewife', name: 'Хозяйка', kind: 'townswoman', scene: 'richmord',
+    route: [{ x: 64, y: 31, wait: 8, work: true }, { x: 71, y: 31, wait: 5 }, { x: 61, y: 33, wait: 6, work: true }, { x: 79, y: 33, wait: 4 }],
+    barks: [
+      'На нашей улице жило восемь семей. Теперь три.',
+      'Соседи оставили ключ — просили присмотреть за домом. Второй год присматриваю.',
+      'Бельё сушить — одна забота: чтоб жуками не пропахло.',
+    ],
+  },
+  {
     id: 'oldman', name: 'Старик у изгороди', kind: 'oldman', scene: 'richmord', speed: 0.9,
     route: [{ x: 75, y: 13, wait: 14 }, { x: 75, y: 17, wait: 9 }],
     barks: [

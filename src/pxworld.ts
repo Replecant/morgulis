@@ -74,7 +74,7 @@ const TOP: Record<string, number> = {
   sign: 16, crater: 0, bones: 0, wallruin: 14, skeleton: 14, milestone: 14, lorry: 12,
 };
 
-export interface ObjLike { kind: string; x: number; y: number; w: number; h: number; seed: number; ruinKind?: string }
+export interface ObjLike { kind: string; x: number; y: number; w: number; h: number; seed: number; ruinKind?: string; boarded?: boolean }
 
 /** Спрайт объекта: холст + смещение + источники света (в пикселях относительно левого верхнего угла клетки). */
 export function objSprite(o: ObjLike, neighbors?: { horizFence: boolean }) {
@@ -109,20 +109,22 @@ export function objSprite(o: ObjLike, neighbors?: { horizFence: boolean }) {
       R(0, wy, 1, wallH, shade(wall, 0.15));
       // окна
       const nWin = Math.max(1, Math.floor(o.w / 2));
-      const lit = !ruined && o.kind !== 'slaughter' && r() < 0.8;
+      const lit = !ruined && !o.boarded && o.kind !== 'slaughter' && r() < 0.8;
       for (let i = 0; i < nWin; i++) {
         const cx = Math.round(((i + 0.5) * W) / nWin + (i === 0 ? -8 : 8)), cy = wy + 4;
         const on = lit && (i === 0 || r() < 0.5);
         R(cx - 3, cy, 7, 6, ruined ? '#0a0b0a' : on ? AMBER : '#1a1c20');
         if (!ruined) { R(cx, cy, 1, 6, '#2a1e12'); R(cx - 3, cy + 2, 7, 1, '#2a1e12'); if (on) R(cx - 2, cy + 3, 2, 2, '#f8d888'); }
         else { L(cx - 3, cy, cx + 3, cy + 5, '#5a4028'); L(cx + 3, cy, cx - 3, cy + 5, '#5a4028'); }
+        if (o.boarded) { R(cx - 4, cy + 1, 9, 2, '#6a5034'); R(cx - 4, cy + 4, 9, 1, '#5a4228'); P(cx - 3, cy + 1, '#8a6a44'); } // доски на окнах
         R(cx - 4, cy + 6, 9, 1, shade(wall, -0.35));
         if (on) lights.push({ x: cx, y: cy + 3, r: 22, color: '#f0b050', a: 0.8 });
       }
       // дверь
       const dx = Math.round(W / 2);
       R(dx - 3, H - 11, 7, 11, '#140e0a');
-      if (!ruined) { R(dx - 3, H - 11, 7, 1, '#3a2a1a'); P(dx + 2, H - 6, BRASS); }
+      if (o.boarded) { L(dx - 3, H - 10, dx + 3, H - 2, '#6a5034', 2); L(dx + 3, H - 10, dx - 3, H - 2, '#5a4228', 2); } // крест из досок
+      else if (!ruined) { R(dx - 3, H - 11, 7, 1, '#3a2a1a'); P(dx + 2, H - 6, BRASS); }
       else { L(dx + 4, H, dx + 9, H - 8, '#4a3622', 2); }
       // крыша
       const roofCol = { station: '#4a3430', slaughter: '#4e3e30', farm: '#5a4a2e', ruin: '#383a40' }[o.kind as string] ?? '#3a3e48';
