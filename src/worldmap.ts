@@ -28,9 +28,9 @@ export const LOCS: Loc[] = [
   { id: 'post', name: 'Разрушенный пост', kind: 'poi', x: 1150, y: 905, talk: 'poi_post', desc: 'Руины имперского поста между трактом и путями.' },
   { id: 'bones', name: 'Старые кости', kind: 'poi', x: 760, y: 430, talk: 'poi_bones', desc: 'Скелет исполинского жука.' },
   { id: 'lorry', name: 'Остов грузовика', kind: 'poi', x: 1270, y: 690, talk: 'poi_lorry', desc: 'Брошенный имперский грузовик в ложбине, в стороне от тракта.' },
-  { id: 'trenches', name: 'Старые траншеи', kind: 'poi', x: -500, y: 600, talk: 'poi_trenches', desc: 'Изрытая окопами земля старой войны.' },
+  { id: 'trenches', name: 'Старые траншеи', kind: 'poi', x: -500, y: 600, talk: 'poi_trenches', desc: 'Здесь бились бароны этих и соседних земель.' },
   { id: 'bunker', name: 'Командный блиндаж', kind: 'poi', x: -700, y: 360, talk: 'poi_bunker', desc: 'Бетонный блиндаж с заклинившей бронедверью.' },
-  { id: 'battery', name: 'Разбитая батарея', kind: 'poi', x: -260, y: 980, talk: 'poi_battery', desc: 'Опрокинутые орудия, гильзы в грязи.' },
+  { id: 'armorcar', name: 'Ржавая бронемашина', kind: 'poi', x: -260, y: 980, talk: 'poi_armorcar', desc: 'Брошенная бронемашина в воронке.' },
   { id: 'flare', name: 'Газовый факел', kind: 'poi', x: 230, y: 640, talk: 'poi_flare', desc: 'Вечный огонь над старой скважиной.' },
 ];
 const ROADS: number[][][] = [
@@ -614,7 +614,6 @@ const RUINS: { kind: string; x: number; y: number }[] = [
   { kind: 'railcar', x: 560, y: 935 },
   { kind: 'wall', x: 980, y: 210 },
   { kind: 'farm', x: 130, y: 460 },
-  { kind: 'tank', x: 1420, y: 1010 },
   { kind: 'wall', x: 860, y: 1110 },
   { kind: 'tower', x: 160, y: 820 },
 ];
@@ -683,50 +682,28 @@ function drawRuins(c: CanvasRenderingContext2D, r: () => number) {
           prect(s, 9, 9, 3, 2, stoneD); prect(s, 25, 10, 2, 1, stoneD);
         });
         break;
-      case 'tank': // подбитая сухопутная машина ранних лет: ромб с гусеницей по всему корпусу, пушка в бортовом спонсоне
-        stamp(c, x, y + 7, 34, 16, (s) => {
-          const tank = pixelize(34, 16, (v) => {
-            v.fillStyle = '#26261f'; v.beginPath(); v.moveTo(1, 12); v.lineTo(6, 2); v.lineTo(25, 2); v.lineTo(33, 9); v.lineTo(28, 15); v.lineTo(4, 15); v.closePath(); v.fill(); // гусеница по контуру
-            v.fillStyle = '#56523f'; v.beginPath(); v.moveTo(4, 11.5); v.lineTo(7.5, 4); v.lineTo(24, 4); v.lineTo(30, 9); v.lineTo(26.5, 13); v.lineTo(6, 13); v.closePath(); v.fill(); // борт
-          });
-          s.drawImage(tank, 0, 0);
-          for (let k = 0; k < 7; k++) ppx(s, 6 + k * 3, 2, '#3e3e34');                  // траки сверху
-          for (let k = 0; k < 6; k++) ppx(s, 8 + k * 3, 6, '#6e6a52');                  // заклёпки
-          prect(s, 12, 8, 7, 4, '#46432f'); prect(s, 12, 8, 7, 1, '#625e48');            // спонсон
-          prect(s, 19, 9, 6, 1, '#3a3a30'); ppx(s, 25, 10, '#3a3a30');                   // короткий ствол, опущен
-          prect(s, 7, 7, 3, 3, dark); ppx(s, 10, 8, dark);                                // пробоина
-          prect(s, 31, 14, 3, 1, '#26261f'); ppx(s, 33, 13, '#26261f');                   // слетевшие траки
-        });
-        break;
     }
   }
 }
 
 type Thick = (poly: number[][], col: string, w: number, dash?: [number, number]) => void;
 
-/** Полевое орудие на колёсах со спицами (ранних лет). */
-function fieldGun(s: CanvasRenderingContext2D, x: number, y: number, tilt = 0) {
-  pline(s, x + 2, y + 3, x + 13, y - 2 + tilt, '#3a3a32', 2);                 // ствол
-  prect(s, x + 3, y - 1, 5, 5, '#4e4c40'); prect(s, x + 3, y - 1, 5, 1, '#62604e'); // щит
-  pline(s, x + 4, y + 4, x - 3, y + 7, '#4a3a26', 2);                          // станина
-  pellipse(s, x + 5, y + 6, 3, 3, '#2e2416'); ppx(s, x + 5, y + 6, '#8a7a50');   // колесо со спицами
-  ppx(s, x + 3, y + 6, '#5a4a30'); ppx(s, x + 7, y + 6, '#5a4a30'); ppx(s, x + 5, y + 4, '#5a4a30'); ppx(s, x + 5, y + 8, '#5a4a30');
-}
-/** Ромбовидная сухопутная машина ранних лет: гусеница по всему корпусу, пушка в спонсоне. */
-function lozengeTank(s: CanvasRenderingContext2D, tiltDown = false) {
-  const t = pixelize(34, 16, (v) => {
-    if (tiltDown) { v.translate(17, 8); v.rotate(0.18); v.translate(-17, -8); }
-    v.fillStyle = '#26261f'; v.beginPath(); v.moveTo(1, 12); v.lineTo(6, 2); v.lineTo(25, 2); v.lineTo(33, 9); v.lineTo(28, 15); v.lineTo(4, 15); v.closePath(); v.fill();
-    v.fillStyle = '#56523f'; v.beginPath(); v.moveTo(4, 11.5); v.lineTo(7.5, 4); v.lineTo(24, 4); v.lineTo(30, 9); v.lineTo(26.5, 13); v.lineTo(6, 13); v.closePath(); v.fill();
-    v.fillStyle = '#46432f'; v.fillRect(12, 8, 7, 4); v.fillStyle = '#3a3a30'; v.fillRect(19, 9, 6, 1.2);
-  });
-  s.drawImage(t, 0, 0);
+/** Ржавая бронемашина: клёпаный короб на колёсах со спицами, маленькая башенка с пулемётом. */
+function armoredCar(s: CanvasRenderingContext2D, x: number, y: number, flip = false) {
+  const X = (v: number) => (flip ? x + 22 - v : x + v);
+  const R = (a: number, b: number, w: number, h: number, col: string) => prect(s, flip ? x + 22 - a - w + 1 : x + a, y + b, w, h, col);
+  R(1, 4, 20, 6, '#5a3e28'); R(1, 4, 20, 1, '#7a5638');                    // корпус
+  R(17, 5, 4, 3, '#4e3622'); R(21, 6, 1, 2, '#3a2a1a');                    // скошенный нос, решётка
+  R(7, 1, 7, 3, '#4e3622'); R(7, 1, 7, 1, '#6e4e32'); R(14, 2, 4, 1, '#2e2418'); // башенка, ствол пулемёта
+  for (const k of [3, 7, 11, 15, 19]) ppx(s, X(k), y + 6, '#8a6a44');        // заклёпки
+  R(4, 7, 3, 1, '#0c0c0a'); R(12, 7, 3, 1, '#0c0c0a');                     // смотровые щели
+  for (const k of [2, 9, 16]) ppx(s, X(k), y + 5, '#9a5a2a');               // рыжая ржавчина
+  for (const wx of [5, 17]) { pellipse(s, X(wx), y + 11, 2, 2, '#141210'); ppx(s, X(wx), y + 11, '#6a5a40'); }
 }
 
 /** Старый фронт к западу от Эшфорда: линии траншей, проволока, воронки, остовы техники, могилы. */
 function drawWarZone(c: CanvasRenderingContext2D, r: () => number, thick: Thick) {
   const X0 = WX0 / 2 + 10, X1 = FRONT_X / 2, Y0 = 30, Y1 = BH - 30;
-  const dark = '#0c0c0a';
   // густые воронки, часть залита мутной водой
   for (let i = 0; i < 200; i++) {
     const x = Math.round(X0 + r() * (X1 - X0)), y = Math.round(Y0 + r() * (Y1 - Y0)), sz = 2 + Math.round(r() * 5);
@@ -776,27 +753,9 @@ function drawWarZone(c: CanvasRenderingContext2D, r: () => number, thick: Thick)
     const x = gx + (k % 4) * 5, y = gy + Math.floor(k / 4) * 8;
     prect(c, x, y - 5, 1, 6, '#3a2c1e'); prect(c, x - 1, y - 7, 3, 2, '#4a4e3a'); ppx(c, x - 1, y - 7, '#62664e');
   }
-  // остовы техники
-  stamp(c, -300, 180, 22, 12, (s) => fieldGun(s, 4, 3, 2));
-  stamp(c, -90, 410, 22, 12, (s) => fieldGun(s, 4, 3, -1));
-  stamp(c, -255, 360, 34, 16, (s) => lozengeTank(s, true));               // танк, завалившийся в траншею
-  stamp(c, -350, 300, 30, 16, (s) => {                                    // упавший биплан
-    pline(s, 3, 12, 23, 5, '#6a5a3a', 3); pline(s, 4, 13, 22, 7, '#4a3e28');
-    prect(s, 9, 2, 13, 2, '#7a6a48'); prect(s, 16, 2, 2, 2, dark);          // верхнее крыло с дырой
-    prect(s, 8, 9, 12, 2, '#6a5a3c');                                       // нижнее крыло
-    pline(s, 10, 4, 10, 9, '#3a2c1e'); pline(s, 18, 4, 18, 9, '#3a2c1e');   // стойки
-    prect(s, 1, 10, 4, 4, '#5a4a30'); prect(s, 0, 9, 2, 2, '#4a3a26');      // хвост
-    pline(s, 24, 2, 26, 8, '#3a2c1e'); ppx(s, 27, 4, '#3a2c1e');            // сломанный винт
-    prect(s, 13, 5, 3, 1, '#2a2418');                                       // пустая кабина
-  });
-  stamp(c, -300, 454, 32, 14, (s) => {                                    // бронепоезд, сошедший с рельсов
-    prect(s, 1, 3, 28, 8, '#4a4a40'); prect(s, 1, 3, 28, 1, '#62624e'); prect(s, 1, 10, 28, 1, '#2e2e28');
-    for (let k = 0; k < 7; k++) ppx(s, 3 + k * 4, 5, '#7a7a66');            // заклёпки
-    for (let k = 0; k < 4; k++) prect(s, 4 + k * 6, 7, 3, 1, dark);          // бойницы
-    prect(s, 11, 0, 8, 3, '#44443a'); prect(s, 19, 1, 6, 1, '#3a3a32');      // каземат с пушкой
-    for (const wx of [5, 12, 19, 25]) { pellipse(s, wx, 12, 2, 1, '#1c1c1a'); }
-    prect(s, 8, 5, 2, 2, dark);                                              // пробоина
-  });
+  // несколько ржавых бронемашин — техника здесь роскошь, и бароны бросили немногое
+  stamp(c, -255, 360, 24, 14, (s) => armoredCar(s, 1, 0));
+  stamp(c, -390, 250, 24, 14, (s) => armoredCar(s, 1, 0, true));
 }
 
 function drawLocIcon(c: CanvasRenderingContext2D, l: Loc, r: () => number) {
@@ -913,11 +872,8 @@ function drawLocIcon(c: CanvasRenderingContext2D, l: Loc, r: () => number) {
         for (let k = 0; k < 5; k++) ppx(s, 4 + k * 5, 7, '#5a5a52');
       });
       break;
-    case 'battery': // опрокинутые орудия и гильзы
-      stamp(c, x, y + 6, 34, 14, (s) => {
-        fieldGun(s, 2, 4, 3); fieldGun(s, 17, 3, -2);
-        for (const [a, b] of [[12, 12], [14, 13], [30, 12]]) { prect(s, a, b, 2, 1, '#c8a050'); }
-      });
+    case 'armorcar': // ржавая бронемашина в воронке
+      stamp(c, x, y + 6, 26, 16, (s) => { pellipse(s, 12, 13, 12, 3, '#221e17'); armoredCar(s, 1, 1); });
       break;
     case 'flare':
       stamp(c, x, y, 9, 13, (s) => {
