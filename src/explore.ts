@@ -234,7 +234,6 @@ export const Explore = {
     B('railgate', 101, 60, 2, 3, { name: 'Железнодорожные ворота', talk: 'railgate' });
     for (const y of [8, 20, 32, 44, 54, 66]) B('tower', 100, y, 3, 3, { name: 'Башня форта', talk: 'tower' });
     for (const [x, y] of [[98, 47], [98, 53], [98, 59], [98, 63]]) B('lamp', x, y, 1, 1, { name: 'Фонарь', talk: 'lamp' });
-    for (const [x, y] of [[93, 44], [95, 44], [93, 46]]) B('barrel', x, y, 1, 1, { name: 'Товар маркитанта', talk: 'sutler_goods' });
 
     // ---------------- Нижний город: трущобы и заводы
     const taken = (x: number, y: number, w: number, h: number) => {
@@ -341,7 +340,7 @@ export const Explore = {
     NPC('abe', 'Слепой Эйб', 'miner', 21, 15, 'abe');
     NPC('guard1', 'Стражник', 'guard', 99, 48, 'guard');
     NPC('guard2', 'Стражник', 'guard', 99, 52, 'guard');
-    NPC('sutler', 'Маркитант', 'sutler', 94, 45, 'sutler');
+    NPC('trader', 'Торговец', 'sutler', 157, 47, 'trader');
     NPC('prosthetist', 'Протезист', 'medic_civ', 167, 56, 'prosthetist');
     NPC('surgeon', 'Подпольный хирург', 'surgeon_under', 142, 65, 'surgeon');
     NPC('upper1', 'Стража Верхнего города', 'guard', 179, 46, 'upper_guard');

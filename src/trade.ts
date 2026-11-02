@@ -33,8 +33,8 @@ export const SHOPS: Record<string, Shop> = {
     items: { grimoire: 1, ritualkit: 2, rabbitfoot: 1, locket: 1 },
     cons: [],
   },
-  sutler: {
-    name: 'Маркитант у ворот форта', greet: 'Лучший товар в округе, господин хороший. Цены — тоже лучшие. Для меня.',
+  market: {
+    name: 'Торговец — рынок Среднего города', greet: 'Лучший товар в округе. Цены — тоже лучшие. Для меня.',
     items: { autopistol: 1, rifle: 1, huntrifle: 1, pumpshot: 1, saber: 1, helmet: 2, quilted: 1, cuirass: 1, sapper: 1, greaves: 1, shootgloves: 1, bandolier: 1, grenadier: 1, flamer: 1, exprifle: 1 },
     cons: ['ammo_pistol', 'ammo_rifle', 'ammo_shell', 'grenade', 'smoke', 'medkit', 'painkiller'],
   },
