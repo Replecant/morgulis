@@ -54,6 +54,7 @@ export const LOCS: Loc[] = [
   { id: 'woodham', name: 'Вудхэм', kind: 'village', x: 380, y: -900, talk: 'loc_woodham', scene: 'woodham', desc: 'Деревня лесорубов в глубине леса.' },
   { id: 'tarwell', name: 'Тарвелл', kind: 'village', x: 1490, y: -960, talk: 'loc_tarwell', scene: 'tarwell', desc: 'Деревня нефтяников. Вышки под охраной братьев.' },
   { id: 'redpost', name: 'Застава Собрания', kind: 'poi', x: 1215, y: 20, talk: 'poi_redpost', desc: 'Шлагбаум и красный флаг на въезде в северные леса.' },
+  { id: 'einbpost', name: 'Застава у Эйнбоу', kind: 'poi', x: 572, y: -230, talk: 'poi_einbpost', desc: 'Пост братьев свободы на дороге к сожжённой деревне.' },
   { id: 'flare', name: 'Газовый факел', kind: 'poi', x: 230, y: 640, talk: 'poi_flare', desc: 'Вечный огонь над старой скважиной.' },
 ];
 const ROADS: number[][][] = [
@@ -1307,7 +1308,7 @@ function drawLocIcon(c: CanvasRenderingContext2D, l: Loc, r: () => number) {
       });
       break;
     }
-    case 'redpost': // застава Собрания: шлагбаум, будка, красный флаг
+    case 'redpost': case 'einbpost': // застава Собрания: шлагбаум, будка, красный флаг
       stamp(c, x, y + 6, 26, 22, (s) => {
         prect(s, 2, 12, 8, 7, '#4a4234'); prect(s, 2, 11, 8, 1, '#2e2a22'); prect(s, 4, 14, 2, 2, '#e0a050');
         prect(s, 11, 15, 1, 4, '#3a3428'); for (let k = 0; k < 13; k++) ppx(s, 12 + k, 15, k % 4 < 2 ? '#d8d0c0' : '#b02a22');
