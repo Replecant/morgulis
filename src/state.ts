@@ -14,6 +14,7 @@ export const G = {
   supplies: newSupplies(),
   money: 0,                // шиллинги
   stash: [] as string[],   // общий обоз отряда (id предметов)
+  known: [] as string[],   // изученные заклинания (occult.ts)
   location: '',            // название места, где стоит игрок
   clock: 8,                // игровое время в часах с начала (день 1, 08:00)
   time: 0,
@@ -31,6 +32,7 @@ export function newSupplies(): Supplies {
 }
 
 export function resetGame(pc: Character = newCharacter()) {
+  G.known = [];
   G.flags = {};
   G.clock = 8;
   G.supplies = newSupplies();

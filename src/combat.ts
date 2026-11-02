@@ -14,6 +14,7 @@ import { PixelView, applyLight, PLight, T, PS, prect, ppx, pline, pellipse, shad
 import { drawSprite } from './sprites';
 import { paintTile, objSprite } from './pxworld';
 import { hasProsth } from './prosthetics';
+import { SPELLS, SCHOOLS, STRAIN_MAX, knows, occultBonus, addStrain, strainCheck } from './occult';
 
 export const CT = 40, CW = 24, CH = 14;
 const W = CW * CT, H = CH * CT;
@@ -41,13 +42,15 @@ export interface Unit {
   weapons: string[]; ammo: Record<string, number>; abil: Record<string, number>;
   emptyNote?: string; // что сказать в журнал, когда у стрелка кончились заряды
   galv?: boolean;     // заряжен гальванический разряд
+  st: Record<string, number>; // оккультные состояния: ключ → раундов осталось
+  summon?: number;    // призванный бес: раундов до исчезновения
   ai?: UnitBase['ai']; leader: boolean; demonic: boolean;
   dead: boolean; fled: boolean; terror: boolean; flip: boolean; flash: number; seed: number;
   cd: { summon: number; whisper: number };
 }
 
-type Action = { type: 'w' | 'a' | 'c'; key: string };
-export interface BtnInfo { kind: 'w' | 'a' | 'c'; key: string; label: string; desc: string; disabled: boolean; active: boolean }
+type Action = { type: 'w' | 'a' | 'c' | 's'; key: string };
+export interface BtnInfo { kind: 'w' | 'a' | 'c' | 's' | 'm'; key: string; label: string; desc: string; disabled: boolean; active: boolean }
 interface Fx { type: 'tracer' | 'proj' | 'ring'; x1: number; y1: number; x2: number; y2: number; color: string; life: number; max: number; k?: number }
 interface Particle { x: number; y: number; vx: number; vy: number; life: number; max: number; color: string; size: number; g: number }
 interface Float { x: number; y: number; text: string; color: string; t: number }
@@ -80,7 +83,7 @@ function mkUnit(b: UnitBase, team: Unit['team'], x: number, y: number): Unit {
     courage: Math.min(COURAGE_MAX, e?.courage ?? 0), grenadeCap: e?.grenades ?? 0, thrown: 0, quick: !!e?.quick, quickUsed: false, blast: !!e?.blast, rallyCharm: !!e?.rally,
     exposed: false, downed: false,
     ai: b.ai, leader: !!b.leader, demonic: !!b.demonic,
-    dead: false, fled: false, terror: false, flip: team === 'enemy', flash: 0, seed: Math.random() * 10, cd: { summon: 0, whisper: 0 },
+    dead: false, fled: false, terror: false, flip: team === 'enemy', flash: 0, seed: Math.random() * 10, cd: { summon: 0, whisper: 0 }, st: {},
   };
   for (const w of u.weapons) if (WEAPONS[w].ammo) u.ammo[w] = WEAPONS[w].ammo!;
   return u;
@@ -114,6 +117,8 @@ export const Combat = {
   view: null as PixelView | null,
   circle: null as { x: number; y: number; r: number } | null,
   smoke: [] as { x: number; y: number; turns: number }[],
+  runes: [] as { x: number; y: number; kind: 'guard' | 'glyph'; turns: number }[], // руны на клетках
+  magic: false,       // панель показывает заклинания
 
   // ---------------------------------------------------------- запуск
   start(id: BattleDef['id']) {
@@ -121,13 +126,19 @@ export const Combat = {
     this.def = def;
     this.map = def.map.map((r) => r.padEnd(CW, '.').slice(0, CW).split(''));
     this.units = []; this.fx = []; this.parts = []; this.floats = []; this.anims = [];
-    this.ended = false; this.busy = false; this.round = 1; this.sel = null; this.reach = null; this.smoke = [];
+    this.ended = false; this.busy = false; this.round = 1; this.sel = null; this.reach = null; this.smoke = []; this.runes = []; this.magic = false;
     G.squad.forEach((s, i) => {
       const [x, y] = def.players[i];
       const u = mkUnit(s, 'player', x, y);
       u.hp = Math.max(1, Math.min(u.maxHp, s.hp));
       this.units.push(u);
     });
+    // руническое усиление оружия героя (ритуал) — на один бой
+    if (G.flags.runeWeapon) {
+      const h = this.units.find((u) => u.leader);
+      if (h) { h.atkM++; h.atkR++; h.dmgM++; this.hooks.log(`Руны на оружии ${h.name} тлеют: +1 к атакам и урону вблизи.`); }
+      G.flags.runeWeapon = false;
+    }
     for (const e of def.enemies) {
       const base = ENEMIES[e.t];
       const u = mkUnit(e.extra ? { ...base, weapons: [...base.weapons, ...e.extra] } : base, 'enemy', e.x, e.y);
@@ -158,6 +169,8 @@ export const Combat = {
     for (let i = 1; i < pts.length - 1; i++) if (this.blocksLos(pts[i].x, pts[i].y)) return false;
     return true;
   },
+  /** Перемещение с учётом оккультных состояний: связанный стоит на месте, договор даёт +1. */
+  mv(u: Unit) { return u.st.bound ? 0 : u.move + (u.st.pact ? 1 : 0); },
   coverAt(x: number, y: number) { const t = this.tile(x, y); return t ? TILE[t]?.cover ?? 0 : 0; },
   /** Укрытие цели t от стрелка from: смотрим соседние клетки цели со стороны стрелка. */
   coverOf(t: Pt, from: Pt) {
@@ -176,6 +189,15 @@ export const Combat = {
   attackInfo(att: Unit, from: Pt, t: Unit, wkey: string, extra = 0) {
     const w = WEAPONS[wkey];
     let bonus = w.atk + extra, dc = t.def - (t.exposed ? 2 : 0);
+    // оккультные состояния
+    if (att.st.hex) bonus -= 3;
+    if (att.st.pact) bonus += 2;
+    if (att.st.stars) bonus += 1;
+    if (att.st.fortune) bonus += 4;
+    if (att.st.omen) bonus -= 4;
+    if (t.st.ward) dc += 1;
+    if (t.st.stars) dc += 1;
+    if (this.runes.some((r) => r.kind === 'guard' && r.x === t.x && r.y === t.y) && t.team === 'player') dc += 3;
     if (w.type === 'melee') {
       if (cheb(from, t) !== 1) return null;
       bonus += att.atkM;
@@ -193,6 +215,7 @@ export const Combat = {
   // ---------------------------------------------------------- ход игрока
   async startPlayerTurn() {
     this.turn = 'player';
+    if (this.round > 1) await this.tickOccult();
     for (const s of this.smoke) s.turns--;
     this.smoke = this.smoke.filter((s) => s.turns > 0);
     for (const u of this.alive('player')) {
@@ -223,8 +246,9 @@ export const Combat = {
   computeReach() {
     const s = this.sel;
     if (!s || s.ap <= 0) { this.reach = null; return; }
-    const range = this.action.type === 'c' && this.action.key === 'rush' ? s.move * 2
-      : this.action.type === 'c' ? s.move + 2 : s.move * Math.min(s.ap, 2);
+    const mv = this.mv(s);
+    const range = this.action.type === 'c' && this.action.key === 'rush' ? mv * 2
+      : this.action.type === 'c' ? mv + 2 : mv * Math.min(s.ap, 2);
     this.reach = bfs(CW, CH, s.x, s.y, (x, y) => this.free(x, y), range);
   },
   gainCourage(u: Unit, why: string) {
@@ -244,12 +268,14 @@ export const Combat = {
     return null;
   },
   cancel() {
+    if (this.magic) { this.magic = false; this.hooks.panel(); }
     if (this.sel) { this.action = { type: 'w', key: this.sel.weapons[0] }; this.computeReach(); this.hooks.panel(); }
   },
 
   /** Кнопки панели: оружие + способности. */
   buttons(): BtnInfo[] {
     const u = this.sel;
+    if (u && this.magic) return this.spellButtons(u);
     if (!u) return [];
     const out: BtnInfo[] = [];
     for (const w of u.weapons) {
@@ -277,6 +303,7 @@ export const Combat = {
       const n = u.abil[k];
       out.push({ kind: 'a', key: k, label: ABILITIES[k].name + (n < 10 ? ` (${n})` : ''), desc: ABILITIES[k].desc, disabled: n <= 0 || (k === 'aim' && u.ap < 2), active: this.action.type === 'a' && this.action.key === k });
     }
+    if (u.leader && G.known.length) out.push({ kind: 'm', key: 'magic', label: `✶ Оккультизм (напр. ${u.base.strain ?? 0}/${STRAIN_MAX})`, desc: 'Заклинания изученных школ. Каждое тратит основное действие и повышает оккультное напряжение.', disabled: u.ap < 1, active: false });
     if (u.team === 'player') for (const k of COURAGE_ORDER) {
       const block = this.courageBlock(u, k);
       out.push({ kind: 'c', key: k, label: `${COURAGE[k].short} ${'✦'.repeat(COURAGE[k].cost)}`, desc: `${COURAGE[k].name}. ${COURAGE[k].desc}` + (block ? ` (${block})` : ''), disabled: !!block, active: this.action.type === 'c' && this.action.key === k });
@@ -289,6 +316,14 @@ export const Combat = {
     if (!b || b.disabled) return;
     const u = this.sel;
     if (b.kind === 'w') { this.action = { type: 'w', key: b.key }; this.computeReach(); this.hooks.panel(); return; }
+    if (b.kind === 'm') { this.magic = b.key === 'magic'; this.action = { type: 'w', key: u.weapons[0] }; this.hooks.panel(); return; }
+    if (b.kind === 's') {
+      const sp = SPELLS[b.key];
+      if (sp.target === 'self') { this.castSpell(u, b.key, u.x, u.y, u); return; }
+      this.action = { type: 's', key: b.key };
+      this.hooks.toast(sp.target === 'enemy' ? `${sp.name}: выберите врага` : sp.target === 'ally' ? `${sp.name}: выберите союзника или себя` : `${sp.name}: выберите клетку`);
+      this.hooks.panel(); return;
+    }
     if (b.kind === 'c') { this.action = { type: 'c', key: b.key }; this.computeReach(); this.hooks.panel(); return; }
     if (b.key === 'reload') {
       this.run(async () => {
@@ -367,6 +402,7 @@ export const Combat = {
     if (tx < 0 || ty < 0 || tx >= CW || ty >= CH) return;
     const sel = this.sel, act = this.action, u = this.unitAt(tx, ty);
     if (sel && act.type === 'a') { this.useAbility(sel, act.key, tx, ty, u ?? this.downedAt(tx, ty)); return; }
+    if (sel && act.type === 's') { this.castSpell(sel, act.key, tx, ty, u); return; }
     if (sel && act.type === 'c') { this.useCourage(sel, act.key, tx, ty, u ?? this.downedAt(tx, ty)); return; }
     if (u && u.team === 'player') { if (u.ap > 0) this.select(u); else this.hooks.toast(`${u.name}: ОД закончились`); return; }
     if (!sel || sel.ap <= 0) return;
@@ -380,10 +416,127 @@ export const Combat = {
     }
     const n = this.reach?.get(ty * CW + tx);
     if (n && n.d > 0) {
-      const cost = n.d <= sel.move ? 1 : 2;
+      const cost = n.d <= this.mv(sel) ? 1 : 2;
       if (cost > sel.ap) return;
       const path = pathTo(this.reach!, CW, tx, ty);
       this.run(async () => { await this.moveAlong(sel, path); sel.ap -= cost; });
+    }
+  },
+
+  // ---------------------------------------------------------- оккультизм
+  spellButtons(u: Unit): BtnInfo[] {
+    const strain = u.base.strain ?? 0;
+    const out: BtnInfo[] = [{ kind: 'm', key: 'back', label: '‹ Назад', desc: 'Вернуться к оружию и действиям.', disabled: false, active: false }];
+    for (const id of G.known) {
+      const sp = SPELLS[id];
+      const over = strain + sp.strain > STRAIN_MAX;
+      out.push({ kind: 's', key: id, label: `${SCHOOLS[sp.school].emblem} ${sp.name} (+${sp.strain})`,
+        desc: `${SCHOOLS[sp.school].name}. ${sp.desc} Напряжение +${sp.strain}.${over ? ' Напряжение на пределе — нужен привал.' : ''}`,
+        disabled: u.ap < 1 || over, active: this.action.type === 's' && this.action.key === id });
+    }
+    return out;
+  },
+
+  /** Сотворить заклинание: проверка цели, бросок, эффект, напряжение и отдача. */
+  castSpell(u: Unit, id: string, tx: number, ty: number, target?: Unit) {
+    const sp = SPELLS[id], T = (m: string) => this.hooks.toast(m);
+    if (!knows(id) || u.ap < 1) return;
+    const inRange = (p: Pt) => dist(u, p) <= sp.range + 0.01;
+    if (sp.target === 'enemy') {
+      if (!target || target.team !== 'enemy' || target.dead) return T('Выберите врага');
+      if (!inRange(target) || !this.los(u, target)) return T('Враг вне досягаемости или не виден');
+      if (id === 'command' && !(target.demonic || target.base.id.startsWith('dead_'))) return T('Приказ действует только на потусторонних существ');
+      if (id === 'command' && target.hp > 10) return T('Существо слишком сильно для приказа');
+    } else if (sp.target === 'ally') {
+      if (!target || target.team !== 'player' || target.dead) return T('Выберите союзника или себя');
+      if (!inRange(target)) return T('Союзник слишком далеко');
+    } else if (sp.target === 'cell') {
+      if (!inRange({ x: tx, y: ty })) return T('Клетка слишком далеко');
+      if (!this.walk(tx, ty) || (sp.id !== 'guard' && this.unitAt(tx, ty))) return T('Клетка занята или непроходима');
+      if (sp.id === 'summon' && cheb(u, { x: tx, y: ty }) !== 1) return T('Бес появится только рядом с вами');
+      if (this.runes.some((r) => r.x === tx && r.y === ty)) return T('Здесь уже есть руна');
+    }
+    this.run(async () => {
+      u.ap = 0; // основное действие
+      addStrain(sp.strain);
+      const col = sp.school === 'demon' ? '#e05030' : sp.school === 'astro' ? '#f0e090' : sp.school === 'rune' ? '#c8a0ff' : '#9fef6a';
+      this.float(u, sp.name, col);
+      this.burst(u.px, u.py - 16, col, 10, 40);
+      await sleep(250);
+      let ok = true, rollTxt = '';
+      if (sp.dc !== undefined || id === 'command') {
+        const dc = id === 'command' ? 10 + Math.ceil(target!.hp / 2) : sp.dc!;
+        const r = check(occultBonus(), dc); ok = r.success;
+        rollTxt = ` [Оккультизм: d20 ${r.roll}${occultBonus() >= 0 ? '+' : ''}${occultBonus()} против ${dc}]`;
+      }
+      const tgt = target!, turns = sp.turns ?? 1;
+      const hit = (msg: string, who: Unit) => { this.float(who, msg, col); this.burst(who.px, who.py - 14, col, 12, 50); };
+      switch (id) {
+        case 'hex': case 'rot': case 'bind': case 'omen':
+          await this.projectile(u, tgt, col, 380);
+          if (ok) { tgt.st[id === 'omen' ? 'omen' : id === 'bind' ? 'bound' : id] = id === 'omen' ? 99 : turns; hit(sp.name, tgt); this.hooks.log(`${u.name}: «${sp.name}» на ${tgt.name}.${rollTxt}`); }
+          else { this.float(tgt, 'Устоял', '#ddd'); this.hooks.log(`${tgt.name} не поддаётся: «${sp.name}» срывается.${rollTxt}`); }
+          break;
+        case 'ward': case 'pact': case 'fortune':
+          tgt.st[id] = id === 'fortune' ? 99 : turns; hit(sp.name, tgt);
+          this.hooks.log(`${u.name}: «${sp.name}» — ${tgt === u ? 'на себя' : tgt.name}.`);
+          break;
+        case 'stars':
+          for (const a of this.alive('player')) { a.st.stars = turns; hit('☉', a); }
+          this.hooks.log(`${u.name} читает звёзды: отряду +1 к атакам и Защите на ${turns} раунда.`);
+          break;
+        case 'guard': case 'glyph':
+          this.runes.push({ x: tx, y: ty, kind: id, turns: id === 'guard' ? turns : 99 });
+          this.burst(tx * CT + CT / 2, ty * CT + CT / 2, col, 14, 40);
+          this.hooks.log(`${u.name} чертит ${id === 'guard' ? 'охранную руну' : 'ловчий глиф'}.`);
+          break;
+        case 'summon': {
+          const imp = mkUnit(ENEMIES.imp, ok ? 'player' : 'enemy', tx, ty);
+          imp.flash = 0.3; imp.name = ok ? 'Призванный бес' : 'Своевольный бес';
+          if (ok) { imp.summon = turns; imp.ap = 0; }
+          this.units.push(imp);
+          this.burst(tx * CT + CT / 2, ty * CT + CT / 2, '#e05030', 26, 70);
+          this.hooks.log(ok ? `${u.name} призывает беса: он служит ${turns} раунда.${rollTxt}` : `Бес приходит — но смотрит на ${u.name} и скалится. Он не будет служить.${rollTxt}`);
+          break;
+        }
+        case 'command':
+          await this.projectile(u, tgt, col, 380);
+          if (ok) { tgt.team = 'player'; tgt.st.commanded = turns; tgt.ap = 0; tgt.flip = !tgt.flip; hit('Подчинён', tgt); this.hooks.log(`${tgt.name} подчиняется приказу на ${turns} раунда.${rollTxt}`); }
+          else { this.float(tgt, 'Не слушается', '#ddd'); this.hooks.log(`${tgt.name} не слушается приказа.${rollTxt}`); }
+          break;
+      }
+      await sleep(300);
+      // отдача при высоком напряжении
+      const sc = strainCheck();
+      if (sc && !sc.ok) {
+        const k = randInt(1, 3), txt = `[Воля: d20 ${sc.roll} → ${sc.total} против ${sc.dc}]`;
+        if (k === 1) { const d = randInt(1, 3); this.float(u, `Отдача −${d}`, '#b58cff'); this.hooks.log(`Отдача: из носа идёт кровь, ${u.name} теряет ${d} ОЗ. ${txt}`); await this.damage(u, d, false); }
+        else if (k === 2) { u.terror = true; this.float(u, 'Видения!', '#b58cff'); this.hooks.log(`Отдача: перед глазами чужие видения — в следующем ходу 1 ОД. ${txt}`); }
+        else { u.courage = 0; u.hp = Math.max(1, u.hp - 1); this.float(u, 'Шёпот…', '#b58cff'); this.hooks.log(`Отдача: шёпот в голове гасит кураж, −1 ОЗ. ${txt}`); }
+      } else if (sc) this.hooks.log(`${u.name} удерживает напряжение. [Воля: d20 ${sc.roll} → ${sc.total} против ${sc.dc}]`);
+      this.magic = false;
+    });
+  },
+
+  /** Начало раунда: тикают оккультные состояния, руны, призванные и подчинённые. */
+  async tickOccult() {
+    for (const r of this.runes) if (r.kind === 'guard') r.turns--;
+    this.runes = this.runes.filter((r) => r.turns > 0);
+    for (const u of this.units) {
+      if (u.dead) continue;
+      if (u.st.rot) { this.hooks.log(`Порча гложет ${u.name}: −2 ОЗ.`); await this.damage(u, 2, false); if (u.dead || u.downed) continue; }
+      for (const k of Object.keys(u.st)) {
+        if (u.st[k] >= 99) continue; // одноразовые — до использования
+        if (--u.st[k] > 0) continue;
+        delete u.st[k];
+        if (k === 'pact') { u.hp = Math.max(1, u.hp - 2); this.float(u, 'Плата −2', '#e05030'); this.hooks.log(`Договор истёк — плата: ${u.name} теряет 2 ОЗ.`); }
+        if (k === 'commanded') { u.team = 'enemy'; u.flip = !u.flip; this.float(u, 'Приказ спал', '#e05030'); this.hooks.log(`${u.name} больше не подчиняется.`); }
+      }
+      if (u.summon !== undefined && --u.summon <= 0) {
+        u.dead = true; u.fled = true;
+        this.burst(u.px, u.py - 12, '#e05030', 20, 60);
+        this.hooks.log(`${u.name} рассеивается дымом.`);
+      }
     }
   },
 
@@ -599,11 +752,11 @@ export const Combat = {
       for (const n of reach.values()) { const p = this.nearestPlayer(n); if (!p) continue; const d = dist(n, p); if (d < bd) { bd = d; best = n; } }
     }
     if (!best) return null;
-    return pathTo(reach, CW, best.x, best.y).slice(0, u.move + 1);
+    return pathTo(reach, CW, best.x, best.y).slice(0, this.mv(u) + 1);
   },
 
   rangedTile(u: Unit) {
-    const reach = bfs(CW, CH, u.x, u.y, (x, y) => this.free(x, y), u.move);
+    const reach = bfs(CW, CH, u.x, u.y, (x, y) => this.free(x, y), this.mv(u));
     let best: { score: number; c: number; n: Pt } | null = null;
     for (const n of reach.values()) {
       const np = this.nearestPlayer(n);
@@ -626,7 +779,7 @@ export const Combat = {
       if (spot) { await this.summon(u, spot); u.ap--; u.cd.summon = 3; }
     }
     if (u.ap > 0 && this.alive('player').some((p) => cheb(p, u) === 1)) {
-      const reach = bfs(CW, CH, u.x, u.y, (x, y) => this.free(x, y), u.move);
+      const reach = bfs(CW, CH, u.x, u.y, (x, y) => this.free(x, y), this.mv(u));
       let best: Pt | null = null, bs = -1e9;
       for (const n of reach.values()) {
         const np = this.nearestPlayer(n)!;
@@ -664,9 +817,13 @@ export const Combat = {
   async attack(a: Unit, t: Unit, wkey: string, bonus = 0, opts: { dmg?: number; adv?: boolean } = {}) {
     const w = WEAPONS[wkey];
     if (t.x !== a.x) a.flip = t.x < a.x;
+    const once = { fortune: !!a.st.fortune, omen: !!a.st.omen };
+    if (a.st.pact) opts = { ...opts, dmg: (opts.dmg ?? 0) + 2 }; // демонический договор
     const galv = a.galv && WEAPONS[wkey].type === 'melee';
     if (galv) { bonus += 2; opts = { ...opts, dmg: (opts.dmg ?? 0) + 2 }; a.galv = false; }
     const info = this.attackInfo(a, a, t, wkey, bonus) ?? { bonus: 0, dc: 99, chance: 0 };
+    if (once.fortune) delete a.st.fortune;   // благоприятный час и дурной знак — на одну атаку
+    if (once.omen) delete a.st.omen;
     let roll: CheckResult = check(info.bonus, info.dc);
     let advTxt = '';
     if (opts.adv) { // преимущество: бросаем дважды, берём лучший
@@ -769,7 +926,7 @@ export const Combat = {
   async whisper(u: Unit, t: Unit) {
     this.float(u, '«Смотри в Око…»', '#b58cff');
     await this.projectile(u, t, '#b58cff', 500);
-    const save = check(t.horror + (G.flags.salts ? 4 : 0), 14);
+    const save = check(t.horror + (G.flags.salts ? 4 : 0) + (t.st.ward ? 4 : 0), 14);
     if (!save.success) {
       t.terror = true;
       if (t.courage) this.hooks.log(`Ужас гасит кураж: ${t.name} теряет его.`);
@@ -800,14 +957,15 @@ export const Combat = {
 
   async checkEnd() {
     if (this.ended) return true;
-    if (!this.alive('player').length) { // весь отряд лежит — бой проигран
+    const real = (team: Unit['team']) => this.units.filter((u) => !u.dead && (team === 'player' ? u.team === 'player' && !u.summon && !u.st.commanded : u.team === 'enemy' || !!u.st.commanded));
+    if (!real('player').length) { // весь отряд лежит — бой проигран
       this.ended = true; this.busy = true;
       await sleep(700);
       await this.showBanner('ОТРЯД РАЗБИТ', '#d0614c');
       this.hooks.defeat(this.def.id);
       return true;
     }
-    if (!this.alive('enemy').length) {
+    if (!real('enemy').length) {
       this.ended = true; this.busy = true;
       await sleep(500);
       await this.showBanner('ПОБЕДА', '#9fd36a');
@@ -841,6 +999,17 @@ export const Combat = {
       const sx = u.px, sy = u.py, tx = p.x * CT + CT / 2, ty = p.y * CT + CT / 2;
       await this.tween(stepMs, (k) => { u.px = lerp(sx, tx, k); u.py = lerp(sy, ty, k); });
       u.x = p.x; u.y = p.y;
+      const g = u.team === 'enemy' ? this.runes.find((r) => r.kind === 'glyph' && r.x === u.x && r.y === u.y) : null;
+      if (g) { // ловчий глиф срабатывает
+        this.runes = this.runes.filter((r) => r !== g);
+        u.walking = false;
+        this.burst(u.px, u.py - 6, '#c8a0ff', 14, 60);
+        this.float(u, 'Глиф!', '#c8a0ff');
+        this.hooks.log(`${u.name} наступает на ловчий глиф: 3 урона, связан на раунд.`);
+        u.st.bound = Math.max(u.st.bound ?? 0, 1);
+        await this.damage(u, 3, false);
+        return;
+      }
     }
     u.walking = false;
   },
@@ -906,6 +1075,12 @@ export const Combat = {
         if (d < 1 && ((xx + yy + shift) % (d < 0.6 ? 2 : 3) === 0)) ppx(lc, xx, yy, d < 0.5 ? '#a8a8a0' : '#8a8a82');
       }
     }
+    for (const r of this.runes) { // руны на клетках
+      const cx = r.x * T + T / 2, cy = r.y * T + T / 2, col = r.kind === 'guard' ? '#d8c070' : '#c8a0ff', on = Math.floor(t * 4) % 2;
+      for (let i = 0; i < 16; i++) { const a = (i / 16) * TAU; if ((i + on) % 2) ppx(lc, cx + Math.cos(a) * 7, cy + Math.sin(a) * 4, col); }
+      if (r.kind === 'guard') { pline(lc, cx, cy - 3, cx, cy + 3, col); pline(lc, cx - 2, cy - 1, cx + 2, cy - 1, col); }
+      else { pline(lc, cx - 3, cy - 2, cx + 3, cy + 2, col); pline(lc, cx - 3, cy + 2, cx + 3, cy - 2, col); }
+    }
     const vis = this.units.filter((u) => !u.fled).sort((a, b) => (a.dead === b.dead ? a.py - b.py : a.dead ? -1 : 1));
     for (const u of vis) {
       const frame = u.walking ? 1 + (Math.floor(t * 8) % 2) * 2 : 0;
@@ -943,7 +1118,7 @@ export const Combat = {
       if ((this.action.type === 'w' || brave) && this.reach) {
         for (const n of this.reach.values()) {
           if (n.d === 0) continue;
-          c.fillStyle = brave ? 'rgba(240,150,60,0.13)' : n.d <= sel.move ? 'rgba(110,160,210,0.14)' : 'rgba(210,170,80,0.11)';
+          c.fillStyle = brave ? 'rgba(240,150,60,0.13)' : n.d <= this.mv(sel) ? 'rgba(110,160,210,0.14)' : 'rgba(210,170,80,0.11)';
           c.fillRect(n.x * CT + 1, n.y * CT + 1, CT - 2, CT - 2);
         }
         const showPath = this.action.type === 'w' || this.action.key === 'rush';
@@ -995,6 +1170,12 @@ export const Combat = {
         for (let i = 0; i < u.ap; i++) { c.fillStyle = '#e0c070'; c.fillRect(x + i * 6, y - 5, 4, 3); }
       }
       if (u.terror) { c.fillStyle = '#b58cff'; c.font = 'bold 12px serif'; c.fillText('◉', x + bw + 2, y + 4); }
+      { // оккультные состояния — значки над полоской здоровья
+        const ICON: Record<string, [string, string]> = { hex: ['✥', '#9fef6a'], rot: ['☠', '#9fef6a'], ward: ['✥', '#e8e0b0'], pact: ['⛧', '#e05030'], commanded: ['⛧', '#e05030'], fortune: ['☉', '#f0e090'], omen: ['☾', '#b58cff'], stars: ['✶', '#f0e090'], bound: ['ᛟ', '#c8a0ff'] };
+        let ix = x; c.font = 'bold 11px serif';
+        for (const k of Object.keys(u.st)) { const ic = ICON[k]; if (!ic) continue; c.fillStyle = ic[1]; c.fillText(ic[0], ix, y - 8); ix += 10; }
+        if (u.summon) { c.fillStyle = '#e05030'; c.fillText(`⛧${u.summon}`, ix, y - 8); }
+      }
       if (u.team === 'player' && u.courage) { // кураж
         c.font = 'bold 11px serif'; c.fillStyle = '#f0a040';
         for (let i = 0; i < u.courage; i++) c.fillText('✦', x + bw - 7 - i * 8, y - 2);

@@ -80,6 +80,7 @@ export interface UnitBase {
   med?: number;          // бонус Медицины (перевязка, операции)
   wounds?: string[];     // ранения (см. wounds.ts)
   limbs?: Partial<Record<'armR' | 'armL' | 'legR' | 'legL' | 'eyeR' | 'eyeL', string>>; // утраченные части тела и протезы (см. prosthetics.ts)
+  strain?: number;       // оккультное напряжение 0–6 (оккультист)
   fleshDue?: number;      // плотяная рука: когда (G.clock) нужен тканевый раствор
   fleshReject?: boolean;  // плотяная рука: отторжение
   equip?: Equip;         // снаряжение (см. items.ts) — у бойцов отряда

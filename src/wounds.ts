@@ -118,6 +118,7 @@ export function rest(): string {
     healed.push(...light.map((w) => `${b.name}: «${w.name}»`));
     const max = effMaxHp(b);
     b.hp = Math.min(max, b.hp + Math.ceil((max - b.hp) / 2));
+    if (b.strain) { b.strain = 0; healed.push(`${b.name}: оккультное напряжение спало`); }
   }
   return 'Отряд разбивает привал. Силы частично восстановлены.' + (healed.length ? ` Зажило: ${healed.join(', ')}.` : '');
 }
