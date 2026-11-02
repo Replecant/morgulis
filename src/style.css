@@ -423,15 +423,16 @@ body { font-family: 'Old Standard TT', Georgia, serif; color: var(--text); }
 .sup-cell span { position: absolute; right: 1px; bottom: -1px; font-size: 11px; color: #e6dcb8; text-shadow: 0 0 2px #000, 0 0 2px #000; }
 
 /* ---------- Торговля ---------- */
-#trade { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.65); z-index: 22; }
-.trade-box { width: 900px; height: 600px; background: var(--panel); border: 1px solid var(--line); box-shadow: 0 10px 40px #000; padding: 12px 16px; display: flex; flex-direction: column; }
+/* торговля — в пиксельной рамке с торгующимися скелетами; внутреннее поле рамки: 57..903 × 98..537 */
+#trade { position: absolute; inset: 0; background: #0b0f09 url('./assets/trade-frame.webp') 0 0 / 100% 100% no-repeat; z-index: 22; }
+.trade-box { position: absolute; left: 68px; top: 106px; width: 824px; height: 422px; display: flex; flex-direction: column; }
 .ttop { display: flex; align-items: center; gap: 14px; }
 .ttop h2 { margin: 0; flex: 1; font-family: 'Playfair Display SC', serif; color: var(--brass); letter-spacing: 2px; font-size: 19px; }
 .tmoney { font-size: 15px; } .tmoney b { color: var(--brass); font-size: 18px; }
 .tcols { display: flex; gap: 12px; flex: 1; min-height: 0; margin-top: 8px; }
 .tcol { flex: 1; display: flex; flex-direction: column; min-width: 0; }
 .th { font-family: 'Playfair Display SC', serif; color: var(--dim); letter-spacing: 1px; font-size: 13px; margin-bottom: 4px; }
-.tlist { flex: 1; overflow-y: auto; border: 1px solid #2a3220; background: #0c100a; padding: 4px; }
+.tlist { flex: 1; overflow-y: auto; border: 1px solid #3a4430; background: rgba(8, 11, 6, 0.6); padding: 4px; }
 .trow { display: grid; grid-template-columns: 40px 1fr 54px 76px; align-items: center; gap: 6px; padding: 3px 4px; border-bottom: 1px solid #1a2014; }
 .trow:hover { background: #151b11; }
 .ticv { border: 1px solid #2a3220; background: #10140d; }
@@ -440,7 +441,7 @@ body { font-family: 'Old Standard TT', Georgia, serif; color: var(--text); }
 .trow .tp { color: var(--brass); text-align: right; font-size: 13px; }
 .trow .btn { padding: 3px 6px; font-size: 12px; }
 .tempty { color: var(--dim); font-style: italic; padding: 8px; font-size: 13px; }
-.tinfo { margin-top: 8px; min-height: 48px; border: 1px solid #2a3220; padding: 6px 10px; font-size: 13px; color: #cfd0b8; background: #0e120b; }
+.tinfo { margin-top: 6px; min-height: 44px; border: 1px solid #3a4430; padding: 5px 10px; font-size: 13px; color: #cfd0b8; background: rgba(8, 11, 6, 0.6); }
 .tinfo .b { color: #e6dcb8; font-weight: 700; }
 .sq.res .coin { color: var(--brass); font-weight: 700; }
 .mquick { color: #9a9070; font-style: italic; font-size: 14px; margin-bottom: 6px; }
