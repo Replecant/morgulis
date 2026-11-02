@@ -27,6 +27,11 @@ export function paintTile(c: Ctx, X: number, Y: number, g: string, r: () => numb
     for (let x = 0; x < T; x += 5) { prect(c, X + x, Y, 1, T, '#3a2c1c'); ppx(c, X + x + 2, Y + 3, '#7a6040'); ppx(c, X + x + 2, Y + 15, '#2a1e12'); }
     return;
   }
+  if (g === 'l') { // озёрная вода: тёмная, с рябью
+    prect(c, X, Y, T, T, '#1a2628');
+    for (let i = 0; i < 7; i++) { const x = X + r() * (T - 4), y = Y + r() * T; prect(c, x, y, 3, 1, r() < 0.3 ? '#4a6a68' : '#26383a'); }
+    return;
+  }
   if (g === 'x') { // болотная вода
     prect(c, X, Y, T, T, '#16201a');
     for (let i = 0; i < 6; i++) ppx(c, X + r() * T, Y + r() * T, '#243428');
@@ -71,7 +76,7 @@ const TOP: Record<string, number> = {
   house: 16, ruin: 16, farm: 16, station: 20, pumphouse: 28, slaughter: 16, barn: 14, hut: 16,
   tank: 18, watertower: 44, wagon: 14, lamp: 30, tree: 26, rock: 6, barrel: 6, fence: 10, feed: 8, chitin: 6,
   cellar: 10, adit: 26, shroombed: 6, bigshroom: 18, rack: 14, wall: 30, gate: 40, railgate: 36, tower: 56,
-  sign: 16, laundry: 22, handcart: 12, crates: 14, coalheap: 8, standpipe: 18, noticeboard: 22, sacks: 8, vent: 4, clinic: 30, shack: 18, factory: 64, tenement: 30, stall: 18, workshop: 26, crater: 0, bones: 0, wallruin: 14, skeleton: 14, milestone: 14, lorry: 12,
+  sign: 16, orecart: 8, boat: 4, nets: 20, scrapheap: 16, banner: 46, poster: 24, statue: 44, horn: 40, keep: 76, barracks: 22, laundry: 22, handcart: 12, crates: 14, coalheap: 8, standpipe: 18, noticeboard: 22, sacks: 8, vent: 4, clinic: 30, shack: 18, factory: 64, tenement: 30, stall: 18, workshop: 26, crater: 0, bones: 0, wallruin: 14, skeleton: 14, milestone: 14, lorry: 12,
 };
 
 export interface ObjLike { kind: string; x: number; y: number; w: number; h: number; seed: number; ruinKind?: string; boarded?: boolean }
@@ -334,6 +339,84 @@ export function objSprite(o: ObjLike, neighbors?: { horizFence: boolean }) {
     }
     case 'sign': R(9, H - 16, 2, 16, '#3a2c1e'); R(2, H - 18, 16, 6, '#4a3a26'); for (let x = 4; x < 16; x += 3) R(x, H - 16, 2, 1, '#c8b88a'); break;
 
+    case 'orecart': { // рудничная вагонетка на узкоколейке
+      R(3, H - 14, W - 6, 9, '#4a4a46'); R(3, H - 14, W - 6, 1, '#6a6a62'); R(4, H - 6, W - 8, 1, '#2a2a28');
+      for (let x = 5; x < W - 5; x += 3) P(x, H - 15, ['#7a4a2a', '#8a5a30', '#5a3a22'][x % 3]);                  // руда горкой
+      R(6, H - 17, W - 12, 3, '#7a4a2a'); P(9, H - 18, '#a06a3a');
+      for (const wx of [6, W - 7]) { pellipse(c, wx, H - 3, 2, 2, '#1c1c1a'); P(wx, H - 3, '#6a6a60'); }
+      break;
+    }
+    case 'boat': { // рыбацкая лодка, вытащенная на воду у мостков
+      pellipse(c, W / 2, H - 9, W / 2 - 2, 6, '#3a2a1c'); pellipse(c, W / 2, H - 11, W / 2 - 4, 4, '#5a4228'); R(4, H - 12, W - 8, 1, '#7a5a36');
+      R(W / 2 - 1, H - 13, 2, 3, '#3a2c1e'); for (let x = 6; x < W - 6; x += 5) P(x, H - 9, '#2a1e12');
+      L(W - 6, H - 12, W + 2, H - 16, '#5a4228');                                                 // весло
+      R(2, H - 3, W - 4, 1, '#2e4446');
+      break;
+    }
+    case 'nets': { // сети сушатся на шестах, на них — поплавки
+      R(1, -18, 2, H + 18, '#3a2c1e'); R(W - 3, -18, 2, H + 18, '#3a2c1e');
+      for (let y = -16; y < H - 4; y += 4) R(3, y, W - 6, 1, '#8a8a76');                 // редкая ячея: шнуры
+      for (let x = 5; x < W - 3; x += 4) for (let y = -15; y < H - 4; y += 2) P(x, y, '#7a7a68');
+      for (let x = 5; x < W - 4; x += 6) P(x, -16, '#c86030');
+      break;
+    }
+    case 'scrapheap': { // гора металлолома: ржавые листы, трубы, колесо, каска
+      pellipse(c, W / 2, H - 6, W / 2 - 1, 9, '#3e3428'); pellipse(c, W / 2 - 4, H - 10, W / 2 - 8, 7, '#4a3e30');
+      for (let i = 0; i < 18; i++) { const x = 4 + r() * (W - 10), y = H - 18 + r() * 14, col = ['#7a4a2a', '#5a5a52', '#8a5a30', '#4a4a44', '#6a6a60'][Math.floor(r() * 5)]; R(x, y, 2 + r() * 5, 1 + r() * 2, col); }
+      L(6, H - 14, 18, H - 18, '#6a6a60', 2); pellipse(c, W - 10, H - 8, 4, 4, '#2a2a28'); P(W - 10, H - 8, '#7a7a70');
+      R(W / 2, H - 17, 5, 2, '#4a4e3a');
+      break;
+    }
+    case 'banner': { // знамя баронессы на шесте
+      R(9, -44, 2, H + 44, '#3a3428'); P(9, -46, BRASS); P(10, -46, BRASS);
+      R(11, -42, 8, 22, '#8a2a24'); R(11, -42, 8, 2, '#a83a30'); R(11, -22, 3, 2, '#8a2a24'); R(16, -22, 3, 2, '#8a2a24');  // ласточкин хвост
+      R(13, -36, 4, 4, '#d8c070'); P(14, -37, '#d8c070'); P(15, -32, '#d8c070');                                          // знак
+      break;
+    }
+    case 'poster': { // агитационный плакат: профиль баронессы и лозунг полосами
+      R(2, H - 22, 2, 22, '#3a2c1e'); R(W - 4, H - 22, 2, 22, '#3a2c1e');
+      R(1, H - 24, W - 2, 16, '#8a2a24'); R(2, H - 23, W - 4, 14, '#c8b890');
+      R(5, H - 21, 6, 8, '#3a3434'); R(6, H - 23, 4, 3, '#3a3434'); P(10, H - 18, '#3a3434');                         // профиль
+      for (let y = H - 20; y < H - 11; y += 3) R(13, y, W - 17, 1, '#8a2a24');                                         // строки лозунга
+      break;
+    }
+    case 'statue': { // статуя баронессы на постаменте
+      R(4, H - 14, W - 8, 14, '#5e5a52'); R(4, H - 14, W - 8, 2, '#7a766a'); R(2, H - 4, W - 4, 4, '#4e4a42');
+      const cx = Math.round(W / 2);
+      R(cx - 4, H - 30, 8, 16, '#6a6a62'); R(cx - 6, H - 20, 12, 6, '#6a6a62');                                       // мантия
+      R(cx - 2, H - 36, 4, 6, '#7a7a70'); R(cx - 3, H - 38, 6, 2, '#6a6a62');                                         // голова, причёска
+      L(cx + 4, H - 28, cx + 9, H - 40, '#7a7a70', 2);                                                                // рука вверх
+      R(cx - 6, H - 10, 12, 2, '#3a3a34');                                                                            // табличка
+      break;
+    }
+    case 'horn': { // два громкоговорителя-раструба на столбе
+      R(9, -36, 2, H + 36, '#2e2c28'); R(4, -33, 12, 2, '#3a3428');
+      for (let k = 0; k < 6; k++) { R(3 - k, -34 - (k >> 1), 1, 3 + k, '#9a8a58'); R(16 + k, -34 - (k >> 1), 1, 3 + k, '#9a8a58'); }
+      P(-2, -33, '#2a2418'); P(21, -33, '#2a2418'); P(10, -38, '#a03028');
+      break;
+    }
+    case 'barracks': { // казарма: длинный кирпичный дом, ровные окна, красная полоса
+      const wallH = 22, wy = H - wallH, wall = '#6a5e50';
+      R(1, H, W, 2, 'rgba(0,0,0,0.5)'); R(0, wy, W, wallH, wall);
+      for (let y = wy + 2; y < H; y += 3) for (let x = ((y / 3) | 0) % 2 ? 0 : 3; x < W; x += 6) R(x, y, 5, 1, shade(wall, -0.15));
+      R(0, wy + 2, W, 2, '#7a2a24');
+      for (let x = 6; x < W - 6; x += 10) { const on = r() < 0.6; R(x, wy + 7, 5, 6, on ? AMBER : '#1a1c20'); R(x + 2, wy + 7, 1, 6, '#2a1e12'); if (on) lights.push({ x: x + 2, y: wy + 10, r: 18, color: '#f0b050', a: 0.6 }); }
+      R(Math.round(W / 2) - 4, H - 12, 8, 12, '#1a140e');
+      for (let y = -6; y < wy; y++) R(-1, y, W + 2, 1, (y + 6) % 3 === 0 ? '#5a5e62' : '#44484c');
+      break;
+    }
+    case 'keep': { // замок баронессы: донжон с зубцами, башни, флаг
+      const wy = H - 70, stone = '#6e6a62';
+      R(2, H, W - 4, 3, 'rgba(0,0,0,0.5)');
+      R(4, wy, W - 8, 70, stone); for (let y = wy + 2; y < H; y += 5) for (let x = 4 + (((y / 5) | 0) % 2) * 4; x < W - 4; x += 8) R(x, y, 7, 1, shade(stone, -0.15));
+      for (let x = 4; x < W - 4; x += 8) R(x, wy - 5, 5, 5, stone);
+      for (const tx of [0, W - 14]) { R(tx, wy - 8, 14, 78, '#66625a'); for (let x = tx; x < tx + 14; x += 5) R(x, wy - 12, 3, 4, '#66625a'); R(tx + 2, wy - 18, 10, 6, '#7a2a24'); }
+      for (let x = 22; x < W - 22; x += 12) for (const y of [wy + 12, wy + 32]) { R(x, y, 4, 8, '#f0d080'); R(x + 1, y - 1, 2, 1, '#f0d080'); lights.push({ x: x + 2, y: y + 4, r: 22, color: '#f0d080', a: 0.6 }); }
+      const dx = Math.round(W / 2); R(dx - 8, H - 18, 16, 18, '#1a140e'); R(dx - 8, H - 18, 16, 2, '#4a3a26');
+      R(dx - 1, wy - 30, 2, 26, '#3a3428'); R(dx + 1, wy - 30, 10, 6, '#a03028'); R(dx + 4, wy - 28, 3, 2, '#d8c070');
+      lights.push({ x: dx, y: H - 10, r: 50, color: '#e8c070', a: 0.6 });
+      break;
+    }
     case 'laundry': { // бельевая верёвка между шестами: заношенное бельё
       R(1, -20, 2, H + 20, '#3a2c1e'); R(W - 3, -20, 2, H + 20, '#3a2c1e');
       for (let x = 2; x < W - 2; x++) P(x, -18 + Math.round(Math.sin((x / (W - 4)) * Math.PI) * 3), '#8a8a7a');

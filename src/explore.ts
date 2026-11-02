@@ -13,10 +13,10 @@ import { FOLK, FolkDef } from './folk';
 
 /** Клетка на экране (низкое разрешение ×2). */
 export const ET = T * PS;
-export const MW = 186, MH = 72; // восточнее x=103 — форт: Нижний и Средний город
+export const MW = 412, MH = 72; // восточнее x=103 — форт барона; с x=188 — сцены земель баронессы
 const VW = LW, VH = LH; // видимая область в пикселях низкого разрешения
 
-type Ground = 'w' | 'g' | 'r' | 'p' | 'o' | 'k' | 'f' | 'm' | 'x';
+type Ground = 'w' | 'g' | 'r' | 'p' | 'o' | 'k' | 'f' | 'm' | 'x' | 'l';
 // w — пустошь, g — деревенская земля, r — дорога, p — загон (грязь), o — пропитанная маслом земля, k — дощатый перрон, f — за стеной форта,
 // m — мшистая болотная земля, x — болотная вода (непроходима)
 
@@ -52,9 +52,15 @@ export const SCENES: Record<string, { name: string; x0: number; y0: number; x1: 
   fortgate: { name: 'Ворота форта', x0: 86, y0: 38, x1: 103, y1: 66, entry: { x: 88, y: 49 } },
   // форт — город в три яруса: внизу трущобы и заводы, выше рынки и мастерские, на самом верху — только по пропуску
   fort1:    { name: 'Нижний город', x0: 100, y0: 28, x1: 147, y1: 70, entry: { x: 103, y: 49 } },
+  // земли баронессы
+  brimmor:   { name: 'Бриммор', x0: 190, y0: 18, x1: 229, y1: 54, entry: { x: 228, y: 47 } },
+  hailstone: { name: 'Хейлстоун', x0: 232, y0: 18, x1: 271, y1: 56, entry: { x: 270, y: 48 } },
+  mossley:   { name: 'Мосслей', x0: 274, y0: 14, x1: 313, y1: 50, entry: { x: 294, y: 49 } },
+  bcamp:     { name: 'Особый лагерь', x0: 316, y0: 18, x1: 357, y1: 60, entry: { x: 356, y: 40 } },
+  bfort:     { name: 'Форт баронессы', x0: 360, y0: 8, x1: 409, y1: 66, entry: { x: 408, y: 37 } },
   fort2:    { name: 'Средний город', x0: 144, y0: 31, x1: 184, y1: 67, entry: { x: 147, y: 49 } },
 };
-const PENS = [{ x0: 62, y0: 9, x1: 73, y1: 17, gx: 67 }, { x0: 77, y0: 10, x1: 88, y1: 18, gx: 82 }];
+const PENS = [{ x0: 62, y0: 9, x1: 73, y1: 17, gx: 67 }, { x0: 77, y0: 10, x1: 88, y1: 18, gx: 82 }, { x0: 296, y0: 18, x1: 307, y1: 27, gx: 301 }]; // третий — загон в Мосслее
 
 const BAYER4 = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5].map((q) => (q + 0.5) / 16);
 /** Полупрозрачный клуб растром: пиксели либо есть, либо нет. */
@@ -126,6 +132,14 @@ export const Explore = {
     fill('o', 103, 30, 42, 39);   // Нижний город: грязь, масло, сажа
     fill('p', 147, 33, 34, 33);   // Средний город: утоптанная земля
     fill('k', 155, 45, 17, 11);   // рыночная площадь — дощатый настил
+    // ---------------- земли баронессы
+    fill('w', 190, 18, 40, 37); fill('l', 190, 18, 40, 12);                        // Бриммор: озеро на севере
+    for (const x of [197, 210, 221]) fill('k', x, 22, 2, 8);                        // мостки в воду
+    fill('g', 190, 30, 40, 3);
+    fill('w', 232, 18, 40, 39); for (let i = 0; i < 9; i++) blob('o', 236 + Math.floor(r() * 32), 24 + Math.floor(r() * 28), 2); // Хейлстоун: изрытая земля
+    fill('m', 274, 14, 40, 37);                                                     // Мосслей: влажная низина
+    fill('o', 316, 18, 42, 43);                                                     // Особый лагерь
+    fill('p', 360, 8, 50, 59); fill('k', 384, 28, 12, 18);                          // форт баронессы: плац
 
     // дороги
     const road = (pts: number[][], wdt = 1) => {
@@ -147,6 +161,10 @@ export const Explore = {
     // улицы форта
     road([[103, 49], [146, 49]]); road([[114, 30], [114, 68]]); road([[127, 30], [127, 68]]); road([[138, 51], [138, 68]]);
     road([[147, 49], [182, 49]]); road([[163, 33], [163, 65]]);
+    // земли баронессы
+    road([[229, 47], [190, 47]]); road([[271, 48], [233, 48]]); road([[294, 50], [294, 30], [281, 30]]);
+    road([[357, 40], [320, 40]]); road([[337, 22], [337, 58]]);
+    road([[409, 37], [362, 37]]); road([[390, 9], [390, 65]]);
 
     // масляные пятна вокруг качалок
     const PUMPS: [number, number][] = [[9, 34], [32, 34], [18, 48], [33, 52], [11, 44]];
@@ -156,6 +174,9 @@ export const Explore = {
     // железная дорога: главный путь и запасной у разъезда
     for (let x = 0; x <= 102; x++) this.rail[61][x] = 1;
     for (let x = 10; x <= 34; x++) this.rail[59][x] = 1;
+    for (let x = 318; x <= 357; x++) this.rail[56][x] = 1;   // ветка в особый лагерь
+    for (let x = 380; x <= 409; x++) this.rail[61][x] = 1;   // конечная в форте баронессы
+    for (let y = 22; y <= 40; y++) this.rail[y][250] = 1;    // узкоколейка от шахты Хейлстоуна
     this.rail[60][9] = 1; this.rail[60][35] = 1;
     fill('k', 11, 58, 23, 1); // перрон
 
@@ -305,6 +326,80 @@ export const Explore = {
       }
     }
 
+    // ======================= БРИММОР — рыбацкая деревня на озере
+    for (const [x, y] of [[199, 26], [212, 24], [223, 27], [205, 28]]) B('boat', x, y, 2, 1, { name: 'Лодка', talk: 'boat' });
+    B('house', 192, 34, 4, 3, { name: 'Дом старосты', talk: 'house_brimmor' });
+    B('hut', 200, 35, 4, 3, { name: 'Коптильня', talk: 'smokehouse' });
+    B('house', 207, 34, 4, 3, { name: 'Рыбацкий дом', talk: 'house_fisher' });
+    B('hut', 215, 35, 4, 3, { name: 'Хижина', talk: 'house_fisher' });
+    B('house', 222, 34, 4, 3, { name: 'Пустой дом', talk: 'empty_fisher', boarded: true });
+    B('house', 193, 50, 4, 3, { name: 'Рыбацкий дом', talk: 'house_fisher' });
+    B('hut', 207, 50, 4, 3, { name: 'Хижина', talk: 'house_fisher' });
+    B('house', 216, 50, 4, 3, { name: 'Казённая скупка рыбы', talk: 'fishbuy' });
+    for (const [x, y] of [[194, 40], [204, 41], [219, 41]]) B('nets', x, y, 3, 1, { name: 'Сети', talk: 'nets' });
+    for (const [x, y] of [[198, 44], [211, 44]]) B('rack', x, y, 2, 1, { name: 'Вешала с рыбой', talk: 'fishrack' });
+    for (const [x, y] of [[202, 32], [217, 32], [226, 45]]) B('lamp', x, y, 1, 1, { name: 'Фонарь', talk: 'lamp' });
+    B('poster', 225, 49, 1, 1, { name: 'Плакат', talk: 'poster' });
+    for (const [x, y] of [[214, 46], [196, 46]]) B('barrel', x, y, 1, 1, { name: 'Бочка с солёной рыбой', talk: 'fishbarrel' });
+
+    // ======================= ХЕЙЛСТОУН — старатели: руда и металлолом
+    B('adit', 247, 19, 7, 3, { name: 'Шахта', talk: 'mine' });
+    for (const y of [27, 33]) B('orecart', 250, y, 1, 1, { name: 'Вагонетка с рудой', talk: 'orecart' });
+    for (const [x, y] of [[236, 22], [262, 23], [238, 36], [264, 38], [256, 52], [236, 50]]) B('scrapheap', x, y, 3, 2, { name: 'Груда металлолома', talk: 'scrapheap' });
+    for (const [x, y] of [[257, 30], [242, 30]]) B('coalheap', x, y, 2, 1, { name: 'Отвал руды', talk: 'orepile' });
+    B('workshop', 256, 42, 4, 2, { name: 'Сортировочная', talk: 'sorting' });
+    for (const [x, y] of [[235, 43], [240, 44], [244, 52], [262, 50], [266, 44]]) B('shack', x, y, 3, 2, { name: 'Лачуга старателя', talk: 'shack_prosp' });
+    for (const [x, y] of [[246, 46], [258, 35]]) B('campfire', x, y, 1, 1, { dynamic: true, name: 'Костёр', talk: 'slumfire' });
+    B('poster', 268, 46, 1, 1, { name: 'Плакат', talk: 'poster' });
+    for (const [x, y] of [[253, 47], [244, 39]]) B('crates', x, y, 1, 1, { name: 'Ящики', talk: 'crates' });
+
+    // ======================= МОССЛЕЙ — грибники и пастухи
+    for (const y of [20, 22, 24, 26]) for (const x of [277, 282]) B('shroombed', x, y, 4, 1, { name: 'Грибная грядка', talk: 'shroombed' });
+    for (const [x, y] of [[280, 29], [287, 19], [290, 33], [310, 31]]) B('bigshroom', x, y, 1, 1, { name: 'Светящийся гриб', talk: 'bigshroom' });
+    B('hut', 277, 34, 4, 3, { name: 'Дом старшей', talk: 'house_mossley' });
+    B('hut', 284, 39, 4, 3, { name: 'Хижина грибников', talk: 'hut' });
+    B('hut', 299, 38, 4, 3, { name: 'Дом пастухов', talk: 'house_herders' });
+    B('hut', 306, 43, 4, 3, { name: 'Хижина', talk: 'hut' });
+    B('barn', 300, 30, 7, 3, { name: 'Жучиный навес', talk: 'barn' });
+    B('rack', 288, 25, 2, 1, { name: 'Сушилка', talk: 'rack' }); B('feed', 309, 20, 2, 2, { name: 'Куча корма', talk: 'feed' });
+    B('cellar', 277, 15, 3, 2, { name: 'Грибной погреб', talk: 'cellar' }); B('cellar', 285, 15, 3, 2, { name: 'Грибной погреб', talk: 'cellar' });
+    B('poster', 296, 45, 1, 1, { name: 'Плакат', talk: 'poster' });
+
+    // ======================= ОСОБЫЙ ЛАГЕРЬ — промышленная зона баронессы
+    for (let x = 316; x <= 357; x++) { B('fence', x, 18, 1, 1); B('fence', x, 60, 1, 1); }
+    for (let y = 19; y < 60; y++) { B('fence', 316, y, 1, 1); if (y < 38 || y > 42) if (y !== 56) B('fence', 357, y, 1, 1); }
+    for (const [x, y] of [[318, 20], [353, 20], [318, 55], [353, 52]]) B('tower', x, y, 3, 3, { name: 'Сторожевая вышка', talk: 'camptower' });
+    B('factory', 322, 24, 9, 4, { name: 'Цех', talk: 'campfactory' });
+    B('factory', 341, 24, 9, 4, { name: 'Цех', talk: 'campfactory' });
+    B('factory', 322, 46, 10, 4, { name: 'Цех', talk: 'campfactory' });
+    B('barracks', 341, 46, 9, 3, { name: 'Барак рабочих', talk: 'campbarracks' });
+    for (const x of [325, 330, 344, 349]) B('vent', x, 29, 1, 1, { dynamic: true, name: 'Решётка паропровода' });
+    for (const [x, y] of [[334, 33], [345, 35]]) B('coalheap', x, y, 2, 1, { name: 'Уголь', talk: 'coalheap' });
+    for (const [x, y] of [[322, 36], [349, 33], [326, 41]]) B('crates', x, y, 1, 1, { name: 'Ящики', talk: 'campcrates' });
+    for (const x of [322, 330]) B('wagon', x, 56, 4, 1, { name: 'Товарный вагон', talk: 'campwagon' });
+    B('horn', 340, 38, 1, 1, { name: 'Громкоговоритель', talk: 'horn' });
+    B('banner', 354, 36, 1, 1, { name: 'Знамя баронессы', talk: 'banner' }); B('banner', 354, 44, 1, 1, { name: 'Знамя баронессы', talk: 'banner' });
+    for (const [x, y] of [[327, 38], [345, 42]]) B('lamp', x, y, 1, 1, { name: 'Фонарь', talk: 'lamp' });
+
+    // ======================= ФОРТ БАРОНЕССЫ — один большой ярус и замок
+    for (let x = 360; x <= 409; x++) { B('wall', x, 8, 1, 1); B('wall', x, 66, 1, 1); }
+    for (let y = 9; y < 66; y++) { B('wall', 360, y, 1, 1); if (y < 35 || y > 39) B('wall', 409, y, 1, 1); }
+    for (const y of [8, 60]) B('tower', 407, y, 3, 3, { name: 'Башня', talk: 'btower' });
+    // замок баронессы за внутренней стеной
+    for (let y = 9; y < 66; y++) if (y < 34 || y > 38) B('wall', 375, y, 1, 1);
+    B('gate', 374, 34, 2, 5, { name: 'Ворота замка', talk: 'castle_gate' });
+    B('keep', 362, 26, 11, 6, { name: 'Замок баронессы', talk: 'castle' });
+    B('banner', 371, 22, 1, 1, { name: 'Знамя баронессы', talk: 'banner' }); B('banner', 371, 41, 1, 1, { name: 'Знамя баронессы', talk: 'banner' });
+    // большой ярус: казармы рядами, плац, статуя, агитация
+    for (const y of [11, 17, 49, 55]) for (const x of [378, 397]) B('barracks', x, y, 9, 3, { name: y < 30 ? 'Казарма' : 'Дом горожан', talk: y < 30 ? 'bbarracks' : 'bhouse' });
+    B('statue', 388, 35, 3, 2, { name: 'Статуя баронессы', talk: 'statue' });
+    for (const [x, y] of [[384, 27], [395, 27], [384, 46], [395, 46]]) B('banner', x, y, 1, 1, { name: 'Знамя баронессы', talk: 'banner' });
+    for (const [x, y] of [[379, 24], [400, 24], [379, 44], [400, 44], [405, 34]]) B('poster', x, y, 1, 1, { name: 'Плакат', talk: 'poster' });
+    for (const [x, y] of [[392, 25], [392, 47], [378, 36]]) B('horn', x, y, 1, 1, { name: 'Громкоговоритель', talk: 'horn' });
+    B('stall', 399, 39, 2, 1, { name: 'Интендантская лавка', talk: 'stall_b' }); B('crates', 402, 40, 1, 1, { name: 'Ящики интенданта', talk: 'crates' });
+    for (const x of [384, 390]) B('wagon', x, 61, 4, 1, { name: 'Вагон', talk: 'bwagon' });
+    for (const [x, y] of [[381, 32], [399, 32], [381, 42], [399, 33]]) B('lamp', x, y, 1, 1, { name: 'Фонарь', talk: 'lamp' });
+
     // случайные камни и деревья в пустоши (воронки — только на поле сражений к западу)
     const free = (x: number, y: number, w: number, h: number) => {
       for (let yy = y - 1; yy <= y + h; yy++) for (let xx = x - 1; xx <= x + w; xx++) {
@@ -324,7 +419,7 @@ export const Explore = {
 
     // блокировка клеток
     for (const o of this.objs) if (o.block) for (let y = o.y; y < o.y + o.h; y++) for (let x = o.x; x < o.x + o.w; x++) if (this.inMap(x, y)) this.block[y][x] = true;
-    for (let y = 0; y < MH; y++) for (let x = 0; x < MW; x++) if (this.ground[y][x] === 'f' || this.ground[y][x] === 'x') this.block[y][x] = true;
+    for (let y = 0; y < MH; y++) for (let x = 0; x < MW; x++) if (this.ground[y][x] === 'f' || this.ground[y][x] === 'x' || this.ground[y][x] === 'l') this.block[y][x] = true;
 
     // ---------------- жители
     const NPC = (id: string, name: string, kind: string, x: number, y: number, talk: string, cond?: () => boolean) => this.npcs.push({ id, name, kind, x, y, talk, cond, seed: this.npcs.length * 1.7 });
@@ -343,6 +438,19 @@ export const Explore = {
     NPC('trader', 'Торговец', 'sutler', 157, 47, 'trader');
     NPC('prosthetist', 'Протезист', 'medic_civ', 167, 56, 'prosthetist');
     NPC('surgeon', 'Подпольный хирург', 'surgeon_under', 142, 65, 'surgeon');
+    // земли баронессы
+    NPC('fish_elder', 'Старый Гарт, староста', 'fisher', 195, 38, 'fish_elder');
+    NPC('fish_buyer', 'Скупщица', 'fisher_w', 218, 54, 'fish_buyer');
+    NPC('prosp_boss', 'Мэйбл, старшина старателей', 'prospector', 255, 45, 'prosp_boss');
+    NPC('scrap_trader', 'Скупщик лома', 'scrapper', 260, 47, 'scrap_trader');
+    NPC('moss_elder', 'Ровена, старшая', 'grower', 280, 38, 'moss_elder');
+    NPC('moss_herder', 'Пастух', 'herder', 303, 29, 'moss_herder');
+    NPC('camp_gate1', 'Часовой', 'bguard', 355, 37, 'camp_gate'); NPC('camp_gate2', 'Часовой', 'bguard', 355, 43, 'camp_gate');
+    NPC('camp_foreman', 'Мастер цеха', 'bofficer', 336, 36, 'camp_foreman');
+    NPC('bgate1', 'Часовой', 'bguard', 407, 34, 'bgate'); NPC('bgate2', 'Часовой', 'bguard', 407, 40, 'bgate');
+    NPC('castle_g1', 'Гвардеец', 'bguard', 377, 33, 'castle_gate'); NPC('castle_g2', 'Гвардеец', 'bguard', 377, 39, 'castle_gate');
+    NPC('herald', 'Глашатай', 'bherald', 389, 33, 'herald');
+    NPC('quarter', 'Интендант', 'bofficer', 400, 40, 'quartermaster');
     NPC('upper1', 'Стража Верхнего города', 'guard', 179, 46, 'upper_guard');
     NPC('upper2', 'Стража Верхнего города', 'guard', 179, 52, 'upper_guard');
 

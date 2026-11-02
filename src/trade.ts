@@ -34,6 +34,27 @@ export const SHOPS: Record<string, Shop> = {
     items: { ritualkit: 2, rabbitfoot: 1, locket: 1 },
     cons: [],
   },
+  // ---------------- земли баронессы
+  brimmor: {
+    name: 'Скупщица — Бриммор', greet: 'Рыба солёная и копчёная. В дорогу — лучше не придумаешь.',
+    items: { knife: 1 },
+    cons: ['ration', 'bandage'],
+  },
+  hailstone: {
+    name: 'Скупщик лома — Хейлстоун', greet: 'Всё, что звенит, — ко мне. Кое-что из найденного продам.',
+    items: { helmet: 1, tools: 1 },
+    cons: ['ration', 'ammo_rifle'],
+  },
+  mossley: {
+    name: 'Ровена — Мосслей', greet: 'Сушёные грибы, вяленое жучье мясо, настойка от боли.',
+    items: { wormwood: 1 },
+    cons: ['ration', 'painkiller'],
+  },
+  bquarter: {
+    name: 'Интендант — форт баронессы', greet: 'Казённое снаряжение. Каждая вещь — по ведомости.',
+    items: { rifle: 2, helmet: 2, greatcoat: 2, quilted: 1, bandolier: 1, boots: 1, gloves: 1 },
+    cons: ['ammo_rifle', 'ammo_pistol', 'grenade', 'ration', 'bandage', 'medkit'],
+  },
   // ---------------- форт
   clinic: {
     name: 'Клиника — аптечный шкаф', greet: 'Лекарства, инструменты, противогазы. За порошки из форта платят шиллингами, а не грибами.',

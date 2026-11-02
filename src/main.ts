@@ -104,7 +104,7 @@ Explore.onLocation = () => refreshHud();
 Explore.onExit = (scene) => toWorld(scene);
 World.onArrive = (l) => Dialog.start(l.talk);
 World.onEncounter = () => Dialog.start('enc_band');
-World.onPatrol = () => Dialog.start('enc_patrol');
+World.onPatrol = (owner) => Dialog.start(owner === 'baroness' ? 'enc_bpatrol' : 'enc_patrol');
 World.onDiscover = (l) => toast(`Замечено: ${l.name}`);
 World.onDead = () => Dialog.start('enc_dead');
 World.onGas = (msg) => { toast(msg); refreshHud(); };

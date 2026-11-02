@@ -60,6 +60,15 @@ export const STYLES: Record<string, Style> = {
   porter: { coat: '#4a4030', legs: '#2a2418', belt: '#3a2a1a', hair: '#2a2018', skin: '#b08a6a', weapon: 'bag', scale: 1.1 },
   surgeon_under: { coat: '#2a2622', legs: '#1a1816', apron: '#4a3020', hair: '#2a2622', skin: '#b8a090', goggles: true, weapon: 'knife' },
   medic_civ: { coat: '#d0ccc0', legs: '#2a2826', apron: '#a8a498', hair: '#5a5a56', skin: '#c8b096', goggles: true, weapon: 'wrench' },
+  // земли баронессы
+  bguard: { coat: '#3a3e4a', legs: '#1e2026', belt: '#2a1d12', trim: '#a03028', hat: 'helmet', hatC: '#2e323c', skin: '#c4a888', weapon: 'rifle' },
+  bofficer: { coat: '#2e323e', legs: '#18191e', belt: '#2a1d12', trim: '#c8a050', hat: 'cap', hatC: '#7a2a24', skin: '#d0b498', weapon: 'saber' },
+  bherald: { coat: '#4a2a2a', legs: '#1e1a1a', trim: '#c8a050', hat: 'cap', hatC: '#2e323c', skin: '#c8ac90', beard: '#4a3a2a', weapon: 'book' },
+  fisher: { coat: '#4a5048', legs: '#2a2c28', apron: '#3a3a30', hat: 'flatcap', hatC: '#3a3e38', skin: '#b89878', beard: '#6a5a4a', weapon: 'pole' },
+  fisher_w: { coat: '#4a4448', dress: true, apron: '#5a5a4a', hat: 'bonnet', hatC: '#3a3a3a', skin: '#c8a890', hair: '#5a4a3a', longHair: true, weapon: 'bag' },
+  prospector: { coat: '#5a4a38', legs: '#2e2820', belt: '#2a1d12', hat: 'minerhelm', hatC: '#5a4a2a', skin: '#b08a6a', beard: '#3a2a1a', weapon: 'hammer' },
+  scrapper: { coat: '#4a4238', legs: '#2a2620', hat: 'flatcap', hatC: '#2a2620', skin: '#a8886a', goggles: true, weapon: 'bag' },
+  bworker: { coat: '#4a4a52', legs: '#26262c', belt: '#2a1d12', hat: 'flatcap', hatC: '#3a3a42', skin: '#c0a080', weapon: 'wrench' },
   // фоновые жители деревень
   townsman: { coat: '#4a4438', legs: '#2a2620', hat: 'flatcap', hatC: '#2e2a22', skin: '#c4a888', beard: '#5a4a3a' },
   townswoman: { coat: '#4a3e44', dress: true, apron: '#6a6050', hat: 'bonnet', hatC: '#3a3034', skin: '#d0b49a', hair: '#6a4a2a', longHair: true },
