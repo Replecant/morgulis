@@ -63,11 +63,11 @@ export const SCENES: Record<string, { name: string; x0: number; y0: number; x1: 
   bcamp:     { name: 'Особый лагерь', x0: 316, y0: 18, x1: 357, y1: 60, entry: { x: 356, y: 40 } },
   bfort:     { name: 'Форт баронессы', x0: 360, y0: 8, x1: 409, y1: 66, entry: { x: 408, y: 37 } },
   // север: земли бывшего барона Сильвера — край Народного Собрания
-  einbow:    { name: 'Эйнбоу', x0: 414, y0: 16, x1: 452, y1: 50, entry: { x: 433, y: 50 } },
-  hawley:    { name: 'Хоули', x0: 456, y0: 10, x1: 495, y1: 48, entry: { x: 457, y: 30 } },
-  woodham:   { name: 'Вудхэм', x0: 499, y0: 14, x1: 537, y1: 50, entry: { x: 537, y: 32 } },
-  tarwell:   { name: 'Тарвелл', x0: 541, y0: 14, x1: 579, y1: 50, entry: { x: 541, y: 32 } },
-  svoboda:   { name: 'Форт Свобода', x0: 583, y0: 4, x1: 638, y1: 68, entry: { x: 610, y: 68 } },
+  einbow:    { name: 'Эйнбоу', x0: 414, y0: 16, x1: 452, y1: 50, entry: { x: 433, y: 47 } },
+  hawley:    { name: 'Хоули', x0: 456, y0: 10, x1: 495, y1: 48, entry: { x: 459, y: 30 } },
+  woodham:   { name: 'Вудхэм', x0: 499, y0: 14, x1: 537, y1: 50, entry: { x: 535, y: 32 } },
+  tarwell:   { name: 'Тарвелл', x0: 541, y0: 14, x1: 579, y1: 50, entry: { x: 543, y: 32 } },
+  svoboda:   { name: 'Форт Свобода', x0: 583, y0: 4, x1: 638, y1: 67, entry: { x: 610, y: 63 } },
   fort2:    { name: 'Средний город', x0: 144, y0: 31, x1: 184, y1: 67, entry: { x: 147, y: 49 } },
 };
 const PENS = [{ x0: 62, y0: 9, x1: 73, y1: 17, gx: 67 }, { x0: 77, y0: 10, x1: 88, y1: 18, gx: 82 }, { x0: 296, y0: 18, x1: 307, y1: 27, gx: 301 }, { x0: 461, y0: 13, x1: 472, y1: 21, gx: 466 }, { x0: 477, y0: 13, x1: 488, y1: 21, gx: 482 }]; // третий — загон в Мосслее, четвёртый и пятый — в Хоули
@@ -139,7 +139,7 @@ export const Explore = {
     for (const [x, y, rr] of [[3, 7, 1], [32, 7, 2], [32, 23, 2], [15, 25, 1], [26, 27, 1]]) blob('x', x, y, rr);
     for (const p of PENS) fill('p', p.x0 + 1, p.y0 + 1, p.x1 - p.x0 - 1, p.y1 - p.y0 - 1);
     // форт: всё восточнее стены — недоступно, кроме улиц Нижнего и Среднего города
-    fill('f', 103, 0, MW - 103, MH);
+    fill('f', 103, 0, 412 - 103, MH); // до x=412 — дальше сцены севера со своей землёй
     fill('o', 103, 30, 42, 39);   // Нижний город: грязь, масло, сажа
     fill('p', 147, 33, 34, 33);   // Средний город: утоптанная земля
     fill('k', 155, 45, 17, 11);   // рыночная площадь — дощатый настил
@@ -156,7 +156,7 @@ export const Explore = {
     fill('g', 457, 11, 38, 37);                                                     // Хоули
     fill('m', 500, 15, 37, 35); fill('g', 507, 22, 24, 21);                         // Вудхэм: поляна в лесу
     fill('o', 542, 15, 37, 35);                                                     // Тарвелл: промасленная земля
-    fill('f', 583, 4, 56, 64); fill('p', 585, 6, 52, 61); fill('k', 599, 24, 23, 13); // форт Свобода: улицы и площадь
+    fill('f', 583, 4, 56, 64); fill('p', 585, 6, 52, 61); fill('k', 599, 24, 23, 13); fill('p', 606, 67, 8, 1); // форт Свобода: улицы, площадь, проём ворот
 
     // дороги
     const road = (pts: number[][], wdt = 1) => {
@@ -863,7 +863,7 @@ export const Explore = {
       if (best) { this.path = pathTo(reach, MW, best.x, best.y).slice(1); this.pending = thing; }
       return;
     }
-    if (reach.has(ty * MW + tx)) { this.path = pathTo(reach, MW, tx, ty).slice(1); this.pending = null; this.exitDir = null; this.exitTarget = null; return; }
+    if (reach.has(ty * MW + tx) && this.inScene(tx, ty)) { this.path = pathTo(reach, MW, tx, ty).slice(1); this.pending = null; this.exitDir = null; this.exitTarget = null; return; }
     // клик за краем сцены — дойти до ближайшего открытого места на краю и выйти на карту
     const sc0 = SCENES[this.scene], onEdge = tx <= sc0.x0 || tx >= sc0.x1 || ty <= sc0.y0 || ty >= sc0.y1;
     if (!this.inScene(tx, ty) || (onEdge && this.blocked(tx, ty))) {
