@@ -383,11 +383,6 @@ export const Explore = {
     this.trail = this.followers.map(() => ({ ...p }));
     this.path = []; this.pending = null; this.moveK = 1;
     for (const f of this.folk) { f.bark = null; f.hold = 0; f.nextBark = 3 + Math.random() * 8; }
-    // вернувшаяся жучиха Мэг появляется в загоне
-    if (id === 'richmord' && G.flags.beetleDone && !this.beetles.some((b) => b.id === 'meg')) {
-      const pen = PENS[0];
-      this.beetles.push({ id: 'meg', x: 67.5, y: 13, tx: 67.5, ty: 13, pen, dir: 0, seed: 3, wait: 1, talk: 'meg_home', name: 'Жучиха Мэг', scale: 1.15 });
-    }
     G.location = '';
     this.updateLocation();
   },

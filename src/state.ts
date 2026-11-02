@@ -48,9 +48,7 @@ export function resetGame(pc: Character = newCharacter()) {
 /** Журнал: активные и выполненные задания региона. */
 export function journal(): { text: string; done: boolean }[] {
   const f = G.flags, out: { text: string; done: boolean }[] = [];
-  if (f.valveTaken) out.push({ text: f.valveDone ? 'Клапан для Иды Кроу' : f.hasValve ? 'Отнести клапан Иде Кроу (Эшфорд)' : 'Найти клапан на старой насосной (юг Эшфорда)', done: !!f.valveDone });
-  if (f.beetleTaken) out.push({ text: f.beetleDone ? 'Жучиха Мэг вернулась в Ричморд' : 'Найти сбежавшую жучиху Мэг (на карте — «Старые кости»)', done: !!f.beetleDone });
-  if (f.feedTaken) out.push({ text: f.feedDone ? 'Грибной корм доставлен в Ричморд' : 'Отвезти ящик грибного корма Уоллесу в Ричморд', done: !!f.feedDone });
+  void f; // заданий пока нет — тестовые убраны
   return out;
 }
 
