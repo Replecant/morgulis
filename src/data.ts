@@ -41,6 +41,11 @@ export const WEAPONS: Record<string, Weapon> = {
   pitchfork: { name: 'Вилы', type: 'melee', atk: 0, dmg: [2, 4] },
   musket:    { name: 'Старое ружьё', type: 'ranged', range: 7, opt: 3, atk: -1, dmg: [2, 4] },
   buttstock: { name: 'Приклад', type: 'melee', atk: -1, dmg: [1, 3] },
+  // оружие траншейных мертвецов
+  rustbayonet: { name: 'Ржавый штык', type: 'melee', atk: 0, dmg: [2, 4] },
+  oldrifle:  { name: 'Гнилая винтовка', type: 'ranged', range: 9, opt: 5, atk: -1, dmg: [3, 5] },
+  gasbreath: { name: 'Газовый выдох', type: 'ranged', range: 3, opt: 3, atk: 1, dmg: [2, 3], ignoreCover: true, splash: [1, 2] },
+  trenchclub:{ name: 'Окопная лопата', type: 'melee', atk: 0, dmg: [3, 6] },
   hammer:    { name: 'Кузнечный молот', type: 'melee', atk: 0, dmg: [3, 6] },
   claws:     { name: 'Когти', type: 'melee', atk: 1, dmg: [2, 3] },
   flame:     { name: 'Зелёное пламя', type: 'ranged', range: 8, opt: 8, atk: 1, dmg: [3, 5], ignoreCover: true, splash: [1, 2], magic: true },
@@ -113,12 +118,17 @@ export const ENEMIES: Record<string, UnitBase> = {
   imp:         E('imp', 'Бес', 'imp', 5, 6, ['claws'], 'melee', 3, 13, { demonic: true }),
   scav_gun:    E('scav_gun', 'Мародёр с ружьём', 'militia_gun', 6, 4, ['musket'], 'ranged', 2, 10),
   scav_knife:  E('scav_knife', 'Мародёр с ножом', 'militia', 7, 4, ['knife'], 'melee', 2, 10),
+  // траншейные мертвецы: медленные, упрямые, бьют больно
+  dead_soldier: E('dead_soldier', 'Окопный мертвец', 'dead_soldier', 9, 3, ['rustbayonet'], 'melee', 2, 9),
+  dead_rifle:   E('dead_rifle', 'Мертвец-стрелок', 'dead_rifle', 7, 3, ['oldrifle', 'rustbayonet'], 'ranged', 1, 9),
+  dead_gas:     E('dead_gas', 'Газовый мертвец', 'dead_gas', 9, 3, ['gasbreath'], 'ranged', 1, 9),
+  dead_sapper:  E('dead_sapper', 'Мертвец-сапёр в панцире', 'dead_sapper', 16, 2, ['trenchclub'], 'melee', 3, 10, { armor: 2 }),
 };
 
 export interface BattleDef {
   id: string;
   title: string;
-  theme: 'road' | 'factory';
+  theme: 'road' | 'factory' | 'trench';
   map: string[];
   players: [number, number][];
   /** ammo — сколько зарядов на бой (иначе — без счёта), extra — добавочное оружие, move — поправка хода */
@@ -133,8 +143,10 @@ export interface BattleDef {
  *  c  ящики/бочки/обломки  f  забор                (половинное укрытие)
  *  w  лужа нефти (непроходимо, обзор не закрывает)
  *  o  ритуальный круг (проходимо)
+ *  x  колючая проволока (непроходимо, обзор не закрывает)
  */
 export function battleDef(id: string, _flags: Record<string, boolean | undefined>): BattleDef {
+  if (id.startsWith('trench')) return trenchBattle(id);
   switch (id) {
     case 'waste':
       return {
@@ -188,4 +200,35 @@ export function battleDef(id: string, _flags: Record<string, boolean | undefined
         lights: [[13, 6, 170, '#f0a050'], [4, 10, 110, '#e8c070']],
       };
   }
+}
+
+/** Бой в траншеях старого фронта: отряд за бруствером, мертвецы идут через ничейную землю. */
+function trenchBattle(id: string): BattleDef {
+  const comps: Record<string, BattleDef['enemies']> = {
+    trench1: [{ t: 'dead_soldier', x: 19, y: 4 }, { t: 'dead_soldier', x: 20, y: 9 }, { t: 'dead_rifle', x: 22, y: 6 }],
+    trench2: [{ t: 'dead_soldier', x: 19, y: 5 }, { t: 'dead_gas', x: 20, y: 8 }, { t: 'dead_rifle', x: 22, y: 3 }],
+    trench3: [{ t: 'dead_sapper', x: 19, y: 7 }, { t: 'dead_soldier', x: 20, y: 4 }, { t: 'dead_soldier', x: 21, y: 10 }, { t: 'dead_gas', x: 22, y: 6 }],
+  };
+  return {
+    id, title: 'Старый фронт', theme: 'trench',
+    map: [
+      '.....#....x..x.....,....',
+      '..c..#...........T......',
+      '.....#....xx.......x....',
+      '.....#.......w..........',
+      '..........c.....x.......',
+      '.....#....x.........c...',
+      '.....#..........,.......',
+      '.....#....x.....T....w..',
+      '..T..#.......c..........',
+      '..........x.x...x.......',
+      '.....#..w...............',
+      '.....#....x.......c.....',
+      '..c..#..............T...',
+      '........................',
+    ],
+    players: [[3, 6], [3, 8], [2, 5], [2, 9]],
+    enemies: comps[id] ?? comps.trench1,
+    lights: [[12, 6, 150, '#a8d070'], [3, 7, 110, '#e8c070']],
+  };
 }

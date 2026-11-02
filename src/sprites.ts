@@ -66,6 +66,11 @@ function buildChar(kind: string, frame: number): HTMLCanvasElement {
   const bob = frame === 1 || frame === 3 ? -1 : 0;
   const sy = (y: number) => y + bob; // всё выше пояса покачивается
 
+  // --- газовые баллоны за спиной (газовый мертвец)
+  if (st.tanks) {
+    R(tx0 - 3, sy(tTop), 3, 10, '#5a5e4a'); R(tx0 - 3, sy(tTop), 1, 10, '#7a7e66'); R(tx0 - 3, sy(tTop - 1), 3, 1, BRASS);
+    R(tx0 - 2, sy(tTop + 10), 2, 1, '#3a3e30'); P(tx0 - 4, sy(tTop + 3), '#9fd36a');               // течь — зелёная капля
+  }
   // --- задняя рука
   R(tx0 - 1, sy(tTop + 1), 2, 8, coatD);
   if (st.band) { R(tx0 - 1, sy(tTop + 2), 2, 2, '#e0dcc8'); P(tx0 - 1, sy(tTop + 3), '#a02a20'); }
@@ -107,6 +112,11 @@ function buildChar(kind: string, frame: number): HTMLCanvasElement {
   }
   if (st.belt) { R(tx0, sy(tTop + 7), tx1 - tx0 + 1, 1, st.belt); P(12, sy(tTop + 7), BRASS); }
   if (st.collar) R(11, sy(tTop), 2, 1, '#e8e4d8');
+  if (st.undead) { // истлевшая шинель: дыры, торчащие рёбра, рваный подол
+    R(tx0 + 2, sy(tTop + 4), 2, 1, '#d8d4c0'); R(tx0 + 2, sy(tTop + 6), 2, 1, '#d8d4c0'); P(tx0 + 3, sy(tTop + 5), INK);
+    if (!st.dress) for (const xx of [tx0, tx0 + 3, tx1 - 1]) c.clearRect(xx, sy(tBot), 1, 1);
+    P(tx1 - 2, sy(tTop + 9), shade(coat, -0.55));
+  }
 
   // --- голова
   const hx0 = 9, hy = sy(top);
@@ -124,10 +134,15 @@ function buildChar(kind: string, frame: number): HTMLCanvasElement {
       R(hx0 + 1, hy + 2, 6, 5, '#2b2d28');
       P(hx0 + 3, hy + 3, '#9fd36a'); P(hx0 + 5, hy + 3, '#9fd36a');
       R(hx0 + 3, hy + 6, 3, 3, '#4a4a44'); P(hx0 + 3, hy + 6, '#6a6a62');
+    } else if (st.undead) {
+      P(hx0 + 4, hy + 3, '#c8ff60'); P(hx0 + 2, hy + 3, '#7aa040');  // светящиеся глаза
+      R(hx0 + 1, hy + 5, 5, 1, '#d8d4c0'); P(hx0 + 2, hy + 5, INK); P(hx0 + 4, hy + 5, INK); // оскал
+      P(hx0 + 1, hy + 1, shade(skin, -0.45)); P(hx0 + 4, hy + 6, shade(skin, -0.45));        // трупные пятна
     } else {
       P(hx0 + 4, hy + 3, INK);                                      // глаз
       P(hx0 + 5, hy + 5, skinD);
     }
+    if (st.mask && st.tanks) pline(c, hx0 + 4, hy + 8, tx0 - 2, sy(tTop + 1), '#2a2c24'); // шланг от маски к баллонам
     if (st.goggles) { R(hx0, hy + 1, 6, 1, '#2a2018'); P(hx0 + 2, hy + 1, BRASS); P(hx0 + 4, hy + 1, BRASS); }
     const hc = st.hatC ?? '#222', hcD = shade(hc, -0.35), hcL = shade(hc, 0.18);
     switch (st.hat) {
@@ -188,6 +203,9 @@ function buildChar(kind: string, frame: number): HTMLCanvasElement {
       break;
     case 'wrench': pline(c, hx, hy2 + 1, hx + 3, hy2 + 7, STEEL); P(hx + 4, hy2 + 7, STEEL); P(hx + 2, hy2 + 8, STEEL); hand(); break;
     case 'bag': R(hx - 2, hy2 + 1, 5, 4, '#2a1a12'); P(hx, hy2 + 1, BRASS); hand(); break;
+    case 'shovel': // окопная лопата-дубина с заточенным краем
+      pline(c, hx, hy2 + 1, hx + 2, hy2 - 10, WOOD); R(hx, hy2 - 15, 5, 5, STEEL); R(hx, hy2 - 15, 5, 1, STEEL_L); P(hx + 4, hy2 - 11, '#5a2a1a'); hand();
+      break;
     case 'book': R(hx - 2, hy2 - 3, 4, 5, '#4a1a14'); R(hx - 2, hy2 - 3, 1, 5, '#d8c8a0'); hand(); break;
     case 'bottle': R(hx, hy2 - 3, 2, 4, '#3d6a3a'); P(hx, hy2 - 4, '#2a2018'); hand(); break;
     default: hand();
@@ -283,7 +301,8 @@ export function miniSprite(kind: string, frame = 0): HTMLCanvasElement {
   // голова
   R(3, 2, 4, 4, skin); R(6, 2, 1, 4, shade(skin, -0.2));
   if (st.mask) { R(3, 4, 4, 2, '#3a3c30'); R(4, 4, 1, 1, '#9aa080'); }
-  else R(5, 3, 1, 1, INK);
+  else R(5, 3, 1, 1, st.undead ? '#c8ff60' : INK);
+  if (st.tanks) R(0, 6, 2, 4, '#5a5e4a');
   if (st.beard) R(3, 5, 4, 1, st.beard);
   if (st.hair && !st.hat) R(3, 1, 4, 2, st.hair);
   if (st.longHair && st.hair) R(2, 2, 1, 4, st.hair);
@@ -301,7 +320,7 @@ export function miniSprite(kind: string, frame = 0): HTMLCanvasElement {
     case 'rifle': case 'musket': R(9, 3, 1, 9, WOOD); R(9, 1, 1, 2, STEEL); break;
     case 'fork': case 'staff': case 'pole': case 'goad': R(9, 1, 1, 13, WOOD); if (st.weapon === 'fork') { R(8, 0, 1, 2, STEEL); R(9, 0, 1, 1, STEEL); R(10, 0, 1, 2, STEEL); } break;
     case 'saber': R(9, 7, 1, 5, STEEL_L); R(8, 10, 1, 1, BRASS); break;
-    case 'hammer': case 'wrench': R(9, 6, 1, 5, WOOD); R(8, 6, 3, 2, STEEL); break;
+    case 'hammer': case 'wrench': case 'shovel': R(9, 6, 1, 5, WOOD); R(8, 6, 3, 2, STEEL); break;
     case 'bag': R(8, 9, 3, 3, '#6a5a3a'); break;
   }
   c.setTransform(1, 0, 0, 1, 0, 0);

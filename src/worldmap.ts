@@ -10,6 +10,10 @@ import { miniSprite } from './sprites';
 
 const VW = 960, VH = 640;
 export const WW = 1920, WH = 1280;
+/** Западная граница мира: за Эшфордом — старый фронт (траншеи, проволока, мертвецы). */
+export const WX0 = -900;
+const OX = -WX0 / 2;          // сдвиг фона: пиксель фона = (x мира − WX0) / 2
+const FRONT_X = 120;          // западнее — старый фронт
 
 export interface Loc {
   id: string; name: string; kind: 'village' | 'fort' | 'poi';
@@ -24,14 +28,19 @@ export const LOCS: Loc[] = [
   { id: 'post', name: 'Разрушенный пост', kind: 'poi', x: 1150, y: 905, talk: 'poi_post', desc: 'Руины имперского поста между трактом и путями.' },
   { id: 'bones', name: 'Старые кости', kind: 'poi', x: 760, y: 430, talk: 'poi_bones', desc: 'Скелет исполинского жука.' },
   { id: 'lorry', name: 'Остов грузовика', kind: 'poi', x: 1270, y: 690, talk: 'poi_lorry', desc: 'Брошенный имперский грузовик в ложбине, в стороне от тракта.' },
+  { id: 'trenches', name: 'Старые траншеи', kind: 'poi', x: -500, y: 600, talk: 'poi_trenches', desc: 'Изрытая окопами земля старой войны.' },
+  { id: 'bunker', name: 'Командный блиндаж', kind: 'poi', x: -700, y: 360, talk: 'poi_bunker', desc: 'Бетонный блиндаж с заклинившей бронедверью.' },
+  { id: 'battery', name: 'Разбитая батарея', kind: 'poi', x: -260, y: 980, talk: 'poi_battery', desc: 'Опрокинутые орудия, гильзы в грязи.' },
   { id: 'flare', name: 'Газовый факел', kind: 'poi', x: 230, y: 640, talk: 'poi_flare', desc: 'Вечный огонь над старой скважиной.' },
 ];
 const ROADS: number[][][] = [
   [[430, 760], [600, 790], [800, 800], [1000, 830], [1200, 850], [1400, 830], [1560, 850], [1730, 840]],
   [[800, 800], [880, 680], [960, 560], [1060, 440], [1180, 330]],
   [[430, 760], [450, 600], [480, 440], [470, 270]],
+  // старая военная дорога — от Эшфорда на запад, к фронту
+  [[430, 760], [260, 800], [40, 790], [-220, 740], [-480, 700], [-760, 640]],
 ];
-const RAIL: number[][] = [[0, 900], [300, 890], [440, 880], [700, 910], [1000, 950], [1300, 940], [1550, 910], [1730, 880]];
+const RAIL: number[][] = [[WX0, 870], [-500, 885], [0, 900], [300, 890], [440, 880], [700, 910], [1000, 950], [1300, 940], [1550, 910], [1730, 880]];
 
 // патрули барона: первый ходит по тракту Эшфорд — форт, второй — от форта к Ричморду
 const PATROL_PATHS: number[][][] = [ROADS[0], [...ROADS[0].slice(2).reverse(), ...ROADS[1].slice(1)]];
@@ -47,6 +56,14 @@ function polyAt(pts: number[][], s: number): Pt & { dx: number } {
   return { x: pts[0][0], y: pts[0][1], dx: 0 };
 }
 
+// группы траншейных мертвецов: бродят по старому фронту, медленнее отряда
+interface DeadGroup { id: string; kinds: string[]; x: number; y: number; tx: number; ty: number; alive: boolean; respawn: number; calm: number; seen: boolean }
+const DEAD_START: [string, string[], number, number][] = [
+  ['trench1', ['dead_soldier', 'dead_rifle', 'dead_soldier'], -600, 500],
+  ['trench2', ['dead_gas', 'dead_soldier', 'dead_rifle'], -330, 860],
+  ['trench3', ['dead_sapper', 'dead_soldier', 'dead_gas'], -760, 950],
+];
+const inFront = (q: Pt) => q.x > WX0 + 40 && q.x < FRONT_X - 20 && q.y > 80 && q.y < WH - 80;
 const FIND_R = 170;         // с какого расстояния отряд замечает примечательное место
 const SPEED = 55;          // пикселей карты в час по бездорожью
 const ROAD_BONUS = 1.7;    // по дороге быстрее
@@ -71,6 +88,9 @@ export const World = {
   onEncounter: () => {},
   onPatrol: () => {},
   onDiscover: (_l: Loc) => {},
+  onDead: (_g: DeadGroup) => {},
+  dead: [] as DeadGroup[],
+  deadHit: null as DeadGroup | null,
   patrols: [] as Patrol[],
   onDay: () => {},
   lastDay: 0,
@@ -80,6 +100,7 @@ export const World = {
     this.band = { x: 1050, y: 1080, tx: 1050, ty: 1080, alive: true, respawn: 0, calm: 0, seen: false };
     this.lastDay = Math.floor(G.clock / 24);
     // первый выходит из Эшфорда к форту, второй — из форта к Ричморду: идут навстречу и расходятся
+    this.dead = DEAD_START.map(([id, kinds, x, y]) => ({ id, kinds, x, y, tx: x, ty: y, alive: true, respawn: 0, calm: 0, seen: false }));
     this.patrols = PATROL_PATHS.map((path, i) => { const len = polyLen(path); return { path, len, s: i ? 0 : len * 0.2, dir: 1 as const, wait: 0, cool: 0, speed: i ? PATROL_SPEED * 1.15 : PATROL_SPEED * 0.9 }; });
   },
   patrolPos(pt: Patrol) { return polyAt(pt.path, pt.s); },
@@ -120,14 +141,14 @@ export const World = {
   nearLoc() { return LOCS.find((l) => this.known(l) && dist(l, this.party) < (l.kind === 'fort' ? 90 : 40)) ?? null; },
   updateLocation() {
     const l = this.nearLoc();
-    G.location = l ? `У места: ${l.name}` : onRoad(this.party) ? 'Тракт' : 'Серая пустошь';
+    G.location = l ? `У места: ${l.name}` : this.party.x < FRONT_X ? 'Старый фронт' : onRoad(this.party) ? 'Тракт' : 'Серая пустошь';
   },
 
   click(mx: number, my: number) {
     const x = mx + this.cam.x, y = my + this.cam.y;
     const l = this.locAt(x, y);
     if (l) { this.pending = l; this.party.tx = l.x; this.party.ty = l.y + (l.kind === 'fort' ? 60 : 0); }
-    else { this.pending = null; this.party.tx = clamp(x, 10, WW - 10); this.party.ty = clamp(y, 10, WH - 10); }
+    else { this.pending = null; this.party.tx = clamp(x, WX0 + 10, WW - 10); this.party.ty = clamp(y, 10, WH - 10); }
     this.party.moving = true;
   },
   hoverAt(mx: number, my: number) { this.hover = this.locAt(mx + this.cam.x, my + this.cam.y); },
@@ -144,7 +165,7 @@ export const World = {
     const speed = SPEED * (onRoad(p) ? ROAD_BONUS : 1) * HOURS_PER_SEC;
     if (vx || vy) {
       const n = Math.hypot(vx, vy);
-      p.x = clamp(p.x + (vx / n) * speed * dt, 10, WW - 10); p.y = clamp(p.y + (vy / n) * speed * dt, 10, WH - 10);
+      p.x = clamp(p.x + (vx / n) * speed * dt, WX0 + 10, WW - 10); p.y = clamp(p.y + (vy / n) * speed * dt, 10, WH - 10);
       if (vx) p.flip = vx < 0;
       p.moving = false; this.pending = null; moved = speed * dt;
     } else if (p.moving) {
@@ -162,6 +183,7 @@ export const World = {
       const day = Math.floor(G.clock / 24);
       if (day > this.lastDay) { this.lastDay = day; this.onDay(); }
       this.updatePatrols(dt);
+      this.updateDead(dt);
       this.updateBand(dt);
     }
   },
@@ -200,6 +222,42 @@ export const World = {
     if (dd > 0.5) { b.x += ((b.tx - b.x) / dd) * Math.min(sp, dd); b.y += ((b.ty - b.y) / dd) * Math.min(sp, dd); }
     if (chase && dist(b, p) < 20) { p.moving = false; this.pending = null; G.keys.clear(); this.onEncounter(); }
   },
+  /** Мертвецы бредут по фронту; заметив отряд, идут на него, но за пределы фронта не выходят. */
+  updateDead(dt: number) {
+    const p = this.party, hours = dt * HOURS_PER_SEC;
+    for (const g of this.dead) {
+      if (!g.alive) {
+        // павшие снова поднимаются — через двое суток, подальше от отряда
+        if (G.clock >= g.respawn) {
+          const s0 = DEAD_START.find((d) => d[0] === g.id)!;
+          if (dist({ x: s0[2], y: s0[3] }, p) > 400) { g.alive = true; g.x = g.tx = s0[2]; g.y = g.ty = s0[3]; }
+        }
+        continue;
+      }
+      const d = dist(g, p);
+      g.seen = d < 320;
+      const chase = d < 190 && G.clock >= g.calm && inFront(p);
+      if (chase) { g.tx = p.x; g.ty = p.y; }
+      else if (dist(g, { x: g.tx, y: g.ty }) < 4) {
+        for (let k = 0; k < 8; k++) {
+          const a = Math.random() * TAU, t = { x: g.x + Math.cos(a) * 160, y: g.y + Math.sin(a) * 160 };
+          if (inFront(t)) { g.tx = t.x; g.ty = t.y; break; }
+        }
+      }
+      const sp = (chase ? 42 : 22) * hours, dd = dist(g, { x: g.tx, y: g.ty });
+      if (dd > 0.5) { g.x += ((g.tx - g.x) / dd) * Math.min(sp, dd); g.y += ((g.ty - g.y) / dd) * Math.min(sp, dd); }
+      if (chase && d < 20) { p.moving = false; this.pending = null; G.keys.clear(); this.deadHit = g; this.onDead(g); return; }
+    }
+  },
+  killDead() { const g = this.deadHit; if (g) { g.alive = false; g.respawn = G.clock + 48; } },
+  /** Оторвались от мертвецов: они на время теряют след и бредут прочь. */
+  calmDead(hours: number) {
+    const g = this.deadHit, p = this.party; if (!g) return;
+    g.calm = G.clock + hours;
+    const a = Math.atan2(g.y - p.y, g.x - p.x);
+    g.tx = clamp(g.x + Math.cos(a) * 200, WX0 + 60, FRONT_X - 40); g.ty = clamp(g.y + Math.sin(a) * 200, 100, WH - 100);
+  },
+
   /** После откупа или удачного бегства банда на время отстаёт. */
   calmBand(hours: number) { this.band.calm = G.clock + hours; },
   killBand() { this.band.alive = false; this.band.respawn = G.clock + 72; },
@@ -208,11 +266,11 @@ export const World = {
   draw(c: CanvasRenderingContext2D, t: number) {
     const p = this.party;
     // камера — в пикселях карты, кратно 2 (один пиксель фона = 2 пикселя карты)
-    this.cam.x = Math.round(clamp(p.x - VW / 2, 0, WW - VW) / 2) * 2;
+    this.cam.x = Math.round(clamp(p.x - VW / 2, WX0, WW - VW) / 2) * 2;
     this.cam.y = Math.round(clamp(p.y - VH / 2, 0, WH - VH) / 2) * 2;
     const cx = this.cam.x, cy = this.cam.y, lx = cx / 2, ly = cy / 2;
     const v = (this.view ??= new PixelView(LW, LH)), lc = v.c;
-    lc.drawImage(this.bg!, lx, ly, LW, LH, 0, 0, LW, LH);
+    lc.drawImage(this.bg!, lx + OX, ly, LW, LH, 0, 0, LW, LH);
     for (const l of LOCS) { // найденные примечательности
       const ic = POI_ICONS.get(l.id);
       if (ic && this.known(l)) lc.drawImage(ic.cv, ic.ox - lx, ic.oy - ly);
@@ -256,8 +314,14 @@ export const World = {
       mini('militia_gun', X(b.x) - 4, Y(b.y), b.tx < b.x, fr(bm));
       mini('militia', X(b.x) + 4, Y(b.y) + 2, b.tx < b.x, fr(bm, 2));
     }
-    // патрули барона: трое стражников гуськом
     const pm0 = p.moving || ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'KeyA', 'KeyD', 'KeyW', 'KeyS'].some((kk) => G.keys.has(kk));
+    // мертвецы — бредут вразвалку, кучкой
+    for (const g of this.dead) {
+      if (!g.alive || !g.seen) continue;
+      const fl = g.tx < g.x, mv = pm0 || dist(g, { x: g.tx, y: g.ty }) > 1;
+      g.kinds.forEach((k, i) => mini(k, X(g.x) + (i - 1) * 7, Y(g.y) + (i % 2) * 3, fl, fr(mv && pm0, i * 1.7)));
+    }
+    // патрули барона: трое стражников гуськом
     for (const pt of this.patrols) {
       const pos = this.patrolPos(pt), back = pt.dir === 1 ? -1 : 1, walk = pm0 && pt.wait <= 0;
       const fl = (pt.dir === 1 ? pos.dx : -pos.dx) < 0;
@@ -280,6 +344,7 @@ export const World = {
     L(fl.x, fl.y - 30, 80, 0.7 + Math.sin(t * 9) * 0.08, '#ff9a40');
     L(p.x, p.y, 58, 0.55, '#d8c890');
     for (const pt of this.patrols) { const q = this.patrolPos(pt); L(q.x, q.y - 8, 34, 0.5, '#f0d090'); } // фонарь патруля
+    for (const g of this.dead) if (g.alive && g.seen) L(g.x, g.y - 6, 22, 0.35, '#a8f070'); // гнилушечный отсвет глаз
     applyLight(lc, LW, LH, lights, 0.6, [0.84, 1, 0.78], 0.3);
     // пепел — по одному пикселю
     lc.fillStyle = 'rgba(190,196,170,0.55)';
@@ -305,6 +370,13 @@ export const World = {
     if (b.alive && b.seen) {
       c.font = 'italic 12px "Old Standard TT", serif'; c.textAlign = 'center';
       c.fillStyle = '#e07060'; c.fillText(G.clock < b.calm ? 'Мародёры (отстали)' : dist(b, p) < 230 ? 'Мародёры — преследуют!' : 'Мародёры', b.x - cx, b.y - cy - 40);
+      c.textAlign = 'left';
+    }
+    for (const g of this.dead) {
+      if (!g.alive || !g.seen) continue;
+      c.font = 'italic 12px "Old Standard TT", serif'; c.textAlign = 'center';
+      c.fillStyle = 'rgba(0,0,0,0.85)'; c.fillText('Мертвецы', g.x - cx + 1, g.y - cy - 39);
+      c.fillStyle = '#a8d070'; c.fillText(G.clock < g.calm ? 'Мертвецы (потеряли след)' : dist(g, p) < 190 && inFront(p) ? 'Мертвецы — идут на вас!' : 'Мертвецы', g.x - cx, g.y - cy - 40);
       c.textAlign = 'left';
     }
     this.patrols.forEach((pt, i) => {
@@ -359,7 +431,7 @@ export function clockText() {
 }
 
 // ============================================================ фон карты (пиксельный, 960×640)
-const BW = WW / 2, BH = WH / 2;
+const BW = (WW - WX0) / 2, BH = WH / 2;
 const INK = '#0c0e0a';
 
 /** Нарисовать значок на отдельном холсте, обвести контуром и вклеить (x, y — точка опоры внизу по центру). */
@@ -377,11 +449,12 @@ function renderBackground(): HTMLCanvasElement {
   const c = cv.getContext('2d')!;
   c.imageSmoothingEnabled = false;
   const r = seeded(4242);
+  c.translate(OX, 0); // всё ниже — в координатах мира / 2 (запад уходит в минус)
   // --- мягкая основа (потом квантуется растром)
   c.save(); c.scale(0.5, 0.5);
-  c.fillStyle = '#4a4a42'; c.fillRect(0, 0, WW, WH);
-  for (let i = 0; i < 900; i++) {
-    const x = r() * WW, y = r() * WH, rr = 30 + r() * 110;
+  c.fillStyle = '#4a4a42'; c.fillRect(WX0, 0, WW - WX0, WH);
+  for (let i = 0; i < 1300; i++) {
+    const x = WX0 + r() * (WW - WX0), y = r() * WH, rr = 30 + r() * 110;
     const g = c.createRadialGradient(x, y, 0, x, y, rr);
     const v = r() < 0.5 ? '30,30,26' : '110,108,96';
     g.addColorStop(0, `rgba(${v},${0.06 + r() * 0.08})`); g.addColorStop(1, `rgba(${v},0)`);
@@ -402,6 +475,18 @@ function renderBackground(): HTMLCanvasElement {
   }
   // нефтяные пятна у Эшфорда
   for (let i = 0; i < 18; i++) { c.fillStyle = 'rgba(16,15,12,0.55)'; c.beginPath(); c.ellipse(180 + r() * 360, 600 + r() * 240, 8 + r() * 18, 4 + r() * 8, r() * 3, 0, TAU); c.fill(); }
+  // старый фронт: перепаханная грязь и застоявшийся газ
+  for (let i = 0; i < 320; i++) {
+    const x = WX0 + 20 + r() * (FRONT_X - WX0), y = 60 + r() * (WH - 120), rr = 20 + r() * 60;
+    c.fillStyle = r() < 0.6 ? 'rgba(40,33,24,0.28)' : 'rgba(96,88,70,0.18)';
+    c.beginPath(); c.ellipse(x, y, rr, rr * 0.6, r() * 3, 0, TAU); c.fill();
+  }
+  for (let i = 0; i < 14; i++) {
+    const x = WX0 + 80 + r() * (FRONT_X - WX0 - 120), y = 120 + r() * (WH - 240), rr = 60 + r() * 90;
+    const g = c.createRadialGradient(x, y, 0, x, y, rr);
+    g.addColorStop(0, 'rgba(110,150,60,0.22)'); g.addColorStop(1, 'rgba(110,150,60,0)');
+    c.fillStyle = g; c.fillRect(x - rr, y - rr, rr * 2, rr * 2);
+  }
   c.restore();
   quantize(c, BW, BH, 10);
 
@@ -418,17 +503,17 @@ function renderBackground(): HTMLCanvasElement {
     }
   };
   // трещины
-  for (let i = 0; i < 380; i++) {
-    let x = r() * BW, y = r() * BH;
+  for (let i = 0; i < 540; i++) {
+    let x = -OX + r() * BW, y = r() * BH;
     for (let k = 0; k < 3; k++) { const nx = x + (r() - 0.5) * 14, ny = y + (r() - 0.5) * 14; pline(c, x, y, nx, ny, '#34342e'); x = nx; y = ny; }
   }
   // сухое русло
   const bed: number[][] = [];
-  for (let i = 0; i <= 64; i++) { const x = (i / 64) * BW; bed.push([x, 180 + Math.sin(i * 0.31) * 22 + i * 1.7 + Math.sin(i * 0.9) * 4]); }
+  for (let i = 0; i <= 64; i++) { const x = (i / 64) * (WW / 2); bed.push([x, 180 + Math.sin(i * 0.31) * 22 + i * 1.7 + Math.sin(i * 0.9) * 4]); }
   thick(bed, '#2c2a22', 5); thick(bed, '#3a372e', 3); thick(bed, '#5a5646', 1, [3, 4]);
   // воронки
   for (let i = 0; i < 60; i++) {
-    const x = Math.round(r() * BW), y = Math.round(r() * BH), s = 3 + Math.round(r() * 5);
+    const x = Math.round(r() * WW / 2), y = Math.round(r() * BH), s = 3 + Math.round(r() * 5);
     pellipse(c, x, y + 1, s + 1, Math.ceil(s * 0.6) + 1, '#5e5c50'); pellipse(c, x, y, s, Math.ceil(s * 0.6), '#26241e'); pellipse(c, x + 1, y + 1, s - 2, Math.max(1, Math.ceil(s * 0.4) - 1), '#1a1914');
   }
   // мёртвые рощи
@@ -451,6 +536,8 @@ function renderBackground(): HTMLCanvasElement {
     prect(s, 2, 5, 3, 1, '#1e1c17'); ppx(s, 3, 0, '#1e1c17'); prect(s, 1, 9, 5, 1, 'rgba(0,0,0,0.4)');
   }, false);
   for (let i = 0; i < 20; i++) derrick(Math.round((180 + r() * 360) / 2), Math.round((600 + r() * 240) / 2));
+  // старый фронт: траншеи, проволока, воронки, остовы техники
+  drawWarZone(c, r, thick);
   // железная дорога: насыпь, шпалы, рельсы
   const rail = pts(RAIL);
   thick(rail, '#2a2620', 6);
@@ -615,6 +702,103 @@ function drawRuins(c: CanvasRenderingContext2D, r: () => number) {
   }
 }
 
+type Thick = (poly: number[][], col: string, w: number, dash?: [number, number]) => void;
+
+/** Полевое орудие на колёсах со спицами (ранних лет). */
+function fieldGun(s: CanvasRenderingContext2D, x: number, y: number, tilt = 0) {
+  pline(s, x + 2, y + 3, x + 13, y - 2 + tilt, '#3a3a32', 2);                 // ствол
+  prect(s, x + 3, y - 1, 5, 5, '#4e4c40'); prect(s, x + 3, y - 1, 5, 1, '#62604e'); // щит
+  pline(s, x + 4, y + 4, x - 3, y + 7, '#4a3a26', 2);                          // станина
+  pellipse(s, x + 5, y + 6, 3, 3, '#2e2416'); ppx(s, x + 5, y + 6, '#8a7a50');   // колесо со спицами
+  ppx(s, x + 3, y + 6, '#5a4a30'); ppx(s, x + 7, y + 6, '#5a4a30'); ppx(s, x + 5, y + 4, '#5a4a30'); ppx(s, x + 5, y + 8, '#5a4a30');
+}
+/** Ромбовидная сухопутная машина ранних лет: гусеница по всему корпусу, пушка в спонсоне. */
+function lozengeTank(s: CanvasRenderingContext2D, tiltDown = false) {
+  const t = pixelize(34, 16, (v) => {
+    if (tiltDown) { v.translate(17, 8); v.rotate(0.18); v.translate(-17, -8); }
+    v.fillStyle = '#26261f'; v.beginPath(); v.moveTo(1, 12); v.lineTo(6, 2); v.lineTo(25, 2); v.lineTo(33, 9); v.lineTo(28, 15); v.lineTo(4, 15); v.closePath(); v.fill();
+    v.fillStyle = '#56523f'; v.beginPath(); v.moveTo(4, 11.5); v.lineTo(7.5, 4); v.lineTo(24, 4); v.lineTo(30, 9); v.lineTo(26.5, 13); v.lineTo(6, 13); v.closePath(); v.fill();
+    v.fillStyle = '#46432f'; v.fillRect(12, 8, 7, 4); v.fillStyle = '#3a3a30'; v.fillRect(19, 9, 6, 1.2);
+  });
+  s.drawImage(t, 0, 0);
+}
+
+/** Старый фронт к западу от Эшфорда: линии траншей, проволока, воронки, остовы техники, могилы. */
+function drawWarZone(c: CanvasRenderingContext2D, r: () => number, thick: Thick) {
+  const X0 = WX0 / 2 + 10, X1 = FRONT_X / 2, Y0 = 30, Y1 = BH - 30;
+  const dark = '#0c0c0a';
+  // густые воронки, часть залита мутной водой
+  for (let i = 0; i < 200; i++) {
+    const x = Math.round(X0 + r() * (X1 - X0)), y = Math.round(Y0 + r() * (Y1 - Y0)), sz = 2 + Math.round(r() * 5);
+    pellipse(c, x, y + 1, sz + 1, Math.ceil(sz * 0.6) + 1, '#5a5444'); pellipse(c, x, y, sz, Math.ceil(sz * 0.6), '#221e17');
+    if (r() < 0.3) pellipse(c, x, y + 1, Math.max(1, sz - 2), Math.max(1, Math.ceil(sz * 0.3)), '#2e3a26');
+  }
+  // линии траншей — зигзаг огневых ячеек, бруствер, дощатый настил
+  const lines = [-380, -260, -130];
+  const paths: number[][][] = [];
+  for (const bx of lines) {
+    const pts: number[][] = [];
+    // линия петляет по местности; огневые ячейки — изломы разной глубины
+    let y = Y0 + 10 + r() * 20, side = 0;
+    const ph = r() * 6;
+    while (y < Y1 - 10) {
+      const base = bx + Math.sin(y / 47 + ph) * 18 + Math.sin(y / 13 + ph * 2) * 4;
+      const x = Math.round(base + side * (4 + r() * 5));
+      pts.push([x, y]); y += 7 + Math.round(r() * 8); pts.push([x, y]); side = 1 - side;
+      if (r() < 0.15) y += 6; // обвалившийся участок — разрыв не рисуем, просто длиннее перегон
+    }
+    paths.push(pts);
+    thick(pts, '#6a5c44', 7); thick(pts, '#16130e', 5); thick(pts, '#2a241a', 3); thick(pts, '#4a3a26', 1, [1, 2]);
+  }
+  // ходы сообщения между линиями
+  for (let k = 0; k < 7; k++) {
+    const a = k % 2, y = Y0 + 40 + r() * (Y1 - Y0 - 80), x0 = lines[a] + 4, x1 = lines[a + 1];
+    const pts = [[x0, y], [x0 + (x1 - x0) * 0.33, y + (r() - 0.5) * 14], [x0 + (x1 - x0) * 0.66, y + (r() - 0.5) * 14], [x1, y + (r() - 0.5) * 10]];
+    thick(pts, '#5e5240', 5); thick(pts, '#16130e', 3);
+  }
+  // колючая проволока перед каждой линией
+  for (const bx of lines) {
+    const wx = bx - 20;
+    for (let y = Y0; y < Y1; y++) {
+      if (Math.floor(y / 26) % 5 === 3) continue; // проходы
+      const x = Math.round(wx + Math.sin(y * 0.9) * 1.5);
+      if (r() < 0.85) ppx(c, x, y, y % 2 ? '#8a8a80' : '#6e6e66');
+      if (y % 9 === 0) prect(c, wx - 1, y - 2, 1, 4, '#3a2c1e');
+    }
+  }
+  // расщеплённые стволы
+  for (let i = 0; i < 70; i++) {
+    const x = Math.round(X0 + r() * (X1 - X0)), y = Math.round(Y0 + r() * (Y1 - Y0)), h = 2 + Math.round(r() * 3);
+    prect(c, x, y - h, 1, h, '#1c1a15'); ppx(c, x + (r() < 0.5 ? 1 : -1), y - h, '#2c2820');
+  }
+  // ряды касок на воткнутых винтовках — могилы безымянных
+  for (const [gx, gy, n] of [[-330, 180, 8], [-200, 520, 6], [-410, 470, 7]]) for (let k = 0; k < n; k++) {
+    const x = gx + (k % 4) * 5, y = gy + Math.floor(k / 4) * 8;
+    prect(c, x, y - 5, 1, 6, '#3a2c1e'); prect(c, x - 1, y - 7, 3, 2, '#4a4e3a'); ppx(c, x - 1, y - 7, '#62664e');
+  }
+  // остовы техники
+  stamp(c, -300, 180, 22, 12, (s) => fieldGun(s, 4, 3, 2));
+  stamp(c, -90, 410, 22, 12, (s) => fieldGun(s, 4, 3, -1));
+  stamp(c, -255, 360, 34, 16, (s) => lozengeTank(s, true));               // танк, завалившийся в траншею
+  stamp(c, -350, 300, 30, 16, (s) => {                                    // упавший биплан
+    pline(s, 3, 12, 23, 5, '#6a5a3a', 3); pline(s, 4, 13, 22, 7, '#4a3e28');
+    prect(s, 9, 2, 13, 2, '#7a6a48'); prect(s, 16, 2, 2, 2, dark);          // верхнее крыло с дырой
+    prect(s, 8, 9, 12, 2, '#6a5a3c');                                       // нижнее крыло
+    pline(s, 10, 4, 10, 9, '#3a2c1e'); pline(s, 18, 4, 18, 9, '#3a2c1e');   // стойки
+    prect(s, 1, 10, 4, 4, '#5a4a30'); prect(s, 0, 9, 2, 2, '#4a3a26');      // хвост
+    pline(s, 24, 2, 26, 8, '#3a2c1e'); ppx(s, 27, 4, '#3a2c1e');            // сломанный винт
+    prect(s, 13, 5, 3, 1, '#2a2418');                                       // пустая кабина
+  });
+  stamp(c, -300, 454, 32, 14, (s) => {                                    // бронепоезд, сошедший с рельсов
+    prect(s, 1, 3, 28, 8, '#4a4a40'); prect(s, 1, 3, 28, 1, '#62624e'); prect(s, 1, 10, 28, 1, '#2e2e28');
+    for (let k = 0; k < 7; k++) ppx(s, 3 + k * 4, 5, '#7a7a66');            // заклёпки
+    for (let k = 0; k < 4; k++) prect(s, 4 + k * 6, 7, 3, 1, dark);          // бойницы
+    prect(s, 11, 0, 8, 3, '#44443a'); prect(s, 19, 1, 6, 1, '#3a3a32');      // каземат с пушкой
+    for (const wx of [5, 12, 19, 25]) { pellipse(s, wx, 12, 2, 1, '#1c1c1a'); }
+    prect(s, 8, 5, 2, 2, dark);                                              // пробоина
+  });
+}
+
 function drawLocIcon(c: CanvasRenderingContext2D, l: Loc, r: () => number) {
   const x = Math.round(l.x / 2), y = Math.round(l.y / 2);
   switch (l.id) {
@@ -710,6 +894,29 @@ function drawLocIcon(c: CanvasRenderingContext2D, l: Loc, r: () => number) {
           ppx(s, wx - 1, 11, '#4a4a44'); ppx(s, wx + 1, 11, '#4a4a44'); ppx(s, wx, 10, '#4a4a44'); ppx(s, wx, 12, '#4a4a44');
         }
         prect(s, 8, 1, 3, 1, '#2a261c'); ppx(s, 9, 2, '#2a261c');               // дыра в брезенте
+      });
+      break;
+    case 'trenches': // кусок траншеи с бруствером и каска на винтовке
+      stamp(c, x, y + 6, 34, 18, (s) => {
+        const z = [[1, 12], [8, 12], [8, 7], [16, 7], [16, 12], [24, 12], [24, 7], [32, 7]];
+        for (let i = 1; i < z.length; i++) pline(s, z[i - 1][0], z[i - 1][1], z[i][0], z[i][1], '#6e5e42', 5);
+        for (let i = 1; i < z.length; i++) pline(s, z[i - 1][0], z[i - 1][1] + 1, z[i][0], z[i][1] + 1, '#16130e', 3);
+        prect(s, 12, 0, 1, 7, '#3a2c1e'); prect(s, 10, 0, 5, 2, '#4a4e3a'); ppx(s, 10, 0, '#62664e');
+        for (const [a, b] of [[3, 16], [20, 16], [28, 3]]) ppx(s, a, b, '#8a8a80');
+      });
+      break;
+    case 'bunker': // бетонный блиндаж с бронедверью
+      stamp(c, x, y + 6, 28, 14, (s) => {
+        pellipse(s, 14, 12, 13, 8, '#5a5444'); prect(s, 3, 6, 22, 7, '#6e6e66'); prect(s, 3, 6, 22, 1, '#8a8a80');
+        prect(s, 6, 8, 9, 1, '#0c0c0a');                                     // амбразура
+        prect(s, 18, 8, 5, 5, '#3a3c3e'); prect(s, 18, 8, 5, 1, '#5a5c5e'); ppx(s, 22, 10, '#c8a050'); // бронедверь
+        for (let k = 0; k < 5; k++) ppx(s, 4 + k * 5, 7, '#5a5a52');
+      });
+      break;
+    case 'battery': // опрокинутые орудия и гильзы
+      stamp(c, x, y + 6, 34, 14, (s) => {
+        fieldGun(s, 2, 4, 3); fieldGun(s, 17, 3, -2);
+        for (const [a, b] of [[12, 12], [14, 13], [30, 12]]) { prect(s, a, b, 2, 1, '#c8a050'); }
       });
       break;
     case 'flare':

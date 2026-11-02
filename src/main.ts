@@ -56,6 +56,7 @@ Combat.hooks = {
     hint();
     if (id === 'ruins') { G.flags.scavDone = true; Dialog.start('after_scav'); }
     if (id === 'waste') { World.killBand(); Dialog.start('after_band'); }
+    if (id.startsWith('trench')) { World.killDead(); World.deadHit = null; Dialog.start('after_dead'); }
     refreshHud();
   },
   defeat(id) {
@@ -67,6 +68,7 @@ Combat.hooks = {
           hideScreen(); restoreSnapshot();
           G.squad.forEach((s) => (s.hp = Math.max(1, Math.ceil(s.hp / 2))));
           if (id === 'waste') World.calmBand(24);
+          if (id.startsWith('trench')) World.calmDead(12);
           combatShow(false); G.mode = returnMode; hint(); refreshHud();
         } },
       ],
@@ -97,6 +99,7 @@ World.onArrive = (l) => Dialog.start(l.talk);
 World.onEncounter = () => Dialog.start('enc_band');
 World.onPatrol = () => Dialog.start('enc_patrol');
 World.onDiscover = (l) => toast(`Замечено: ${l.name}`);
+World.onDead = () => Dialog.start('enc_dead');
 World.onDay = () => { // раз в сутки отряд ест
   if (G.supplies.ration > 0) { G.supplies.ration--; toast(`${clockText()}: отряд съел паёк (осталось ${G.supplies.ration})`); }
   else { G.squad.forEach((s) => (s.hp = Math.max(1, s.hp - 2))); Dialog.start('hunger'); }
@@ -111,6 +114,9 @@ Dialog.onAction = (act) => {
   else if (act === 'battle_band') startBattle('waste');
   else if (act === 'band_calm') World.calmBand(24);
   else if (act === 'band_lose') World.calmBand(8);
+  else if (act === 'battle_dead') startBattle(World.deadHit?.id ?? 'trench1');
+  else if (act === 'battle_trench_poi') { World.deadHit = null; startBattle('trench2'); }
+  else if (act === 'dead_lose') World.calmDead(8);
 };
 
 $('cend').onclick = () => Combat.endPlayerTurn();

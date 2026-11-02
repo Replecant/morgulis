@@ -20,7 +20,7 @@ const W = CW * CT, H = CH * CT;
 const TILE: Record<string, { walk?: boolean; cover?: number; los?: boolean }> = {
   '.': { walk: true }, ',': { walk: true }, 'o': { walk: true },
   '#': { cover: 40, los: true }, 'm': { cover: 40, los: true }, 'P': { cover: 40, los: true }, 'T': { cover: 40, los: true },
-  'c': { cover: 25 }, 'f': { cover: 25 }, 'w': {},
+  'c': { cover: 25 }, 'f': { cover: 25 }, 'w': {}, 'x': {},
 };
 
 export interface Unit {
@@ -1049,7 +1049,7 @@ export const Combat = {
     const cv = document.createElement('canvas'); cv.width = LWb; cv.height = LHb;
     const c = cv.getContext('2d')!;
     const r = pseed(this.def.id === 'road' ? 42 : this.def.id === 'waste' ? 91 : 77);
-    const factory = this.def.theme === 'factory';
+    const factory = this.def.theme === 'factory', trench = this.def.theme === 'trench';
     // пол
     for (let y = 0; y < CH; y++) for (let x = 0; x < CW; x++) {
       const X = x * T, Y = y * T;
@@ -1058,9 +1058,17 @@ export const Combat = {
         prect(c, X, Y, T, 1, '#2a2a24'); prect(c, X, Y, 1, T, '#2a2a24');
         for (const [a, b] of [[2, 2], [17, 2], [2, 17], [17, 17]]) ppx(c, X + a, Y + b, '#5a5a50');
         if (r() < 0.2) pellipse(c, X + 4 + r() * 12, Y + 4 + r() * 12, 4, 2, '#344a2c');
+      } else if (trench) { // изрытая грязь ничейной земли
+        prect(c, X, Y, T, T, r() < 0.5 ? '#3a3328' : '#362f25');
+        for (let k = 0; k < 5; k++) ppx(c, X + r() * T, Y + r() * T, r() < 0.5 ? '#2a241b' : '#4a4234');
+        if (r() < 0.12) { pellipse(c, X + 10, Y + 10, 7, 4, '#4a4234'); pellipse(c, X + 10, Y + 9, 5, 3, '#1e1a14'); } // воронка
+        if (this.map[y][x] === ',') for (let k = 0; k < 3; k++) prect(c, X + 3 + r() * 14, Y + 6 + r() * 10, 1, 2, '#4e5a38');
       } else paintTile(c, X, Y, this.map[y][x] === ',' ? 'g' : 'w', r);
     }
-    if (!factory) { // разбитая дорога через поле боя
+    if (trench) { // газ стелется по земле — бледные пятна растром
+      for (let i = 0; i < 900; i++) { const gx = r() * LWb, gy = r() * LHb; if (Math.sin(gx / 37) + Math.cos(gy / 23) > 1.1) ppx(c, gx, gy, '#5a6e3a'); }
+    }
+    if (!factory && !trench) { // разбитая дорога через поле боя
       for (let x = 0; x < LWb; x++) {
         const yc = 7 * T + Math.round(Math.sin(x / 40) * 10);
         for (let y = yc - 10; y < yc + 10; y++) if (r() < 0.55) ppx(c, x, y, (x + y) % 7 ? '#4a4436' : '#5a5040');
@@ -1084,13 +1092,27 @@ export const Combat = {
     for (let y = 0; y < CH; y++) for (let x = 0; x < CW; x++) {
       const X = x * T, Y = y * T, ch = this.map[y][x];
       switch (ch) {
-        case '#': {
+        case '#': if (trench) { // бруствер из мешков с песком
+          prect(c, X, Y - 4, T, T + 4, '#4a4030');
+          for (let row = 0; row < 4; row++) for (let k = -1; k < 3; k++) {
+            const bx = X + k * 8 + (row % 2 ? 4 : 0), by = Y - 4 + row * 6;
+            if (bx + 7 <= X || bx >= X + T) continue;
+            prect(c, Math.max(X, bx), by, Math.min(7, X + T - Math.max(X, bx)), 5, row % 2 ? '#7a6a4a' : '#6e5e42');
+            prect(c, Math.max(X, bx), by, Math.min(7, X + T - Math.max(X, bx)), 1, '#8a7a58');
+          }
+          break;
+        } else {
           const col = factory ? '#6a3a2c' : '#6a665a', dark = shade(col, -0.3);
           prect(c, X, Y - 6, T, T + 6, col);
           for (let yy = Y - 4; yy < Y + T; yy += 4) for (let xx = X + (((yy / 4) | 0) % 2) * 3; xx < X + T; xx += 6) prect(c, xx, yy, 5, 1, dark);
           prect(c, X, Y - 7, T, 2, shade(col, 0.2)); prect(c, X + T - 2, Y - 6, 2, T + 6, dark);
           break;
         }
+        case 'x': // колючая проволока на кольях
+          for (const kx of [3, 15]) { prect(c, X + kx, Y + 2, 2, 15, '#3a2c1e'); ppx(c, X + kx, Y + 1, '#5a4430'); }
+          for (let k = 0; k < 20; k++) { ppx(c, X + k, Y + 6 + Math.round(Math.sin(k * 1.3) * 2), '#8a8a80'); ppx(c, X + k, Y + 12 + Math.round(Math.cos(k * 1.1) * 2), '#7a7a70'); }
+          for (const [a, b] of [[6, 5], [10, 13], [17, 9]]) { ppx(c, X + a, Y + b, '#b0b0a8'); ppx(c, X + a + 1, Y + b - 1, '#b0b0a8'); }
+          break;
         case 'T': spr('tree', x, y); break;
         case 'c':
           if (r() < 0.4) spr('barrel', x, y);
