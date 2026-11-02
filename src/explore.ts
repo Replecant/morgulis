@@ -103,6 +103,7 @@ export const Explore = {
   moveK: 1,
   path: [] as Pt[],
   pending: null as Obj | Npc | Beetle | Folk | null,
+  exitDir: null as [number, number] | null, // после пути — шаг за край сцены (выход на карту)
   onInteract: (_talk: string) => {},
   onLocation: (_name: string) => {},
   onExit: (_scene: string) => {},
@@ -164,7 +165,7 @@ export const Explore = {
     road([[147, 49], [182, 49]]); road([[163, 33], [163, 65]]);
     // земли баронессы
     road([[229, 47], [190, 47]]); road([[271, 48], [233, 48]]); road([[294, 50], [294, 30], [281, 30]]);
-    road([[357, 40], [320, 40]]); road([[337, 22], [337, 58]]);
+    road([[357, 40], [321, 40]]); road([[337, 26], [337, 58]]); // от ворот через лагерь; поперёк — от цехов к баракам
     road([[409, 37], [362, 37]]); road([[390, 9], [390, 65]]);
 
     // масляные пятна вокруг качалок
@@ -175,7 +176,7 @@ export const Explore = {
     // железная дорога: главный путь и запасной у разъезда
     for (let x = 0; x <= 102; x++) this.rail[61][x] = 1;
     for (let x = 10; x <= 34; x++) this.rail[59][x] = 1;
-    for (let x = 318; x <= 357; x++) this.rail[56][x] = 1;   // ветка в особый лагерь
+    for (let x = 317; x <= 357; x++) this.rail[24][x] = 1;   // ветка к цехам особого лагеря
     for (let x = 380; x <= 409; x++) this.rail[61][x] = 1;   // конечная в форте баронессы
     for (let y = 22; y <= 40; y++) this.rail[y][250] = 1;    // узкоколейка от шахты Хейлстоуна
     this.rail[60][9] = 1; this.rail[60][35] = 1;
@@ -366,21 +367,35 @@ export const Explore = {
     B('cellar', 277, 15, 3, 2, { name: 'Грибной погреб', talk: 'cellar' }); B('cellar', 285, 15, 3, 2, { name: 'Грибной погреб', talk: 'cellar' });
     B('poster', 296, 45, 1, 1, { name: 'Плакат', talk: 'poster' });
 
-    // ======================= ОСОБЫЙ ЛАГЕРЬ — промышленная зона баронессы
+    // ======================= ОСОБЫЙ ЛАГЕРЬ — лагерь принудительного труда баронессы
+    // ограда: проходы — ворота у вахты (восток, y 37–42) и ворота железнодорожной ветки (y 24)
     for (let x = 316; x <= 357; x++) { B('fence', x, 18, 1, 1); B('fence', x, 60, 1, 1); }
-    for (let y = 19; y < 60; y++) { B('fence', 316, y, 1, 1); if (y < 38 || y > 42) if (y !== 56) B('fence', 357, y, 1, 1); }
-    for (const [x, y] of [[318, 20], [353, 20], [318, 55], [353, 52]]) B('tower', x, y, 3, 3, { name: 'Сторожевая вышка', talk: 'camptower' });
-    B('factory', 322, 24, 9, 4, { name: 'Цех', talk: 'campfactory' });
-    B('factory', 341, 24, 9, 4, { name: 'Цех', talk: 'campfactory' });
-    B('factory', 322, 46, 10, 4, { name: 'Цех', talk: 'campfactory' });
-    B('barracks', 341, 46, 9, 3, { name: 'Барак рабочих', talk: 'campbarracks' });
-    for (const x of [325, 330, 344, 349]) B('vent', x, 29, 1, 1, { dynamic: true, name: 'Решётка паропровода' });
-    for (const [x, y] of [[334, 33], [345, 35]]) B('coalheap', x, y, 2, 1, { name: 'Уголь', talk: 'coalheap' });
-    for (const [x, y] of [[322, 36], [349, 33], [326, 41]]) B('crates', x, y, 1, 1, { name: 'Ящики', talk: 'campcrates' });
-    for (const x of [322, 330]) B('wagon', x, 56, 4, 1, { name: 'Товарный вагон', talk: 'campwagon' });
-    B('horn', 340, 38, 1, 1, { name: 'Громкоговоритель', talk: 'horn' });
-    B('banner', 354, 36, 1, 1, { name: 'Знамя баронессы', talk: 'banner' }); B('banner', 354, 44, 1, 1, { name: 'Знамя баронессы', talk: 'banner' });
-    for (const [x, y] of [[327, 38], [345, 42]]) B('lamp', x, y, 1, 1, { name: 'Фонарь', talk: 'lamp' });
+    for (let y = 19; y < 60; y++) { B('fence', 316, y, 1, 1); if ((y < 37 || y > 42) && y !== 24) B('fence', 357, y, 1, 1); }
+    for (let x = 317; x <= 356; x++) if (x < 336 || x > 339) B('wire', x, 33, 1, 1, { name: 'Колючая проволока', talk: 'wire' }); // между рабочей и жилой зоной
+    for (const [x, y] of [[318, 19], [353, 19], [318, 36], [318, 56], [353, 56], [336, 56]]) B('tower', x, y, 3, 3, { name: 'Сторожевая вышка', talk: 'camptower' });
+    // ворота и вахта
+    B('tower', 354, 34, 3, 3, { name: 'Вышка у ворот', talk: 'camptower' }); B('tower', 354, 43, 3, 3, { name: 'Вышка у ворот', talk: 'camptower' });
+    B('barracks', 346, 35, 6, 2, { name: 'Вахта', talk: 'vakhta' });
+    B('noticeboard', 350, 43, 2, 1, { name: 'Распорядок', talk: 'camp_rules' });
+    // рабочая зона: цеха у ветки, вагоны, уголь, ящики
+    B('factory', 322, 27, 9, 4, { name: 'Цех', talk: 'campfactory' });
+    B('factory', 341, 27, 9, 4, { name: 'Цех', talk: 'campfactory' });
+    for (const x of [325, 330, 344, 349]) B('vent', x, 31, 1, 1, { dynamic: true, name: 'Решётка паропровода' });
+    for (const x of [321, 328, 343]) B('wagon', x, 24, 4, 1, { name: 'Товарный вагон', talk: 'campwagon' });
+    for (const [x, y] of [[333, 28], [333, 30]]) B('coalheap', x, y, 2, 1, { name: 'Уголь', talk: 'coalheap' });
+    for (const [x, y] of [[351, 26], [352, 28], [321, 21], [335, 21]]) B('crates', x, y, 1, 1, { name: 'Ящики', talk: 'campcrates' });
+    B('handcart', 340, 25, 2, 1, { name: 'Тачка', talk: 'handcart' });
+    // плац для поверки
+    B('horn', 333, 35, 1, 1, { name: 'Громкоговоритель', talk: 'horn' });
+    B('banner', 322, 35, 1, 1, { name: 'Знамя баронессы', talk: 'banner' }); B('banner', 334, 37, 1, 1, { name: 'Знамя баронессы', talk: 'banner' });
+    B('poster', 342, 38, 1, 1, { name: 'Плакат', talk: 'camp_poster' });
+    // жилая зона: бараки, столовая, карцер, колонка
+    for (const [x, y] of [[321, 44], [328, 44], [340, 44], [321, 49], [328, 49], [340, 49], [322, 54], [340, 53]]) B('barracks', x, y, 6, 3, { name: 'Барак заключённых', talk: 'campbarracks' });
+    B('barracks', 347, 48, 7, 3, { name: 'Столовая', talk: 'canteen' });
+    B('cell', 350, 53, 3, 2, { name: 'Карцер', talk: 'kartser' });
+    B('cell', 329, 55, 3, 2, { name: 'Баня', talk: 'bathhouse' });
+    B('standpipe', 335, 46, 1, 1, { name: 'Колонка', talk: 'standpipe' });
+    for (const [x, y] of [[326, 42], [343, 42], [335, 52], [347, 39], [331, 26]]) B('lamp', x, y, 1, 1, { name: 'Прожектор', talk: 'searchlight' });
 
     // ======================= ФОРТ БАРОНЕССЫ — один большой ярус и замок
     for (let x = 360; x <= 409; x++) { B('wall', x, 8, 1, 1); B('wall', x, 66, 1, 1); }
@@ -574,12 +589,13 @@ export const Explore = {
     else if (k.has('ArrowRight') || k.has('KeyD')) dir = [1, 0];
     else if (k.has('ArrowUp') || k.has('KeyW')) dir = [0, -1];
     else if (k.has('ArrowDown') || k.has('KeyS')) dir = [0, 1];
-    if (dir) { this.path = []; this.pending = null; this.step(dir[0], dir[1]); return; }
+    if (dir) { this.path = []; this.pending = null; this.exitDir = null; this.step(dir[0], dir[1]); return; }
     if (this.path.length) {
       const n = this.path.shift()!;
       if (!this.step(n.x - p.x, n.y - p.y)) { this.path = []; this.pending = null; }
       return;
     }
+    if (this.exitDir) { const d = this.exitDir; this.exitDir = null; this.step(d[0], d[1]); return; }
     if (this.pending) {
       const it = this.pending; this.pending = null;
       if (this.isAdjacent(it)) this.interact(it);
@@ -706,7 +722,19 @@ export const Explore = {
       if (best) { this.path = pathTo(reach, MW, best.x, best.y).slice(1); this.pending = thing; }
       return;
     }
-    if (reach.has(ty * MW + tx)) { this.path = pathTo(reach, MW, tx, ty).slice(1); this.pending = null; }
+    if (reach.has(ty * MW + tx)) { this.path = pathTo(reach, MW, tx, ty).slice(1); this.pending = null; this.exitDir = null; return; }
+    // клик за краем сцены — дойти до ближайшего открытого места на краю и выйти на карту
+    if (!this.inScene(tx, ty)) {
+      const sc = SCENES[this.scene];
+      let best: { x: number; y: number; d: number; dir: [number, number] } | null = null;
+      for (const n of reach.values()) {
+        const dir: [number, number] | null = n.x === sc.x1 ? [1, 0] : n.x === sc.x0 ? [-1, 0] : n.y === sc.y1 ? [0, 1] : n.y === sc.y0 ? [0, -1] : null;
+        if (!dir) continue;
+        const d = Math.hypot(n.x - tx, n.y - ty) + n.d * 0.15;
+        if (!best || d < best.d) best = { x: n.x, y: n.y, d, dir };
+      }
+      if (best) { this.path = pathTo(reach, MW, best.x, best.y).slice(1); this.pending = null; this.exitDir = best.dir; }
+    }
   },
   hover(mx: number, my: number) { this.hoverW = { x: Math.floor((mx / PS + this.cam.x) / T), y: Math.floor((my / PS + this.cam.y) / T) }; },
 

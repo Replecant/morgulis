@@ -142,6 +142,7 @@ function buildChar(kind: string, frame: number): HTMLCanvasElement {
     R(tx0, sy(tTop + 8), 3, 2, shade(st.webbing, -0.2)); R(tx1 - 2, sy(tTop + 8), 3, 2, shade(st.webbing, -0.2));
   }
   if (st.tabs) { P(10, sy(tTop), st.tabs); P(13, sy(tTop), st.tabs); } // петлицы
+  if (st.number) { R(tx0 + 1, sy(tTop + 2), 4, 3, '#d8d4c0'); P(tx0 + 2, sy(tTop + 3), '#2a2a2a'); P(tx0 + 4, sy(tTop + 3), '#2a2a2a'); } // нашивка с номером
   if (st.collar) R(11, sy(tTop), 2, 1, '#e8e4d8');
   if (st.undead) { // истлевшая шинель: дыры, торчащие рёбра, рваный подол
     R(tx0 + 2, sy(tTop + 4), 2, 1, '#d8d4c0'); R(tx0 + 2, sy(tTop + 6), 2, 1, '#d8d4c0'); P(tx0 + 3, sy(tTop + 5), INK);
@@ -356,6 +357,7 @@ export function miniSprite(kind: string, frame = 0): HTMLCanvasElement {
   if (st.belt) R(2, 9, 6, 1, st.belt);
   if (st.trim) { R(4, 6, 1, 4, st.trim); }
   if (st.sash) R(3, 7, 1, 1, '#7a2020');
+  if (st.number) R(3, 7, 2, 1, '#d8d4c0');
   // голова
   R(3, 2, 4, 4, skin); R(6, 2, 1, 4, shade(skin, -0.2));
   if (st.respirator) { R(3, 3, 4, 3, '#5a5a48'); R(5, 3, 1, 1, '#9ab0a0'); R(5, 5, 1, 2, '#3a3a30'); }

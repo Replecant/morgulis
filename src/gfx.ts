@@ -15,7 +15,7 @@ interface Style {
   hatC?: string; trim?: string; belt?: string; apron?: string;
   dress?: boolean; collar?: boolean; mask?: boolean; band?: boolean; sash?: boolean; hood?: boolean; longHair?: boolean; goggles?: boolean; cuirass?: boolean;
   undead?: boolean; tanks?: boolean;
-  puttees?: string; webbing?: string; respirator?: boolean; tabs?: string; // военная форма: обмотки, ремни с подсумками, противогаз, петлицы
+  puttees?: string; webbing?: string; respirator?: boolean; tabs?: string; number?: boolean; // number — нашивка с номером (заключённые) // военная форма: обмотки, ремни с подсумками, противогаз, петлицы
   limbs?: Partial<Record<string, string>>; // утраченные части тела и протезы (prosthetics.ts) — видны на фигурке // траншейные мертвецы: гнилая кожа, светящиеся глаза; газовые баллоны за спиной
   weapon?: 'saber' | 'rifle' | 'fork' | 'musket' | 'hammer' | 'staff' | 'pole' | 'bottle' | 'book' | 'wrench' | 'bag' | 'knife' | 'pistol' | 'goad' | 'shovel';
   scale?: number;
@@ -71,6 +71,10 @@ export const STYLES: Record<string, Style> = {
   fisher_w: { coat: '#4a4448', dress: true, apron: '#5a5a4a', hat: 'bonnet', hatC: '#3a3a3a', skin: '#c8a890', hair: '#5a4a3a', longHair: true, weapon: 'bag' },
   prospector: { coat: '#5a4a38', legs: '#2e2820', belt: '#2a1d12', hat: 'minerhelm', hatC: '#5a4a2a', skin: '#b08a6a', beard: '#3a2a1a', weapon: 'hammer' },
   scrapper: { coat: '#4a4238', legs: '#2a2620', hat: 'flatcap', hatC: '#2a2620', skin: '#a8886a', goggles: true, weapon: 'bag' },
+  inmate: { coat: '#5c5c58', legs: '#4c4c48', hat: 'flatcap', hatC: '#46463f', skin: '#b8a894', beard: '#6a6660', number: true },
+  inmate2: { coat: '#56564f', legs: '#48483f', hair: '#3a3632', skin: '#c0a890', number: true, weapon: 'bag' },
+  inmate_w: { coat: '#5c5c58', dress: true, hat: 'bonnet', hatC: '#46463f', skin: '#c4ae98', hair: '#4a3e34', longHair: true, number: true },
+  bworker_w: { coat: '#4a4a52', dress: true, apron: '#6a6458', hat: 'bonnet', hatC: '#3a3a42', skin: '#c8a890', hair: '#5a3a22', longHair: true, weapon: 'wrench' },
   bworker: { coat: '#4a4a52', legs: '#26262c', belt: '#2a1d12', hat: 'flatcap', hatC: '#3a3a42', skin: '#c0a080', weapon: 'wrench' },
   // фоновые жители деревень
   townsman: { coat: '#4a4438', legs: '#2a2620', hat: 'flatcap', hatC: '#2e2a22', skin: '#c4a888', beard: '#5a4a3a' },

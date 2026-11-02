@@ -76,7 +76,7 @@ const TOP: Record<string, number> = {
   house: 16, ruin: 16, farm: 16, station: 20, pumphouse: 28, slaughter: 16, barn: 14, hut: 16,
   tank: 18, watertower: 44, wagon: 14, lamp: 30, tree: 26, rock: 6, barrel: 6, fence: 10, feed: 8, chitin: 6,
   cellar: 10, adit: 26, shroombed: 6, bigshroom: 18, rack: 14, wall: 30, gate: 40, railgate: 36, tower: 56,
-  sign: 16, orecart: 8, boat: 4, nets: 20, scrapheap: 16, banner: 46, poster: 24, statue: 44, horn: 40, keep: 76, barracks: 22, laundry: 22, handcart: 12, crates: 14, coalheap: 8, standpipe: 18, noticeboard: 22, sacks: 8, vent: 4, clinic: 30, shack: 18, factory: 64, tenement: 30, stall: 18, workshop: 26, crater: 0, bones: 0, wallruin: 14, skeleton: 14, milestone: 14, lorry: 12,
+  sign: 16, wire: 8, cell: 16, orecart: 8, boat: 4, nets: 20, scrapheap: 16, banner: 46, poster: 24, statue: 44, horn: 40, keep: 76, barracks: 22, laundry: 22, handcart: 12, crates: 14, coalheap: 8, standpipe: 18, noticeboard: 22, sacks: 8, vent: 4, clinic: 30, shack: 18, factory: 64, tenement: 30, stall: 18, workshop: 26, crater: 0, bones: 0, wallruin: 14, skeleton: 14, milestone: 14, lorry: 12,
 };
 
 export interface ObjLike { kind: string; x: number; y: number; w: number; h: number; seed: number; ruinKind?: string; boarded?: boolean }
@@ -339,6 +339,22 @@ export function objSprite(o: ObjLike, neighbors?: { horizFence: boolean }) {
     }
     case 'sign': R(9, H - 16, 2, 16, '#3a2c1e'); R(2, H - 18, 16, 6, '#4a3a26'); for (let x = 4; x < 16; x += 3) R(x, H - 16, 2, 1, '#c8b88a'); break;
 
+    case 'wire': { // колючая проволока на кольях — спираль в два ряда
+      for (const kx of [2, 15]) { R(kx, H - 18, 2, 18, '#3a2c1e'); P(kx, H - 19, '#5a4430'); }
+      for (let k = 0; k < W; k++) { P(k, H - 14 + Math.round(Math.sin(k * 1.3) * 2), '#8a8a80'); P(k, H - 7 + Math.round(Math.cos(k * 1.1) * 2), '#7a7a70'); }
+      for (const [a, b] of [[5, 13], [10, 6], [17, 11]]) { P(a, H - b, '#b8b8b0'); P(a + 1, H - b - 1, '#b8b8b0'); }
+      doOutline = false;
+      break;
+    }
+    case 'cell': { // приземистый каменный дом: карцер или баня — решётка на окне, тяжёлая дверь
+      const wy = H - 18, st = '#5e5a52';
+      R(1, H, W, 2, 'rgba(0,0,0,0.5)'); R(0, wy, W, 18, st);
+      for (let y = wy + 2; y < H; y += 4) for (let x = ((y / 4) | 0) % 2 ? 0 : 4; x < W; x += 8) R(x, y, 7, 1, shade(st, -0.18));
+      R(6, wy + 4, 6, 5, '#141210'); for (let x = 7; x < 12; x += 2) R(x, wy + 4, 1, 5, '#6a6a62');   // решётка
+      R(W - 14, H - 13, 8, 13, '#2a241c'); R(W - 14, H - 13, 8, 1, '#4a4038'); P(W - 8, H - 7, '#8a8a80');
+      for (let y = -4; y < wy; y++) R(-1, y, W + 2, 1, (y & 1) ? '#44484c' : '#3a3e42');
+      break;
+    }
     case 'orecart': { // рудничная вагонетка на узкоколейке
       R(3, H - 14, W - 6, 9, '#4a4a46'); R(3, H - 14, W - 6, 1, '#6a6a62'); R(4, H - 6, W - 8, 1, '#2a2a28');
       for (let x = 5; x < W - 5; x += 3) P(x, H - 15, ['#7a4a2a', '#8a5a30', '#5a3a22'][x % 3]);                  // руда горкой
