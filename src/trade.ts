@@ -8,6 +8,7 @@ import { ITEMS, CONSUMABLES, CONS_ORDER, ConsId, sellPrice, KIND_NAMES, itemStat
 import { drawItemIcon, KIND_COLOR } from './inventory';
 import { h } from './book';
 import { $ } from './util';
+import { withFrame } from './frames';
 
 interface Shop { name: string; greet: string; items: Record<string, number>; cons: ConsId[] }
 
@@ -51,8 +52,8 @@ export const Trade = {
 
   show(shop: string, onClose: () => void) {
     this.open = true; this.shop = shop; this.onClose = onClose; this.note = SHOPS[shop].greet;
-    $('trade').classList.remove('hidden');
     this.render();
+    withFrame('trade', $('trade'), () => { if (this.open) $('trade').classList.remove('hidden'); });
   },
   close() { this.open = false; $('trade').classList.add('hidden'); this.onClose(); },
 

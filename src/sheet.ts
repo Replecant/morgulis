@@ -10,6 +10,7 @@ import { woundsOf } from './wounds';
 import { drawFigure } from './gfx';
 import { h } from './book';
 import { $ } from './util';
+import { withFrame } from './frames';
 
 const sg = (n: number) => (n >= 0 ? `+${n}` : `−${-n}`);
 const years = (n: number) => (n % 10 === 1 && n % 100 !== 11 ? 'год' : [2, 3, 4].includes(n % 10) && ![12, 13, 14].includes(n % 100) ? 'года' : 'лет');
@@ -21,8 +22,8 @@ export const Sheet = {
   show(onClose: () => void) {
     if (!G.pc || !G.squad[0]) return;
     this.open = true; this.onClose = onClose;
-    $('sheet').classList.remove('hidden');
     this.render();
+    withFrame('sheet', $('sheet'), () => { if (this.open) $('sheet').classList.remove('hidden'); });
   },
   close() { this.open = false; $('sheet').classList.add('hidden'); this.onClose(); },
 

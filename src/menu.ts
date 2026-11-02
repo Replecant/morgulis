@@ -4,7 +4,7 @@
 import { Book, h, Spread } from './book';
 import { vignette, drawDeadTree } from './gfx';
 import { PixelView, pixelize } from './px';
-import frameUrl from './assets/menu-frame.webp';
+import { FRAMES } from './frames';
 import { ATTRS, ATTR_ORDER, PROFESSIONS, PROF_ORDER, DC, DC_NAMES, LEVEL_XP, mastery, ProfId } from './rules';
 import { seeded, TAU } from './util';
 
@@ -76,8 +76,7 @@ const fog = Array.from({ length: 7 }, (_, i) => ({ x: i * 170, y: 470 + (i % 3) 
 let view: PixelView | null = null;
 const BAY = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5].map((q) => q / 16 - 0.5);
 /** Фон меню: рисуется в половинном разрешении, цвета квантуются растром, вывод ×2 без сглаживания. */
-const frame = new Image();
-frame.src = frameUrl;
+const frame = FRAMES.menu;
 let frameT0 = -1;
 
 /** Заглавный экран: пиксельная рамка (скелеты-солдаты, шестерни, трубы) и падающий пепел. */

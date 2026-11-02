@@ -1,0 +1,29 @@
+// ============================================================
+//  Пиксельные рамки окон: загружаются и раскодируются заранее,
+//  при запуске игры, — чтобы окно и рамка появлялись одновременно.
+// ============================================================
+import menu from './assets/menu-frame.webp';
+import inv from './assets/inv-frame.webp';
+import sheet from './assets/sheet-frame.webp';
+import trade from './assets/trade-frame.webp';
+
+export type FrameId = 'menu' | 'inv' | 'sheet' | 'trade';
+const URLS: Record<FrameId, string> = { menu, inv, sheet, trade };
+
+export const FRAMES = {} as Record<FrameId, HTMLImageElement>;
+const ready = {} as Record<FrameId, Promise<void>>;
+const done = new Set<FrameId>();
+for (const id of Object.keys(URLS) as FrameId[]) {
+  const img = new Image();
+  img.decoding = 'async';
+  img.src = URLS[id];
+  FRAMES[id] = img; // держим ссылку — раскодированная картинка остаётся в памяти
+  ready[id] = img.decode().catch(() => {}).then(() => { done.add(id); });
+}
+
+/** Показать окно, когда его рамка готова (обычно — сразу: рамки грузятся при старте). */
+export function withFrame(id: FrameId, el: HTMLElement, show: () => void) {
+  el.style.backgroundImage = `url("${URLS[id]}")`;
+  if (done.has(id)) { show(); return; }
+  ready[id].then(show);
+}

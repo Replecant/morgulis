@@ -10,6 +10,7 @@ import { drawFigure, applyEquipLooks } from './gfx';
 import { h } from './book';
 import { $, TAU } from './util';
 import { pixelize, outline } from './px';
+import { withFrame } from './frames';
 
 // ------------------------------------------------------------ иконки предметов
 export const KIND_COLOR: Record<ItemKind, string> = { tool: '#6a8a8a', weapon: '#a07a4a', head: '#7a8a6a', body: '#6a7a8a', hands: '#8a7a5a', legs: '#7a6a5a', charm: '#9a7ab0', belt: '#a08a50' };
@@ -151,8 +152,8 @@ export const Inventory = {
 
   show(onClose: () => void) {
     this.open = true; this.onClose = onClose; this.sel = null;
-    $('inv').classList.remove('hidden');
     this.render();
+    withFrame('inv', $('inv'), () => { if (this.open) $('inv').classList.remove('hidden'); });
   },
   close() {
     this.open = false;
