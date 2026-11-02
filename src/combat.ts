@@ -7,7 +7,6 @@ import { G } from './state';
 import { WEAPONS, ENEMIES, ABILITIES, battleDef, BattleDef, UnitBase } from './data';
 import { bfs, pathTo, lineTiles, BfsMap, DIRS8, Pt, clamp, cheb, dist, lerp, pick, randInt, seeded, sleep, TAU } from './util';
 import { drawFigure, Lighting, Light, drawDeadTree, drawCrate, drawAsh, vignette } from './gfx';
-import { SFX } from './sfx';
 
 export const CT = 40, CW = 24, CH = 14;
 const W = CW * CT, H = CH * CT;
@@ -182,7 +181,6 @@ export const Combat = {
     if (this.busy || this.turn !== 'player' || !this.sel) return;
     const b = this.buttons()[i];
     if (!b || b.disabled) return;
-    SFX.click();
     const u = this.sel;
     if (b.kind === 'w') { this.action = { type: 'w', key: b.key }; this.hooks.panel(); return; }
     if (b.key === 'reload') {
@@ -217,7 +215,7 @@ export const Combat = {
     if (tx < 0 || ty < 0 || tx >= CW || ty >= CH) return;
     const sel = this.sel, act = this.action, u = this.unitAt(tx, ty);
     if (sel && act.type === 'a') { this.useAbility(sel, act.key, tx, ty, u); return; }
-    if (u && u.team === 'player') { if (u.ap > 0) { SFX.click(); this.select(u); } else this.hooks.toast(`${u.name}: ОД закончились`); return; }
+    if (u && u.team === 'player') { if (u.ap > 0) this.select(u); else this.hooks.toast(`${u.name}: ОД закончились`); return; }
     if (!sel || sel.ap <= 0) return;
     if (u && u.team === 'enemy') {
       const w = act.key;
@@ -420,9 +418,9 @@ export const Combat = {
     const ch = this.hitChance(a, t, wkey, bonus);
     if (w.ammo) a.ammo[wkey]--;
     const hit = Math.random() * 100 < ch;
-    if (w.type === 'melee') { await this.lunge(a, t); SFX.slash(); }
-    else if (w.magic) { SFX.magic(); await this.projectile(a, t, '#9fef6a', 320); this.burst(t.px, t.py - 12, '#9fef6a', 26, 90); }
-    else { SFX[w.sfx === 'rifle' ? 'rifle' : 'shot'](); this.muzzle(a, t, hit); await sleep(140); }
+    if (w.type === 'melee') await this.lunge(a, t);
+    else if (w.magic) { await this.projectile(a, t, '#9fef6a', 320); this.burst(t.px, t.py - 12, '#9fef6a', 26, 90); }
+    else { this.muzzle(a, t, hit); await sleep(140); }
     if (hit) {
       let d = randInt(w.dmg[0], w.dmg[1]);
       const crit = Math.random() < 0.12;
@@ -444,7 +442,6 @@ export const Combat = {
     u.hp -= d; u.flash = 0.22;
     this.float(u, `${crit ? '‼ ' : ''}−${d}`, crit ? '#ffcf5a' : '#ff6a5a');
     this.shake = Math.max(this.shake, crit ? 7 : 3.5);
-    SFX.hit();
     this.burst(u.px, u.py - 10, u.demonic ? '#3a0a08' : '#7a1010', 10, 60);
     if (u.hp <= 0) { u.hp = 0; await this.kill(u); }
   },
@@ -473,7 +470,6 @@ export const Combat = {
   },
 
   async summon(u: Unit, spot: Pt) {
-    SFX.summon();
     this.float(u, '«Явись!»', '#9fef6a');
     const x = spot.x * CT + CT / 2, y = spot.y * CT + CT / 2;
     this.fx.push({ type: 'ring', x1: x, y1: y, x2: 0, y2: 0, color: '#9fef6a', life: 0.7, max: 0.7 });
@@ -487,7 +483,6 @@ export const Combat = {
   },
 
   async whisper(u: Unit, t: Unit) {
-    SFX.whisper();
     this.float(u, '«Смотри в Око…»', '#b58cff');
     await this.projectile(u, t, '#b58cff', 500);
     if (Math.random() < 0.75) {
@@ -508,7 +503,6 @@ export const Combat = {
     await this.tween(420, (k) => {
       this.parts.push({ x: lerp(sx, x, k), y: lerp(sy, y, k) - Math.sin(k * Math.PI) * 70, vx: 0, vy: 0, life: 0.25, max: 0.25, color: '#666', size: 2, g: 0 });
     });
-    SFX.boom();
     this.shake = 11;
     this.burst(x, y, '#ffb050', 40, 160); this.burst(x, y, '#555', 30, 90);
     this.fx.push({ type: 'ring', x1: x, y1: y, x2: 0, y2: 0, color: '#ffb050', life: 0.4, max: 0.4 });
@@ -560,7 +554,6 @@ export const Combat = {
       const sx = u.px, sy = u.py, tx = p.x * CT + CT / 2, ty = p.y * CT + CT / 2;
       await this.tween(110, (k) => { u.px = lerp(sx, tx, k); u.py = lerp(sy, ty, k); });
       u.x = p.x; u.y = p.y;
-      if (i % 2) SFX.step();
     }
   },
   async lunge(a: Unit, t: Unit) {

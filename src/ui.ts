@@ -6,7 +6,6 @@ import { DIALOGS, SPEAKERS, DNode, Choice } from './dialogs';
 import { drawFigure } from './gfx';
 import { Combat } from './combat';
 import { $ } from './util';
-import { SFX } from './sfx';
 
 // ------------------------------------------------------------ Диалоги
 export const Dialog = {
@@ -84,7 +83,6 @@ export const Dialog = {
   choose(i: number) {
     const c = this.choices[i];
     if (!c) return;
-    SFX.click();
     if (c.act) return this.close(c.act);
     this.goto(c.go);
   },
@@ -141,7 +139,7 @@ export function refreshHud() {
 }
 
 export function exploreHint() {
-  $('hint').textContent = 'WASD / стрелки — идти · E / Пробел — говорить · клик — идти или говорить · M — звук';
+  $('hint').textContent = 'WASD / стрелки — идти · E / Пробел — говорить · клик — идти или говорить';
 }
 
 let toastTimer = 0;
@@ -206,7 +204,7 @@ export function screen(html: string, buttons: { label: string; fn: () => void }[
   for (const b of buttons) {
     const el = document.createElement('button');
     el.className = 'btn'; el.textContent = b.label;
-    el.onclick = () => { SFX.click(); b.fn(); };
+    el.onclick = () => b.fn();
     bx.append(el);
   }
 }

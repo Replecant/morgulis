@@ -13,20 +13,19 @@ export interface Weapon {
   ignoreCover?: boolean;
   splash?: [number, number];
   magic?: boolean;
-  sfx: 'shot' | 'rifle' | 'slash' | 'magic';
 }
 
 export const WEAPONS: Record<string, Weapon> = {
-  revolver:  { name: 'Револьвер «Уэбли»', type: 'ranged', range: 7, opt: 4, acc: 78, dmg: [3, 5], ammo: 6, sfx: 'shot' },
-  saber:     { name: 'Офицерская сабля', type: 'melee', acc: 88, dmg: [4, 7], sfx: 'slash' },
-  carbine:   { name: 'Карабин', type: 'ranged', range: 8, opt: 5, acc: 70, dmg: [3, 5], ammo: 4, sfx: 'rifle' },
-  rifle:     { name: 'Винтовка «Ли-Метфорд»', type: 'ranged', range: 11, opt: 8, acc: 72, dmg: [4, 6], ammo: 5, sfx: 'rifle' },
-  bayonet:   { name: 'Штык', type: 'melee', acc: 82, dmg: [2, 4], sfx: 'slash' },
-  pitchfork: { name: 'Вилы', type: 'melee', acc: 72, dmg: [2, 4], sfx: 'slash' },
-  musket:    { name: 'Старое ружьё', type: 'ranged', range: 7, opt: 3, acc: 58, dmg: [2, 4], sfx: 'shot' },
-  hammer:    { name: 'Кузнечный молот', type: 'melee', acc: 75, dmg: [3, 6], sfx: 'slash' },
-  claws:     { name: 'Когти', type: 'melee', acc: 80, dmg: [2, 3], sfx: 'slash' },
-  flame:     { name: 'Зелёное пламя', type: 'ranged', range: 8, opt: 8, acc: 80, dmg: [3, 5], ignoreCover: true, splash: [1, 2], magic: true, sfx: 'magic' },
+  revolver:  { name: 'Револьвер «Уэбли»', type: 'ranged', range: 7, opt: 4, acc: 78, dmg: [3, 5], ammo: 6 },
+  saber:     { name: 'Офицерская сабля', type: 'melee', acc: 88, dmg: [4, 7] },
+  carbine:   { name: 'Карабин', type: 'ranged', range: 8, opt: 5, acc: 70, dmg: [3, 5], ammo: 4 },
+  rifle:     { name: 'Винтовка «Ли-Метфорд»', type: 'ranged', range: 11, opt: 8, acc: 72, dmg: [4, 6], ammo: 5 },
+  bayonet:   { name: 'Штык', type: 'melee', acc: 82, dmg: [2, 4] },
+  pitchfork: { name: 'Вилы', type: 'melee', acc: 72, dmg: [2, 4] },
+  musket:    { name: 'Старое ружьё', type: 'ranged', range: 7, opt: 3, acc: 58, dmg: [2, 4] },
+  hammer:    { name: 'Кузнечный молот', type: 'melee', acc: 75, dmg: [3, 6] },
+  claws:     { name: 'Когти', type: 'melee', acc: 80, dmg: [2, 3] },
+  flame:     { name: 'Зелёное пламя', type: 'ranged', range: 8, opt: 8, acc: 80, dmg: [3, 5], ignoreCover: true, splash: [1, 2], magic: true },
 };
 
 export const ABILITIES: Record<string, { name: string; desc: string }> = {

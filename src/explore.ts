@@ -4,7 +4,6 @@
 import { G } from './state';
 import { bfs, pathTo, DIRS4, lerp, seeded, TAU, Pt } from './util';
 import { drawFigure, drawSky, Lighting, Light, flicker, drawDeadTree, drawCrate, drawAsh, vignette } from './gfx';
-import { SFX } from './sfx';
 
 export const ET = 32, EW = 30, EH = 20;
 const W = EW * ET, H = EH * ET;
@@ -139,7 +138,6 @@ export const Explore = {
       f.x = t.x; f.y = t.y;
     });
     this.moveK = 0;
-    if (Math.random() < 0.5) SFX.step();
     return true;
   },
 

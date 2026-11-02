@@ -7,7 +7,6 @@ import { Explore, ET } from './explore';
 import { Combat, CT } from './combat';
 import { Dialog, refreshHud, exploreHint, toast, combatShow, combatLog, combatPanel, screen, hideScreen } from './ui';
 import { updateAsh } from './gfx';
-import { SFX } from './sfx';
 import { $ } from './util';
 
 const cv = $('cv') as HTMLCanvasElement;
@@ -65,13 +64,12 @@ function showTitle() {
   screen(
     `<h1>МОРГУЛИС</h1><h2>Пепел Эшфорда</h2>
      <p>Сорок три года назад небо раскололось. Теперь над руинами Империи висит Око — тусклое зелёное светило, которое никогда не заходит.</p>
-     <div class="small">Прототип · исследование, диалоги, пошаговые бои<br>WASD / клик — движение · E — говорить · M — звук</div>`,
+     <div class="small">Прототип · исследование, диалоги, пошаговые бои<br>WASD / клик — движение · E — говорить</div>`,
     [{ label: 'Начать', fn: newGame }],
   );
 }
 
 function newGame() {
-  SFX.init();
   resetGame();
   Explore.init();
   hideScreen();
@@ -104,7 +102,6 @@ function toCanvas(e: MouseEvent) {
 }
 
 window.addEventListener('keydown', (e) => {
-  if (e.code === 'KeyM') { toast(SFX.toggle() ? 'Звук выключен' : 'Звук включён'); return; }
   if (Dialog.active) { e.preventDefault(); Dialog.key(e); return; }
   if (G.mode === 'explore') {
     if (['Space', 'KeyE', 'Enter'].includes(e.code)) { e.preventDefault(); if (performance.now() - Dialog.closedAt > 200) Explore.interactKey(); return; }
