@@ -1,6 +1,6 @@
 // ============================================================
 //  Погода: ясно, пасмурно, туман, дождь, буря. Меняется сама
-//  со временем (каждые несколько игровых часов). Влияет на
+//  со временем (раз в 18–48 игровых часов). Влияет на
 //  освещение и рисует туман, дождь, молнии — на карте, в сценах
 //  и в бою. Немного влияет на игру: в дождь и бурю отряд идёт
 //  медленнее, в туман хуже видно (места находятся ближе).
@@ -32,8 +32,8 @@ export const Weather = {
   thunderIn: -1,   // через сколько секунд после вспышки ударит гром
   thunderPow: 1,
 
-  reset() { this.kind = 'clear'; this.until = G.clock + 4 + Math.random() * 4; this.flash = 0; },
-  set(k: WeatherKind, lock = false) { this.kind = k; this.locked = lock; this.until = G.clock + 5 + Math.random() * 6; },
+  reset() { this.kind = 'clear'; this.until = G.clock + 16 + Math.random() * 12; this.flash = 0; },
+  set(k: WeatherKind, lock = false) { this.kind = k; this.locked = lock; this.until = G.clock + 18 + Math.random() * 24; },
   label() { return WEATHER_NAMES[this.kind]; },
 
   /** Каждый кадр: смена погоды по игровому времени и молнии в бурю. */
@@ -42,7 +42,7 @@ export const Weather = {
       const opts = NEXT[this.kind], sum = opts.reduce((a, o) => a + o[1], 0);
       let r = Math.random() * sum;
       for (const [k, w] of opts) { r -= w; if (r <= 0) { this.kind = k; break; } }
-      this.until = G.clock + 4 + Math.random() * 8;
+      this.until = G.clock + 18 + Math.random() * 30; // держится от трёх четвертей суток до двух
     }
     if (this.flash > 0) this.flash -= dt;
     if (this.kind === 'storm') {

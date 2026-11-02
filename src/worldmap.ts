@@ -84,9 +84,9 @@ const RIVERS: number[][][] = [
 ];
 const RAIL: number[][] = [[-2080, 700], [-1800, 760], [-1450, 830], [-1150, 880], [-900, 870], [-500, 885], [0, 900], [300, 890], [440, 880], [700, 910], [1000, 950], [1300, 940], [1550, 910], [1730, 880]];
 
-// патрули барона: первый ходит по тракту Эшфорд — форт, второй — от форта к Ричморду
+// патрули барона: первый ходит от Фенмора через Эшфорд по тракту до форта, второй — от форта к Ричморду
 // братья свободы: один ходит по северному тракту, второй — между Эйнбоу и Хоули, третий — от Вудхэма через форт к Тарвеллу
-const PATROL_PATHS: number[][][] = [ROADS[0], [...ROADS[0].slice(2).reverse(), ...ROADS[1].slice(1)], [...ROADS[4].slice().reverse().slice(0, 4), [-1300, 1000]].reverse(),
+const PATROL_PATHS: number[][][] = [[...ROADS[2].slice().reverse(), ...ROADS[0].slice(1)], [...ROADS[0].slice(2).reverse(), ...ROADS[1].slice(1)], [...ROADS[4].slice().reverse().slice(0, 4), [-1300, 1000]].reverse(),
   ROADS[8].slice(2), [...ROADS[10], ...ROADS[11].slice(1)], [...ROADS[12].slice().reverse(), ...ROADS[13].slice(1)]];
 export type PatrolOwner = 'baron' | 'baroness' | 'revo';
 const PATROL_OWNER: PatrolOwner[] = ['baron', 'baron', 'baroness', 'revo', 'revo', 'revo'];
