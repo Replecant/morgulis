@@ -442,6 +442,7 @@ export const Explore = {
     B('stall', 399, 39, 2, 1, { name: 'Интендантская лавка', talk: 'stall_b' }); B('crates', 402, 40, 1, 1, { name: 'Ящики интенданта', talk: 'crates' });
     for (const x of [384, 390]) B('wagon', x, 61, 4, 1, { name: 'Вагон', talk: 'bwagon' });
     for (const [x, y] of [[381, 32], [399, 32], [381, 42], [399, 33]]) B('lamp', x, y, 1, 1, { name: 'Фонарь', talk: 'lamp' });
+    B('clinic', 401, 27, 5, 3, { name: 'Лазарет', talk: 'bclinic' });
 
 
     // ======================= ЭЙНБОУ — сожжена за связи со старым режимом
@@ -465,7 +466,8 @@ export const Explore = {
     B('burnt', 479, 33, 4, 3, { name: 'Сгоревший дом', talk: 'hawley_burnt' });
     B('house', 485, 33, 4, 3, { name: 'Дом', talk: 'hawley_quiet' });
     B('farm', 459, 41, 4, 3, { name: 'Дом скорняка', talk: 'house_tanner' });
-    B('house', 485, 41, 4, 3, { name: 'Дом', talk: 'hawley_quiet' });
+    B('house', 485, 41, 4, 3, { name: 'Дом на отшибе', talk: 'hawley_odd', boarded: true });
+    B('barn', 488, 45, 5, 2, { name: 'Сарай', talk: 'hawley_shed' });
     for (const [x, y] of [[490, 13], [459, 15]]) B('feed', x, y, 2, 2, { name: 'Куча корма', talk: 'feed' });
     B('chitin', 470, 27, 2, 1, { name: 'Пустые панцири', talk: 'chitinpile_n' });
     B('rposter', 472, 31, 1, 1, { name: 'Плакат Собрания', talk: 'rposter' });
@@ -521,6 +523,7 @@ export const Explore = {
     for (const x of [601, 617]) B('rbanner', x, 12, 1, 1, { name: 'Знамя Собрания', talk: 'rbanner' });
     B('barracks', 587, 24, 9, 3, { name: 'Казарма братьев свободы', talk: 'svob_barracks' });
     B('cell', 625, 24, 4, 2, { name: 'Подвал трибунала', talk: 'svob_cell' });
+    B('clinic', 587, 29, 5, 3, { name: 'Лазарет братьев свободы', talk: 'svob_clinic' });
     for (const [x, y] of [[598, 39], [622, 39], [596, 15], [624, 15], [588, 36], [632, 36], [604, 40], [615, 21]]) B('rposter', x, y, 1, 1, { name: 'Плакат Собрания', talk: 'rposter' });
     for (const [x, y] of [[602, 37], [618, 22], [607, 40], [613, 40]]) B('lamp', x, y, 1, 1, { name: 'Фонарь', talk: 'lamp' });
     B('standpipe', 596, 31, 1, 1, { name: 'Колонка', talk: 'standpipe' });
@@ -600,6 +603,9 @@ export const Explore = {
     NPC('svob_g1', 'Брат у помоста', 'brother', 606, 32, 'svob_gibguard'); NPC('svob_g2', 'Брат у помоста', 'brother_w', 612, 32, 'svob_gibguard');
     NPC('commissar', 'Комиссар Собрания', 'brother_off', 609, 14, 'commissar');
     NPC('distrib', 'Раздатчица', 'nb_w', 621, 33, 'distrib');
+    NPC('svob_prosth', 'Протезист братьев', 'rmedic', 593, 32, 'svob_prosth');
+    NPC('hawley_prosth', 'Старик с костылём', 'hawley_prosth', 484, 45, 'hawley_prosth');
+    NPC('bprosth', 'Военный протезист', 'bmedic', 404, 31, 'bprosth');
     NPC('upper1', 'Стража Верхнего города', 'guard', 179, 46, 'upper_guard');
     NPC('upper2', 'Стража Верхнего города', 'guard', 179, 52, 'upper_guard');
 

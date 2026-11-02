@@ -98,6 +98,10 @@ export const STYLES: Record<string, Style> = {
   loyalist: { coat: '#4e5462', legs: '#34363e', belt: '#2a1d12', puttees: '#4a4a48', trim: '#8a7a4a', hat: 'cap', hatC: '#3a3e4a', skin: '#b89c84', beard: '#4a3e34', weapon: 'rifle' },
   loyalist2: { coat: '#4a4e58', legs: '#30323a', belt: '#2a1d12', hat: 'brodie', hatC: '#4a4e54', skin: '#c0a48a', beard: '#3a2e24', weapon: 'rifle' },
   loyal_off: { coat: '#464c5c', legs: '#2a2c34', belt: '#3a2a1a', trim: '#b09a5a', hat: 'cap', hatC: '#2e3240', skin: '#c8ac92', beard: '#6a5a4a', weapon: 'saber' },
+  // протезисты: военный врач баронессы и врач братьев
+  bmedic: { coat: '#c8c4b4', legs: '#3a3c30', apron: '#a8a498', belt: '#5a3a22', tabs: '#b03830', hat: 'cap', hatC: '#4e5040', skin: '#d0b498', goggles: true, armband: '#a03028', weapon: 'wrench' },
+  rmedic: { coat: '#c4beae', legs: '#2e2c28', apron: '#9a9488', hat: 'cap', hatC: '#3a3630', skin: '#c8ac90', hair: '#4a3a2a', goggles: true, armband: '#b8281e', weapon: 'wrench' },
+  hawley_prosth: { coat: '#3e3a30', legs: '#26231e', apron: '#4a3020', hat: 'flatcap', hatC: '#24221c', beard: '#9a968c', skin: '#c4b09c', goggles: true, weapon: 'pole' },
   // жители севера
   nb_m: { coat: '#46443c', legs: '#2c2a24', hat: 'flatcap', hatC: '#2a2824', skin: '#c0a488', beard: '#5a4a3a' },
   nb_w: { coat: '#44404a', dress: true, apron: '#5a564c', hat: 'bonnet', hatC: '#2e2a30', skin: '#ccb098', hair: '#5a4a3a', longHair: true, weapon: 'bag' },

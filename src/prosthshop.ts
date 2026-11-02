@@ -11,7 +11,7 @@ import { drawFigure, applyEquipLooks } from './gfx';
 import { withFrame } from './frames';
 import { ITEMS, CONSUMABLES } from './items';
 import {
-  Limb, LIMB_ORDER, LIMB_NAMES, PROSTHESES, Prosthesis, Shop, SHOP_NAMES, ROMAN,
+  Limb, LIMB_ORDER, LIMB_NAMES, PROSTHESES, Prosthesis, Shop, SHOP_NAMES, SHOP_WHERE, sells, ROMAN,
   partOf, limbState, fits, install, modsText, lostModsText, modsOf,
 } from './prosthetics';
 
@@ -34,9 +34,12 @@ export const ProsthShop = {
     const b = G.squad[0];
     applyEquipLooks(G.squad); // облик фигурки — по текущим протезам
     this.sel = LIMB_ORDER.find((l) => b.limbs?.[l]) ?? 'armR';
-    this.note = shop === 'clinic'
-      ? 'Протезист вытирает руки о фартук. — Железо, дерево, пружины, поршни. Выбирай, что подогнать.'
-      : 'Хирург в кожаном фартуке не поднимает глаз от банок с раствором. — Деньги вперёд. Вопросы — не задавай.';
+    this.note = {
+      clinic: 'Протезист вытирает руки о фартук. — Железо, дерево, пружины, поршни. Выбирай, что подогнать.',
+      under: 'Хирург в кожаном фартуке не поднимает глаз от банок с раствором. — Деньги вперёд. Вопросы — не задавай.',
+      bclinic: 'Военный врач листает ведомость. — Протезы казённого образца. Солдатам — по норме, вольным — за шиллинги.',
+      hawley: 'Старик задёргивает занавеску на окне сарая. — Говори тихо. Поршней у меня нет — только то, что можно выточить и склепать здесь.',
+    }[shop];
     this.render();
     withFrame('inv', $('prosth'), () => { if (this.open) $('prosth').classList.remove('hidden'); });
   },
@@ -54,7 +57,8 @@ export const ProsthShop = {
     install(b, l, p.id, G.clock);
     applyEquipLooks(G.squad);
     this.note = `${LIMB_NAMES[l]}: ${p.name}. (−${p.price} ш.${p.needItem ? `, −${ITEMS[p.needItem].name.toLowerCase()}` : ''}) ` +
-      (this.shop === 'clinic' ? 'Протезист подгоняет ремни и затягивает винты. — Носи на здоровье.' : 'Хирург вытирает руки. — Будет жечь. Это нормально.');
+      { clinic: 'Протезист подгоняет ремни и затягивает винты. — Носи на здоровье.', under: 'Хирург вытирает руки. — Будет жечь. Это нормально.',
+        bclinic: 'Врач затягивает ремни и ставит отметку в ведомости. — Годен. Следующий.', hawley: 'Старик подгоняет ремни при свете лампы. — И никому. Ни слова. Понял?' }[this.shop];
     this.render();
   },
   buyTissue() {
@@ -87,8 +91,9 @@ export const ProsthShop = {
     if (b.limbs?.[l]) {
       for (const p of Object.values(PROSTHESES)) {
         if (!fits(p, l)) continue;
-        const here = p.shop === this.shop, worn = b.limbs[l] === p.id;
-        const lack = !here ? `Только: ${SHOP_NAMES[p.shop].toLowerCase()} ${p.shop === 'under' ? '(Нижний город)' : '(Средний город)'}`
+        const here = sells(this.shop, p), worn = b.limbs[l] === p.id;
+        const where = (['clinic', 'bclinic', 'under'] as Shop[]).filter((s) => sells(s, p)).map((s) => SHOP_WHERE[s]).join(', ');
+        const lack = !here ? `Здесь не ставят. Есть: ${where}`
           : worn ? 'Уже установлен' : G.money < p.price ? `Не хватает ${p.price - G.money} ш.`
           : p.needItem && !G.stash.includes(p.needItem) ? `Нужно: ${ITEMS[p.needItem].name}` : '';
         list.push(h('div', { class: 'pr-item' + (here ? '' : ' far') },
