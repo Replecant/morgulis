@@ -169,6 +169,8 @@ export const Combat = {
     for (let i = 1; i < pts.length - 1; i++) if (this.blocksLos(pts[i].x, pts[i].y)) return false;
     return true;
   },
+  /** Боец отряда (а не призванный бес или подчинённое существо). */
+  isSquad(u: Unit) { return G.squad.includes(u.base); },
   /** Перемещение с учётом оккультных состояний: связанный стоит на месте, договор даёт +1. */
   mv(u: Unit) { return u.st.bound ? 0 : u.move + (u.st.pact ? 1 : 0); },
   coverAt(x: number, y: number) { const t = this.tile(x, y); return t ? TILE[t]?.cover ?? 0 : 0; },
@@ -294,7 +296,7 @@ export const Combat = {
         disabled: (u.ap < 1 && !freeReload) || !this.reloadable(u).length, active: false,
       });
     }
-    if (u.team === 'player') {
+    if (this.isSquad(u)) { // расходники отряда — только у бойцов отряда
       const S = G.supplies, cap = u.thrown >= u.grenadeCap;
       const cons: [string, number, boolean][] = [['grenade', S.grenade, cap], ['smoke', S.smoke, cap], ['bandage', S.bandage, u.ap < 1], ['medkit', S.medkit, u.ap < 1], ['painkiller', S.painkiller, u.ap < 1]];
       for (const [k, n, block] of cons) if (n > 0) out.push({ kind: 'a', key: k, label: `${ABILITIES[k].name} (${n})`, desc: ABILITIES[k].desc + (k === 'grenade' || k === 'smoke' ? ` Брошено за бой: ${u.thrown}/${u.grenadeCap} (зависит от патронташа).` : ''), disabled: block, active: this.action.type === 'a' && this.action.key === k });
@@ -304,7 +306,7 @@ export const Combat = {
       out.push({ kind: 'a', key: k, label: ABILITIES[k].name + (n < 10 ? ` (${n})` : ''), desc: ABILITIES[k].desc, disabled: n <= 0 || (k === 'aim' && u.ap < 2), active: this.action.type === 'a' && this.action.key === k });
     }
     if (u.leader && G.known.length) out.push({ kind: 'm', key: 'magic', label: `✶ Оккультизм (напр. ${u.base.strain ?? 0}/${STRAIN_MAX})`, desc: 'Заклинания изученных школ. Каждое тратит основное действие и повышает оккультное напряжение.', disabled: u.ap < 1, active: false });
-    if (u.team === 'player') for (const k of COURAGE_ORDER) {
+    if (this.isSquad(u)) for (const k of COURAGE_ORDER) {
       const block = this.courageBlock(u, k);
       out.push({ kind: 'c', key: k, label: `${COURAGE[k].short} ${'✦'.repeat(COURAGE[k].cost)}`, desc: `${COURAGE[k].name}. ${COURAGE[k].desc}` + (block ? ` (${block})` : ''), disabled: !!block, active: this.action.type === 'c' && this.action.key === k });
     }
@@ -534,8 +536,8 @@ export const Combat = {
       }
       if (u.summon !== undefined && --u.summon <= 0) {
         u.dead = true; u.fled = true;
-        this.burst(u.px, u.py - 12, '#e05030', 20, 60);
-        this.hooks.log(`${u.name} рассеивается дымом.`);
+        this.burst(u.px, u.py - 10, '#6a5a50', 24, 60);
+        this.hooks.log(`${u.name} рассыпается в прах — срок службы вышел.`);
       }
     }
   },
@@ -562,7 +564,7 @@ export const Combat = {
       });
     } else if (key === 'bandage' || key === 'medkit') {
       const kit = key === 'medkit';
-      if (!target || target.team !== 'player' || cheb(u, target) > 1) return T('Выберите себя или соседнего союзника');
+      if (!target || !this.isSquad(target) || cheb(u, target) > 1) return T('Выберите себя или соседнего бойца отряда');
       if ((kit ? G.supplies.medkit : G.supplies.bandage) <= 0) return T(kit ? 'Аптечек нет' : 'Бинты кончились');
       if (!target.downed && target.hp >= target.maxHp) return T('Союзник не ранен');
       this.run(async () => {
@@ -881,7 +883,16 @@ export const Combat = {
 
   async kill(u: Unit) {
     u.dead = true;
-    if (u.team === 'player') { // бойцы отряда не гибнут, а падают тяжело ранеными
+    if (u.kind === 'imp') { // бес не оставляет тела — рассыпается в прах
+      u.fled = true;
+      this.burst(u.px, u.py - 10, '#6a5a50', 26, 70);
+      this.burst(u.px, u.py - 4, '#3a2e28', 18, 40);
+      this.float(u, 'Прах', '#b8a890');
+      this.hooks.log(`${u.name} рассыпается в прах.`);
+      await sleep(300);
+      return;
+    }
+    if (u.team === 'player' && this.isSquad(u)) { // бойцы отряда не гибнут, а падают тяжело ранеными
       u.downed = true; u.courage = 0; u.terror = false;
       const wd = addWound(u.base, true);
       this.float(u, 'Тяжело ранен' + (u.base.id === 'pc' && G.pc?.gender === 'f' ? 'а' : ''), '#e05040');
