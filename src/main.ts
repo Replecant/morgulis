@@ -11,6 +11,7 @@ import { Dialog, refreshHud, exploreHint, toast, combatShow, combatLog, combatPa
 import { setPcStyle, applyEquipLooks } from './gfx';
 import { Inventory } from './inventory';
 import { Sheet } from './sheet';
+import { Music } from './music';
 import { frameReady, whenFrameReady, frameUrl } from './frames';
 import { Trade, resetShops } from './trade';
 import { drawMenuBg, showMainMenu, showAbout, openRules } from './menu';
@@ -42,7 +43,7 @@ function toScene(id: string, at?: { x: number; y: number }) {
   refreshHud();
 }
 function hint() {
-  if (G.mode === 'world') $('hint').textContent = 'Клик — идти · клик по месту — войти · WASD — идти · E — войти рядом · Q — лечение и лагерь · I — снаряжение · C — персонаж';
+  if (G.mode === 'world') $('hint').textContent = 'Клик — идти · клик по месту — войти · WASD — идти · E — войти рядом · Q — лечение и лагерь · I — снаряжение · C — персонаж · M — музыка';
   else exploreHint();
 }
 
@@ -172,6 +173,7 @@ function toCanvas(e: MouseEvent) {
 const roaming = () => G.mode === 'explore' || G.mode === 'world';
 
 window.addEventListener('keydown', (e) => {
+  if (e.code === 'KeyM' && G.mode !== 'create') { toast(Music.toggle() ? 'Музыка выключена [M]' : 'Музыка включена [M]'); return; }
   if (Dialog.active) { e.preventDefault(); Dialog.key(e); return; }
   if (Trade.open) { if (e.code === 'Escape') Trade.close(); return; }
   if (e.code === 'KeyI' && roaming() && !squadOpen()) {
@@ -250,6 +252,7 @@ function frame(now: number) {
   else if (G.mode === 'world') World.draw(ctx, G.time);
   else Explore.draw(ctx, G.time);
   if (G.mode === 'world' && (hudT += dt) > 0.5) { hudT = 0; refreshHud(); }
+  Music.update(dt, G.mode === 'world');
   requestAnimationFrame(frame);
 }
 
@@ -261,5 +264,5 @@ requestAnimationFrame(frame);
 
 // отладка: ?debug в адресе даёт доступ к состоянию из консоли
 if (new URLSearchParams(location.search).has('debug')) {
-  (window as any).morgulis = { G, Combat, Explore, World, Dialog, startBattle, newGame, newCharacter, openSquad, Inventory, Trade, Sheet, toScene, toWorld };
+  (window as any).morgulis = { G, Combat, Explore, World, Dialog, startBattle, newGame, newCharacter, openSquad, Inventory, Trade, Sheet, Music, toScene, toWorld };
 }
