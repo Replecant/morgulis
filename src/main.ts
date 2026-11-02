@@ -206,7 +206,11 @@ window.addEventListener('keydown', (e) => {
     if (OccultMenu.open) OccultMenu.close(); else { G.keys.clear(); OccultMenu.show(() => { refreshHud(); hint(); }); }
     return;
   }
-  if (OccultMenu.open) { if (e.code === 'Escape') OccultMenu.close(); return; }
+  if (OccultMenu.open) {
+    if (e.code === 'Escape') OccultMenu.close();
+    else if (/^Digit[1-4]$/.test(e.code)) OccultMenu.setTab((['folk', 'demon', 'astro', 'rune'] as const)[+e.code.slice(5) - 1]);
+    return;
+  }
   if (e.code === 'KeyI' && roaming() && !squadOpen()) {
     if (Inventory.open) Inventory.close(); else { G.keys.clear(); Inventory.show(() => { refreshHud(); hint(); }); }
     return;

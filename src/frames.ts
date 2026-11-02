@@ -7,9 +7,10 @@ import inv from './assets/inv-frame.webp';
 import sheet from './assets/sheet-frame.webp';
 import trade from './assets/trade-frame.webp';
 import death from './assets/death.webp';
+import occult from './assets/occult-frame.webp';
 
 export type FrameId = 'menu' | 'inv' | 'sheet' | 'trade' | 'death' | 'occult';
-const URLS: Record<FrameId, string> = { menu, inv, sheet, trade, death, occult: inv }; // occult — временно рамка снаряжения
+const URLS: Record<FrameId, string> = { menu, inv, sheet, trade, death, occult };
 export const frameUrl = (id: FrameId) => URLS[id];
 
 export const FRAMES = {} as Record<FrameId, HTMLImageElement>;
