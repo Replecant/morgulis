@@ -465,15 +465,22 @@ export function objSprite(o: ObjLike, neighbors?: { horizFence: boolean }) {
       lights.push({ x: Math.round(W / 2), y: H - 4, r: 16, color: '#d06a30', a: 0.35 });
       break;
     }
-    case 'pine': { // живая ель: тёмные ярусы хвои
-      R(3, H - 2, 14, 2, 'rgba(0,0,0,0.45)');
-      R(9, H - 8, 2, 8, '#2e2216');
-      const tiers = 5;
-      for (let k = 0; k < tiers; k++) {
-        const top = -40 + k * 8, w = 3 + k * 2;
-        for (let y = 0; y < 10; y++) { const ww = Math.round(w * (y + 1) / 10) + 1; R(10 - ww, top + y, ww * 2, 1, y > 7 ? '#162216' : k % 2 ? '#1e2e1e' : '#223422'); P(10 - ww, top + y, '#30462c'); }
+    case 'pine': { // живая ель: один силуэт, ярусы поникших лап, светлая сторона слева, тень справа
+      const cx = 10, top = -46, bot = H - 5, hgt = bot - top, tiers = 6;
+      R(1, H - 3, 19, 3, 'rgba(0,0,0,0.45)');
+      R(cx - 1, bot - 2, 3, H - bot + 2, '#3a2a1a'); P(cx - 1, bot, '#4e3a24');
+      for (let y = top; y < bot; y++) {
+        const p = (y - top) / hgt, k = (p * tiers) % 1;
+        const hw = Math.max(0, Math.round(0.5 + p * 12 * (0.5 + 0.5 * k) + (k > 0.6 ? (r() < 0.5 ? 1 : 0) : 0)));
+        const under = k > 0.82;                                           // нижний край яруса — в тени
+        for (let x = cx - hw; x <= cx + hw; x++) {
+          const t = (x - (cx - hw)) / (2 * hw + 1);
+          const col = under ? (t < 0.3 ? '#22341e' : '#142016') : t < 0.28 ? '#3e5a32' : t < 0.7 ? '#2a4024' : '#1a2a18';
+          P(x, y, col);
+        }
+        if (k > 0.7 && hw > 2) { P(cx - hw - 1, y + 1, '#2a4024'); P(cx + hw + 1, y + 1, '#142016'); } // кончики лап свисают
       }
-      P(9, -42, '#30462c'); P(10, -42, '#30462c');
+      P(cx, top - 1, '#3e5a32');
       break;
     }
     case 'stump': R(4, H - 4, 10, 2, 'rgba(0,0,0,0.4)'); R(5, H - 8, 9, 5, '#4a3622'); R(5, H - 8, 9, 2, '#a07a4a'); P(8, H - 8, '#7a5a38'); P(11, H - 7, '#7a5a38'); break;
