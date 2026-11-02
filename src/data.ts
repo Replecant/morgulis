@@ -40,6 +40,7 @@ export const WEAPONS: Record<string, Weapon> = {
   fists:     { name: 'Кулаки', type: 'melee', atk: 0, dmg: [1, 2] },
   pitchfork: { name: 'Вилы', type: 'melee', atk: 0, dmg: [2, 4] },
   musket:    { name: 'Старое ружьё', type: 'ranged', range: 7, opt: 3, atk: -1, dmg: [2, 4] },
+  buttstock: { name: 'Приклад', type: 'melee', atk: -1, dmg: [1, 3] },
   hammer:    { name: 'Кузнечный молот', type: 'melee', atk: 0, dmg: [3, 6] },
   claws:     { name: 'Когти', type: 'melee', atk: 1, dmg: [2, 3] },
   flame:     { name: 'Зелёное пламя', type: 'ranged', range: 8, opt: 8, atk: 1, dmg: [3, 5], ignoreCover: true, splash: [1, 2], magic: true },
@@ -120,7 +121,8 @@ export interface BattleDef {
   theme: 'road' | 'factory';
   map: string[];
   players: [number, number][];
-  enemies: { t: string; x: number; y: number }[];
+  /** ammo — сколько зарядов на бой (иначе — без счёта), extra — добавочное оружие, move — поправка хода */
+  enemies: { t: string; x: number; y: number; ammo?: Record<string, number>; extra?: string[]; move?: number; note?: string }[];
   lights: [number, number, number, string][]; // x, y, радиус(px), цвет
 }
 
@@ -178,7 +180,11 @@ export function battleDef(id: string, _flags: Record<string, boolean | undefined
           '........................',
         ],
         players: [[2, 7], [2, 9], [1, 6], [1, 8]],
-        enemies: [{ t: 'scav_gun', x: 18, y: 4 }, { t: 'scav_knife', x: 15, y: 8 }],
+        // то, что видно при проверке «Внимания» у костра, правда всегда: пороховница пуста, второй хромает
+        enemies: [
+          { t: 'scav_gun', x: 18, y: 4, ammo: { musket: 1 }, extra: ['buttstock'], note: 'Мародёр перехватывает пустое ружьё прикладом вперёд.' },
+          { t: 'scav_knife', x: 15, y: 8, move: -1 },
+        ],
         lights: [[13, 6, 170, '#f0a050'], [4, 10, 110, '#e8c070']],
       };
   }

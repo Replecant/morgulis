@@ -38,6 +38,7 @@ export interface Unit {
   downed: boolean;      // тяжело ранен (боец отряда на 0 ОЗ) — можно спасти
   walking?: boolean;    // идёт (для анимации шага)
   weapons: string[]; ammo: Record<string, number>; abil: Record<string, number>;
+  emptyNote?: string; // что сказать в журнал, когда у стрелка кончились заряды
   ai?: UnitBase['ai']; leader: boolean; demonic: boolean;
   dead: boolean; fled: boolean; terror: boolean; flip: boolean; flash: number; seed: number;
   cd: { summon: number; whisper: number };
@@ -124,7 +125,14 @@ export const Combat = {
       u.hp = Math.max(1, Math.min(u.maxHp, s.hp));
       this.units.push(u);
     });
-    for (const e of def.enemies) this.units.push(mkUnit(ENEMIES[e.t], 'enemy', e.x, e.y));
+    for (const e of def.enemies) {
+      const base = ENEMIES[e.t];
+      const u = mkUnit(e.extra ? { ...base, weapons: [...base.weapons, ...e.extra] } : base, 'enemy', e.x, e.y);
+      if (e.ammo) Object.assign(u.ammo, e.ammo);
+      if (e.move) u.move = Math.max(1, u.move + e.move);
+      u.emptyNote = e.note;
+      this.units.push(u);
+    }
     this.view = this.view ?? new PixelView(W / PS, H / PS);
     this.renderBg();
     this.hooks.log(`— ${def.title} —`);
@@ -531,7 +539,7 @@ export const Combat = {
   bestAttack(u: Unit, pos: Pt) {
     let best: { t: Unit; w: string; c: number; score: number } | null = null;
     for (const w of u.weapons) {
-      if (WEAPONS[w].ammo && u.ammo[w] <= 0) continue;
+      if (this.outOf(u, w)) continue;
       for (const t of this.alive('player')) {
         const c = this.attackInfo(u, pos, t, w)?.chance ?? 0;
         if (c <= 0) continue;
@@ -542,8 +550,13 @@ export const Combat = {
     return best;
   },
 
+  /** Кончились заряды (у врагов счёт бывает и у оружия без магазина — например, одно ружьё на бой). */
+  outOf(u: Unit, w: string) { return (WEAPONS[w].ammo || u.ammo[w] !== undefined) && u.ammo[w] <= 0; },
+
   async aiAct(u: Unit) {
     if (u.ai === 'caster') return this.aiCaster(u);
+    // стрелок без зарядов идёт врукопашную
+    if (u.ai === 'ranged' && !u.weapons.some((w) => WEAPONS[w].type === 'ranged' && !this.outOf(u, w))) u.ai = 'melee';
     for (let guard = 0; u.ap > 0 && !u.dead && guard < 3; guard++) {
       const here = this.bestAttack(u, u);
       if (u.ai === 'melee') {
@@ -648,7 +661,8 @@ export const Combat = {
     }
     const ch = opts.adv ? this.advChance(info.chance) : info.chance, hit = roll.success;
     const rollTxt = `d20: ${roll.roll}${advTxt}${info.bonus >= 0 ? '+' : ''}${info.bonus} против ${info.dc}`;
-    if (w.ammo) a.ammo[wkey]--;
+    if (w.ammo || a.ammo[wkey] !== undefined) a.ammo[wkey]--;
+    if (a.emptyNote && a.ammo[wkey] === 0) { this.hooks.log(a.emptyNote); a.emptyNote = undefined; }
     if (w.type === 'melee') await this.lunge(a, t);
     else if (w.magic) { await this.projectile(a, t, '#9fef6a', 320); this.burst(t.px, t.py - 12, '#9fef6a', 26, 90); }
     else { this.muzzle(a, t, hit); await sleep(140); }
