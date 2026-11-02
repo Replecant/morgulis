@@ -56,6 +56,30 @@ export const SCENES: Record<string, { name: string; x0: number; y0: number; x1: 
 };
 const PENS = [{ x0: 62, y0: 9, x1: 73, y1: 17, gx: 67 }, { x0: 77, y0: 10, x1: 88, y1: 18, gx: 82 }];
 
+const BAYER4 = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5].map((q) => (q + 0.5) / 16);
+/** Полупрозрачный клуб растром: пиксели либо есть, либо нет. */
+function puff(c: CanvasRenderingContext2D, cx: number, cy: number, r: number, col: string, a: number) {
+  c.fillStyle = col;
+  for (let y = Math.floor(cy - r); y <= cy + r; y++) for (let x = Math.floor(cx - r); x <= cx + r; x++) {
+    const d = Math.hypot(x - cx, y - cy) / r;
+    if (d < 1 && a * (1 - d * d) > BAYER4[(y & 3) * 4 + (x & 3)]) c.fillRect(x, y, 1, 1);
+  }
+}
+/** Дым из трубы: тёмные клубы поднимаются и расплываются. */
+function drawSmoke(c: CanvasRenderingContext2D, x: number, y: number, t: number) {
+  for (let k = 0; k < 5; k++) {
+    const ph = (t * 0.22 + k / 5) % 1;
+    puff(c, x + ph * 18 + Math.sin(t + k) * 2, y - ph * 46, 3 + ph * 9, k % 2 ? '#2e302a' : '#3a3c34', 0.85 * (1 - ph));
+  }
+}
+/** Пар из решётки: светлые клочья, быстро тают. */
+function drawSteam(c: CanvasRenderingContext2D, x: number, y: number, t: number) {
+  for (let k = 0; k < 3; k++) {
+    const ph = (t * 0.5 + k / 3) % 1;
+    puff(c, x + Math.sin(t * 2 + k) * 3, y - ph * 22, 2 + ph * 5, '#a8aca0', 0.6 * (1 - ph));
+  }
+}
+
 export const Explore = {
   ground: [] as Ground[][],
   rail: [] as number[][],          // 0 — нет, 1 — рельсы
@@ -230,10 +254,25 @@ export const Explore = {
     B('workshop', 141, 63, 3, 2, { name: 'Подпольная мастерская', talk: 'underworkshop' });
     for (const [x, y] of [[110, 47], [124, 52], [135, 47], [106, 52], [141, 56]]) B('campfire', x, y, 1, 1, { dynamic: true, name: 'Уличный костёр', talk: 'slumfire' });
     for (const [x, y] of [[108, 48], [131, 51]]) B('lamp', x, y, 1, 1, { name: 'Фонарь', talk: 'lamp' });
+    // у цехов: пар из решёток, уголь, ящики, тележки, доска объявлений о найме
+    for (const x of [107, 112, 121, 126, 133]) B('vent', x, 35, 1, 1, { dynamic: true, name: 'Решётка паропровода' });
+    B('coalheap', 128, 35, 2, 1, { name: 'Куча угля', talk: 'coalheap' });
+    B('coalheap', 102 + 24, 63, 2, 1, { name: 'Куча угля', talk: 'coalheap' });
+    B('crates', 136, 35, 1, 1, { name: 'Ящики', talk: 'crates' }); B('crates', 116, 35, 1, 1, { name: 'Ящики', talk: 'crates' });
+    B('noticeboard', 112, 48, 2, 1, { name: 'Доска объявлений', talk: 'notice_low' });
+    B('handcart', 117, 51, 2, 1, { name: 'Тележка', talk: 'handcart' });
+    B('standpipe', 129, 48, 1, 1, { name: 'Водоразборная колонка', talk: 'standpipe' });
     for (const row of [36, 39, 42, 45, 52, 55, 58, 61]) {
       for (let x = 104; x < 144;) {
         const w = 2 + Math.floor(r() * 2);
-        if (!taken(x, row, w, 2) && x + w <= 144) B('shack', x, row, w, 2, { name: 'Лачуга', talk: 'shack' });
+        if (!taken(x, row, w, 2) && x + w <= 144) {
+          // часть мест между лачугами — дворики: бельё, уголь, ящики, мешки
+          const k = r();
+          if (k < 0.09) B('laundry', x, row + 1, w, 1, { name: 'Бельевая верёвка', talk: 'laundry' });
+          else if (k < 0.14) B('crates', x, row + 1, 1, 1, { name: 'Ящики', talk: 'crates' });
+          else if (k < 0.18) B('sacks', x, row + 1, 1, 1, { name: 'Мешки', talk: 'sacks' });
+          else B('shack', x, row, w, 2, { name: 'Лачуга', talk: 'shack' });
+        }
         x += w + (r() < 0.45 ? 1 : 0);
       }
     }
@@ -249,10 +288,20 @@ export const Explore = {
     B('workshop', 175, 52, 3, 2, { name: 'Скорняжная мастерская', talk: 'workshop' });
     for (const [x, y] of [[153, 48], [161, 51], [170, 48], [178, 51]]) B('lamp', x, y, 1, 1, { name: 'Фонарь', talk: 'lamp' });
     B('clinic', 166, 57, 5, 3, { name: 'Клиника протезирования', talk: 'clinic' });
+    // рынок: товар у лотков, тележки, колонка, доска объявлений
+    for (const [x, y] of [[155, 47], [158, 54], [168, 47], [171, 54]]) B('sacks', x, y, 1, 1, { name: 'Мешки с товаром', talk: 'sacks' });
+    for (const [x, y] of [[161, 46], [165, 53]]) B('crates', x, y, 1, 1, { name: 'Ящики с товаром', talk: 'crates' });
+    B('handcart', 153, 52, 2, 1, { name: 'Тележка торговца', talk: 'handcart' });
+    B('handcart', 172, 46, 2, 1, { name: 'Тележка торговца', talk: 'handcart' });
+    B('standpipe', 160, 55, 1, 1, { name: 'Водоразборная колонка', talk: 'standpipe' });
+    B('noticeboard', 152, 44, 2, 1, { name: 'Доска объявлений', talk: 'notice_mid' });
     for (const row of [34, 38, 42, 57, 61]) {
       for (let x = 147; x < 181;) {
         const w = 3;
-        if (!taken(x, row, w, 3) && x + w <= 181) B('tenement', x, row, w, 3, { name: 'Дом', talk: 'tenement' });
+        if (!taken(x, row, w, 3) && x + w <= 181) {
+          if (r() < 0.1) B('laundry', x, row + 2, w, 1, { name: 'Бельевая верёвка', talk: 'laundry' }); // двор с бельём
+          else B('tenement', x, row, w, 3, { name: 'Дом', talk: 'tenement' });
+        }
         x += w + (r() < 0.25 ? 1 : 0);
       }
     }
@@ -584,7 +633,8 @@ export const Explore = {
     for (const o of this.objs) {
       if (!o.block || !inView(o)) continue;
       const y = o.y + o.h - 0.5;
-      if (o.dynamic) ents.push({ y, d: () => (o.kind === 'pump' ? drawPumpjack(c, o.x * T, o.y * T, t + o.seed) : drawCampfire(c, o.x * T + 10, o.y * T + 16, t)) });
+      if (o.dynamic && o.kind === 'vent') ents.push({ y, d: () => { if (o.sprite) c.drawImage(o.sprite, o.x * T - o.sx!, o.y * T - o.sy!); drawSteam(c, o.x * T + 10, o.y * T + 12, t + o.seed * 0.7); } });
+      else if (o.dynamic) ents.push({ y, d: () => (o.kind === 'pump' ? drawPumpjack(c, o.x * T, o.y * T, t + o.seed) : drawCampfire(c, o.x * T + 10, o.y * T + 16, t)) });
       else if (o.sprite) ents.push({ y, d: () => c.drawImage(o.sprite!, o.x * T - o.sx!, o.y * T - o.sy!) });
     }
     for (const b of this.beetles) {
@@ -615,6 +665,12 @@ export const Explore = {
     ents.push({ y: p.ry, d: () => drawSprite(c, G.squad[0]?.look ?? 'pc', p.rx * T + T / 2, p.ry * T + T - 1, { flip: p.flip, frame: wf, bob: !walking && Math.sin(t * 1.6) > 0.75 ? 1 : 0 }) });
     ents.sort((a, b) => a.y - b.y).forEach((e) => e.d());
 
+    // дым из заводских труб
+    for (const o of this.objs) {
+      if (o.kind !== 'factory' || !inView(o, 140)) continue;
+      const W = o.w * T, wy = o.y * T + o.h * T - 52;
+      for (const fx of [0.22, 0.72]) drawSmoke(c, o.x * T + Math.round(W * fx) + 3, wy - 66, t + o.seed * 1.3 + fx * 4);
+    }
     // за пределами сцены — мгла пустоши (ступенчатая, по-пиксельному)
     {
       const X0 = sc.x0 * T, X1 = (sc.x1 + 1) * T, Y0 = sc.y0 * T, Y1 = (sc.y1 + 1) * T;
@@ -730,7 +786,7 @@ export const Explore = {
   // ---------------------------------------------------------- спрайты статичных объектов
   renderSprites() {
     for (const o of this.objs) {
-      if (o.dynamic) { if (o.kind === 'campfire') o.lights = [{ x: 10, y: 12, r: 90, color: '#f0a050' }]; continue; }
+      if (o.dynamic && o.kind !== 'vent') { if (o.kind === 'campfire') o.lights = [{ x: 10, y: 12, r: 90, color: '#f0a050' }]; continue; }
       const horizFence = o.kind === 'fence' && this.objs.some((f) => f.kind === 'fence' && f.y === o.y && Math.abs(f.x - o.x) === 1);
       const s = objSprite(o as any, { horizFence });
       o.sprite = s.cv; o.sx = s.sx; o.sy = s.sy;

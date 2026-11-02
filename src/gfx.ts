@@ -52,6 +52,12 @@ export const STYLES: Record<string, Style> = {
   dead_rifle: { coat: '#45473a', legs: '#28281f', belt: '#3a2a1a', hat: 'cap', hatC: '#2e3024', skin: '#90a080', undead: true, weapon: 'rifle' },
   dead_gas: { coat: '#3a3e34', legs: '#24261f', hat: 'helmet', hatC: '#33372b', skin: '#8a9a78', mask: true, tanks: true, undead: true },
   dead_sapper: { coat: '#3a3a34', legs: '#222220', hat: 'helmet', hatC: '#55585a', skin: '#7e8e6e', cuirass: true, undead: true, weapon: 'shovel', scale: 1.15 },
+  laborer: { coat: '#5a5246', legs: '#2a2620', hat: 'flatcap', hatC: '#2a2620', skin: '#b89878', beard: '#3a2a1a', weapon: 'bag' },
+  washer: { coat: '#4a4448', dress: true, apron: '#8a8478', hat: 'bonnet', hatC: '#5a5450', skin: '#c8a890', hair: '#4a3a2a', longHair: true },
+  sweep: { coat: '#1e1c1a', legs: '#141210', hat: 'tophat', hatC: '#141210', skin: '#7a6a5a', weapon: 'goad' },
+  clerk: { coat: '#3a3a40', legs: '#1e1e22', belt: '#2a1d12', hat: 'tophat', hatC: '#22222a', skin: '#d0b8a0', weapon: 'book' },
+  vendor_w: { coat: '#6a4a3a', dress: true, apron: '#a09070', hat: 'bonnet', hatC: '#4a3a2e', skin: '#d0b498', hair: '#7a4a2a', longHair: true, weapon: 'bag' },
+  porter: { coat: '#4a4030', legs: '#2a2418', belt: '#3a2a1a', hair: '#2a2018', skin: '#b08a6a', weapon: 'bag', scale: 1.1 },
   surgeon_under: { coat: '#2a2622', legs: '#1a1816', apron: '#4a3020', hair: '#2a2622', skin: '#b8a090', goggles: true, weapon: 'knife' },
   medic_civ: { coat: '#d0ccc0', legs: '#2a2826', apron: '#a8a498', hair: '#5a5a56', skin: '#c8b096', goggles: true, weapon: 'wrench' },
   // фоновые жители деревень

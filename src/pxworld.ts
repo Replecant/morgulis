@@ -71,7 +71,7 @@ const TOP: Record<string, number> = {
   house: 16, ruin: 16, farm: 16, station: 20, pumphouse: 28, slaughter: 16, barn: 14, hut: 16,
   tank: 18, watertower: 44, wagon: 14, lamp: 30, tree: 26, rock: 6, barrel: 6, fence: 10, feed: 8, chitin: 6,
   cellar: 10, adit: 26, shroombed: 6, bigshroom: 18, rack: 14, wall: 30, gate: 40, railgate: 36, tower: 56,
-  sign: 16, clinic: 30, shack: 18, factory: 64, tenement: 30, stall: 18, workshop: 26, crater: 0, bones: 0, wallruin: 14, skeleton: 14, milestone: 14, lorry: 12,
+  sign: 16, laundry: 22, handcart: 12, crates: 14, coalheap: 8, standpipe: 18, noticeboard: 22, sacks: 8, vent: 4, clinic: 30, shack: 18, factory: 64, tenement: 30, stall: 18, workshop: 26, crater: 0, bones: 0, wallruin: 14, skeleton: 14, milestone: 14, lorry: 12,
 };
 
 export interface ObjLike { kind: string; x: number; y: number; w: number; h: number; seed: number; ruinKind?: string; boarded?: boolean }
@@ -334,6 +334,59 @@ export function objSprite(o: ObjLike, neighbors?: { horizFence: boolean }) {
     }
     case 'sign': R(9, H - 16, 2, 16, '#3a2c1e'); R(2, H - 18, 16, 6, '#4a3a26'); for (let x = 4; x < 16; x += 3) R(x, H - 16, 2, 1, '#c8b88a'); break;
 
+    case 'laundry': { // бельевая верёвка между шестами: заношенное бельё
+      R(1, -20, 2, H + 20, '#3a2c1e'); R(W - 3, -20, 2, H + 20, '#3a2c1e');
+      for (let x = 2; x < W - 2; x++) P(x, -18 + Math.round(Math.sin((x / (W - 4)) * Math.PI) * 3), '#8a8a7a');
+      const cloth = ['#9a9488', '#6a6e7a', '#8a5a4a', '#b0aa9a', '#5a6a4a'];
+      for (let x = 5; x < W - 6; x += 7) {
+        const y0 = -17 + Math.round(Math.sin((x / (W - 4)) * Math.PI) * 3), col = cloth[Math.floor(r() * cloth.length)], hh = 6 + Math.floor(r() * 6);
+        R(x, y0, 5, hh, col); R(x, y0, 5, 1, shade(col, 0.2)); if (r() < 0.5) P(x + 2, y0 + hh - 2, shade(col, -0.35)); // заплата
+      }
+      R(2, H - 2, W - 4, 2, 'rgba(0,0,0,0.3)');
+      break;
+    }
+    case 'handcart': { // ручная тележка на двух колёсах с мешками
+      R(2, H - 12, W - 10, 7, '#5e4a30'); R(2, H - 12, W - 10, 1, '#7a6040'); for (let x = 4; x < W - 10; x += 5) R(x, H - 11, 1, 6, '#3e3020');
+      pline(c, W - 8, H - 9, W - 1, H - 3, '#4a3a26', 1); pline(c, W - 8, H - 7, W - 1, H - 1, '#4a3a26', 1);   // ручки
+      pellipse(c, 9, H - 4, 4, 4, '#2a2016'); P(9, H - 4, '#8a7a50'); P(7, H - 4, '#4a3a26'); P(11, H - 4, '#4a3a26');
+      for (let k = 0; k < 3; k++) { pellipse(c, 6 + k * 6, H - 15, 3, 2, '#8a7a5a'); P(6 + k * 6, H - 17, '#6a5a3a'); }
+      break;
+    }
+    case 'crates': { // штабель ящиков
+      R(2, H - 10, 15, 10, '#6a4c2c'); R(2, H - 10, 15, 1, '#82603a'); L(2, H - 9, 16, H - 1, '#3a2a18');
+      R(4, H - 19, 11, 9, '#5e4428'); R(4, H - 19, 11, 1, '#7a5a36'); L(4, H - 18, 14, H - 11, '#3a2a18');
+      R(1, H, 18, 1, 'rgba(0,0,0,0.5)');
+      break;
+    }
+    case 'coalheap': { // куча угля с лопатой
+      pellipse(c, W / 2, H - 4, W / 2 - 2, 5, '#141414'); pellipse(c, W / 2 - 3, H - 6, W / 2 - 7, 4, '#1e1e1e');
+      for (let k = 0; k < 10; k++) P(4 + r() * (W - 8), H - 8 + r() * 6, '#3a3a3a');
+      pline(c, W - 10, H - 14, W - 6, H - 4, '#5a4228'); R(W - 7, H - 5, 3, 3, '#8e928c');
+      break;
+    }
+    case 'standpipe': { // уличная водоразборная колонка, ведро и лужа
+      pellipse(c, 10, H - 2, 8, 2, '#2a3a3a'); P(6, H - 2, '#5a7a7a');
+      R(8, H - 18, 4, 17, '#3e4244'); R(8, H - 18, 1, 17, '#5a5e60'); R(7, H - 20, 6, 3, '#4a4e50');
+      R(12, H - 15, 4, 2, '#3e4244'); P(15, H - 13, '#7a9a9a');                             // носик, капля
+      pline(c, 6, H - 16, 3, H - 20, '#3e4244', 1);                                          // рычаг
+      R(14, H - 7, 5, 5, '#5a5048'); R(14, H - 7, 5, 1, '#7a7068');                         // ведро
+      break;
+    }
+    case 'noticeboard': { // доска объявлений: листки без надписей
+      R(3, H - 20, 2, 20, '#3a2c1e'); R(W - 5, H - 20, 2, 20, '#3a2c1e');
+      R(1, H - 22, W - 2, 14, '#4a3a26'); R(1, H - 22, W - 2, 1, '#6a5236');
+      for (let k = 0; k < 5; k++) { const x = 3 + Math.floor(r() * (W - 10)), y = H - 21 + Math.floor(r() * 7), col = r() < 0.5 ? '#c8c0a0' : '#a89a78'; R(x, y, 5, 6, col); for (let l = 1; l < 5; l += 2) R(x + 1, y + l, 3, 1, shade(col, -0.35)); }
+      break;
+    }
+    case 'sacks': { // мешки
+      for (const [x, y, rr] of [[6, H - 4, 5], [13, H - 4, 5], [9, H - 10, 5]] as [number, number, number][]) { pellipse(c, x, y, rr, 4, '#8a7a58'); pellipse(c, x - 1, y - 1, rr - 2, 2, '#a0906a'); P(x, y - 4, '#5a4a30'); }
+      break;
+    }
+    case 'vent': { // решётка канализации/паропровода (пар рисуется анимацией)
+      R(3, H - 8, 14, 6, '#2a2a28'); for (let x = 4; x < 16; x += 2) R(x, H - 7, 1, 4, '#4a4a46'); R(3, H - 8, 14, 1, '#5a5a56');
+      doOutline = false;
+      break;
+    }
     case 'clinic': { // клиника: беленая кирпичная стена, высокие окна, вывеска с механической кистью
       const wallH = 40, wy = H - wallH, wall = '#8a8270';
       R(1, H, W, 2, 'rgba(0,0,0,0.5)');
