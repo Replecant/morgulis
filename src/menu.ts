@@ -4,6 +4,7 @@
 import { Book, h, Spread } from './book';
 import { vignette, drawDeadTree } from './gfx';
 import { PixelView, pixelize } from './px';
+import frameUrl from './assets/menu-frame.webp';
 import { ATTRS, ATTR_ORDER, PROFESSIONS, PROF_ORDER, DC, DC_NAMES, LEVEL_XP, mastery, ProfId } from './rules';
 import { seeded, TAU } from './util';
 
@@ -75,7 +76,31 @@ const fog = Array.from({ length: 7 }, (_, i) => ({ x: i * 170, y: 470 + (i % 3) 
 let view: PixelView | null = null;
 const BAY = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5].map((q) => q / 16 - 0.5);
 /** Фон меню: рисуется в половинном разрешении, цвета квантуются растром, вывод ×2 без сглаживания. */
+const frame = new Image();
+frame.src = frameUrl;
+let frameT0 = -1;
+
+/** Заглавный экран: пиксельная рамка (скелеты-солдаты, шестерни, трубы) и падающий пепел. */
 export function drawMenuBg(out: CanvasRenderingContext2D, t: number) {
+  if (!frame.complete || !frame.naturalWidth) { drawMenuScene(out, t); return; }
+  if (frameT0 < 0) frameT0 = t;
+  out.imageSmoothingEnabled = true; out.imageSmoothingQuality = 'high';
+  out.drawImage(frame, 0, 0, W, H);
+  // внутреннее поле рамки чуть «дышит» зеленоватым светом угасшей звезды
+  const k = Math.min(1, (t - frameT0) / 1.5), p = 0.5 + Math.sin(t * 0.6) * 0.5;
+  const g = out.createRadialGradient(480, 300, 20, 480, 320, 330);
+  g.addColorStop(0, `rgba(120,170,90,${(0.06 + p * 0.03) * k})`); g.addColorStop(1, 'rgba(120,170,90,0)');
+  out.fillStyle = g; out.fillRect(187, 128, 588, 384);
+  // пепел — квадратики по 2 пикселя, как пиксели рамки
+  out.fillStyle = 'rgba(190,200,170,0.5)';
+  for (let i = 0; i < 46; i++) {
+    const ax = ((i * 197.3 + t * (10 + (i % 5) * 4)) % (W + 40)) - 20, ay = ((i * 113.7 + t * (16 + (i % 3) * 6)) % (H + 40)) - 20;
+    out.fillRect(Math.round((ax + Math.sin(t + i) * 6) / 2) * 2, Math.round(ay / 2) * 2, 2, 2);
+  }
+}
+
+/** Запасной фон (пока картинка рамки грузится) — пиксельные силуэты собора и фабрик. */
+function drawMenuScene(out: CanvasRenderingContext2D, t: number) {
   if (!silhouettes) buildSilhouettes();
   view ??= new PixelView(W / 2, H / 2);
   const c = view.c;
@@ -125,33 +150,12 @@ export function drawMenuBg(out: CanvasRenderingContext2D, t: number) {
 }
 
 // ------------------------------------------------------------ меню
-const ARCH_SVG = `
-<svg class="arch-svg" viewBox="0 0 440 580" preserveAspectRatio="none" aria-hidden="true">
-  <defs>
-    <radialGradient id="rose" cx="50%" cy="50%" r="50%">
-      <stop offset="0" stop-color="rgba(170,225,120,0)"/>
-      <stop offset="1" stop-color="rgba(6,9,5,0.2)"/>
-    </radialGradient>
-  </defs>
-  <path d="M8,572 V230 Q8,70 220,8 Q432,70 432,230 V572 Z M220,80 a62,62 0 1,0 0.01,0 Z" fill-rule="evenodd" fill="rgba(6,9,6,0.80)" stroke="#8a7444" stroke-width="2"/>
-  <path d="M22,560 V236 Q22,88 220,26 Q418,88 418,236 V560 Z" fill="none" stroke="#5a4a2a" stroke-width="1"/>
-  <circle cx="220" cy="142" r="62" fill="url(#rose)" stroke="#8a7444" stroke-width="2"/>
-  <circle cx="220" cy="142" r="20" fill="none" stroke="#8a7444" stroke-width="1.5"/>
-  ${Array.from({ length: 12 }, (_, i) => {
-    const a = (i / 12) * Math.PI * 2, x1 = 220 + Math.cos(a) * 20, y1 = 142 + Math.sin(a) * 20, x2 = 220 + Math.cos(a) * 62, y2 = 142 + Math.sin(a) * 62;
-    const cx = 220 + Math.cos(a + 0.26) * 44, cy = 142 + Math.sin(a + 0.26) * 44;
-    return `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="#8a7444" stroke-width="1.2"/><circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="7" fill="none" stroke="#5a4a2a"/>`;
-  }).join('')}
-  <path d="M60,236 H380" stroke="#5a4a2a"/>
-  <path d="M60,540 H380" stroke="#5a4a2a"/>
-</svg>`;
 
 export interface MenuHandlers { onNew: () => void; onQuick: (prof: ProfId) => void; onRules: () => void; onAbout: () => void }
 
 export function showMainMenu(host: HTMLElement, hd: MenuHandlers) {
   const item = (label: string, fn: () => void) => h('button', { class: 'mitem', onclick: fn }, h('span', { class: 'orn' }, '❦'), label, h('span', { class: 'orn r' }, '❦'));
   const arch = h('div', { class: 'arch' },
-    h('div', { class: 'arch-bg' }),
     h('div', { class: 'arch-content' },
       h('h1', { class: 'mtitle' }, 'Моргулис'),
       h('div', { class: 'msub' }, 'ролевая песочница'),
@@ -170,10 +174,9 @@ export function showMainMenu(host: HTMLElement, hd: MenuHandlers) {
         }),
         item('Правила', hd.onRules),
         item('Об игре', hd.onAbout)),
-      h('div', { class: 'mver' }, 'прототип · v0.2'),
     ),
+    h('div', { class: 'mver' }, 'прототип · v0.2'),
   );
-  (arch.querySelector('.arch-bg') as HTMLElement).innerHTML = ARCH_SVG;
   host.replaceChildren(h('div', { class: 'menu' }, arch));
 }
 
@@ -182,8 +185,8 @@ export function showAbout(host: HTMLElement, onBack: () => void) {
     h('div', { class: 'about' },
       h('h2', {}, 'Об игре'),
       h('p', {}, 'Моргулис — самостоятельный вымышленный мир. Его звезда почти перестала светить и стала тусклой и зеленоватой. Пакс-Империя рухнула, на её руинах делят власть остатки имперской армии и нефтяные бароны.'),
-      h('p', {}, 'Это прототип ролевой песочницы: создание персонажа по d20-системе и пролог в деревне Эшфорд — исследование, диалоги и пошаговые тактические бои.'),
-      h('p', { class: 'note' }, 'Управление: WASD / стрелки или клик — движение · E — говорить · в бою: клик, 1–5, Tab, Enter.'),
+      h('p', {}, 'Это прототип ролевой песочницы: создание персонажа по d20-системе, регион с тремя деревнями и фортом барона — глобальная карта, исследование, диалоги, торговля за шиллинги и пошаговые тактические бои.'),
+      h('p', { class: 'note' }, 'Управление: WASD / стрелки или клик — движение · E — говорить · I — снаряжение · Q — лечение · в бою: клик, 1–9, Tab, Enter.'),
       h('button', { class: 'mitem', onclick: onBack }, '‹ Назад'),
     )));
 }
