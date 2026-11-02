@@ -10,6 +10,7 @@ import { Combat, CT } from './combat';
 import { Dialog, refreshHud, exploreHint, toast, combatShow, combatLog, combatPanel, screen, hideScreen, openSquad, closeSquad, squadOpen } from './ui';
 import { setPcStyle, applyEquipLooks } from './gfx';
 import { Inventory } from './inventory';
+import { Sheet } from './sheet';
 import { Trade, resetShops } from './trade';
 import { drawMenuBg, showMainMenu, showAbout, openRules } from './menu';
 import { openCreation } from './creation';
@@ -40,7 +41,7 @@ function toScene(id: string, at?: { x: number; y: number }) {
   refreshHud();
 }
 function hint() {
-  if (G.mode === 'world') $('hint').textContent = 'Клик — идти · клик по месту — войти · WASD — идти · E — войти рядом · Q — лечение и лагерь · I — снаряжение';
+  if (G.mode === 'world') $('hint').textContent = 'Клик — идти · клик по месту — войти · WASD — идти · E — войти рядом · Q — лечение и лагерь · I — снаряжение · C — персонаж';
   else exploreHint();
 }
 
@@ -112,7 +113,7 @@ Dialog.onAction = (act) => {
 
 $('cend').onclick = () => Combat.endPlayerTurn();
 $('squadbar').addEventListener('click', (e) => {
-  if ((e.target as HTMLElement).closest('.res') && (G.mode === 'explore' || G.mode === 'world') && !Dialog.active && !squadOpen() && !Inventory.open) openSquad(hint);
+  if ((e.target as HTMLElement).closest('.res') && (G.mode === 'explore' || G.mode === 'world') && !Dialog.active && !squadOpen() && !Inventory.open && !Sheet.open) openSquad(hint);
 });
 
 // ---------------------------------------------------------------- экраны
@@ -161,6 +162,11 @@ window.addEventListener('keydown', (e) => {
     return;
   }
   if (Inventory.open) { if (e.code === 'Escape') Inventory.close(); return; }
+  if (e.code === 'KeyC' && roaming() && !squadOpen()) {
+    if (Sheet.open) Sheet.close(); else { G.keys.clear(); Sheet.show(() => { refreshHud(); hint(); }); }
+    return;
+  }
+  if (Sheet.open) { if (e.code === 'Escape') Sheet.close(); return; }
   if (e.code === 'KeyQ' && roaming()) {
     if (squadOpen()) closeSquad(hint); else { G.keys.clear(); openSquad(hint); }
     return;
@@ -219,7 +225,7 @@ function frame(now: number) {
   last = now;
   G.time += dt;
   Dialog.update(dt);
-  const free = !Dialog.active && !squadOpen() && !Inventory.open && !Trade.open;
+  const free = !Dialog.active && !squadOpen() && !Inventory.open && !Trade.open && !Sheet.open;
   if (G.mode === 'explore' && free) Explore.update(dt);
   if (G.mode === 'world' && free) World.update(dt);
   if (G.mode === 'combat') { Combat.update(dt); Combat.draw(ctx, G.time); }
@@ -238,5 +244,5 @@ requestAnimationFrame(frame);
 
 // отладка: ?debug в адресе даёт доступ к состоянию из консоли
 if (new URLSearchParams(location.search).has('debug')) {
-  (window as any).morgulis = { G, Combat, Explore, World, Dialog, startBattle, newGame, newCharacter, openSquad, Inventory, Trade, toScene, toWorld };
+  (window as any).morgulis = { G, Combat, Explore, World, Dialog, startBattle, newGame, newCharacter, openSquad, Inventory, Trade, Sheet, toScene, toWorld };
 }

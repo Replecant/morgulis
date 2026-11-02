@@ -448,3 +448,45 @@ body { font-family: 'Old Standard TT', Georgia, serif; color: var(--text); }
 .mprof { background: rgba(20, 26, 16, 0.6); border: 1px solid #5a4a2a; color: #cfc6a6; font-family: 'Playfair Display SC', serif; font-size: 15px; padding: 5px 10px; cursor: pointer; text-align: left; }
 .mprof .emb { color: #8a7444; margin-right: 8px; display: inline-block; width: 16px; text-align: center; }
 .mprof:hover { border-color: var(--green); color: var(--green); }
+
+/* ---------- Лист персонажа: пиксельная рамка со скелетом; поле рамки 62..759 × 114..517 ---------- */
+#sheet { position: absolute; inset: 0; background: #0b0f09 url('./assets/sheet-frame.webp') 0 0 / 100% 100% no-repeat; z-index: 21; }
+.sh-box { position: absolute; left: 72px; top: 122px; width: 678px; height: 388px; display: grid; grid-template-columns: 152px 250px 1fr; grid-template-rows: 1fr auto; gap: 0 16px; }
+.sh-col { display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+.sh-photo-wrap { border: 1px solid #5a4a2a; box-shadow: 0 0 0 3px rgba(6, 9, 5, 0.8), 0 0 0 4px #3a3220; width: 150px; height: 176px; }
+.sh-photo { display: block; image-rendering: pixelated; }
+.sh-h { font-family: 'Playfair Display SC', serif; color: var(--brass); letter-spacing: 2px; font-size: 13px; margin: 9px 0 3px; border-bottom: 1px solid #3a3220; display: flex; justify-content: space-between; align-items: baseline; }
+.sh-h span { font-family: inherit; letter-spacing: 0; font-size: 11px; color: var(--dim); }
+.sh-wound { font-size: 12px; color: #e0a060; padding: 1px 0; cursor: default; }
+.sh-wound.heavy { color: #e07060; }
+.sh-none { font-size: 12px; color: var(--dim); font-style: italic; }
+.sh-money { margin-top: auto; font-size: 13px; color: var(--brass); }
+.sh-money b { font-size: 16px; }
+.sh-name { font-family: 'Playfair Display SC', serif; font-size: 21px; color: #e6dcb8; letter-spacing: 1px; text-shadow: 0 2px 0 #000; line-height: 1.1; }
+.sh-prof { color: #b9b49a; font-size: 13px; margin: 2px 0 6px; }
+.sh-xp { position: relative; height: 15px; background: #10140c; border: 1px solid #3a4430; cursor: default; }
+.sh-xp span { position: absolute; left: 0; top: 0; bottom: 0; background: linear-gradient(#6a8a3a, #3e5a22); }
+.sh-xp em { position: absolute; inset: 0; text-align: center; font-size: 11px; line-height: 14px; color: #e6dcb8; font-style: normal; text-shadow: 0 1px 0 #000; }
+.sh-attrs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 10px; }
+.sh-attr { border: 1px solid #5a4a2a; background: rgba(8, 11, 6, 0.7); text-align: center; padding: 3px 0 2px; cursor: default; }
+.sh-attr b { display: block; font-size: 19px; color: #e6dcb8; font-family: 'Playfair Display SC', serif; }
+.sh-attr span { font-size: 10px; color: var(--dim); text-transform: uppercase; letter-spacing: 1px; }
+.sh-attr:hover, .sh-st:hover, .sh-skill:hover, .sh-feat:hover, .sh-wound:hover { background: rgba(159, 211, 106, 0.08); }
+.sh-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 0 12px; }
+.sh-st { display: flex; justify-content: space-between; font-size: 12px; border-bottom: 1px dotted #2a3220; padding: 2px 0; cursor: default; }
+.sh-st span { color: var(--dim); }
+.sh-st b { color: #e6dcb8; }
+.sh-st.warn b { color: #f0a040; }
+.sh-skill { display: grid; grid-template-columns: 14px 1fr 30px 26px; align-items: baseline; font-size: 12px; padding: 1px 0; border-bottom: 1px dotted #2a3220; color: var(--dim); cursor: default; }
+.sh-skill i { color: #4a5638; font-style: normal; font-size: 10px; }
+.sh-skill em { font-size: 10px; color: #6a6450; font-style: normal; }
+.sh-skill b { text-align: right; color: #9a9070; }
+.sh-skill.on { color: #d8d0b0; }
+.sh-skill.on i { color: var(--brass); }
+.sh-skill.on b { color: var(--green); }
+.sh-feat { font-size: 11.5px; color: #b9b49a; line-height: 1.25; }
+.sh-feat .sh-h { margin-top: 7px; }
+.sh-feat b { font-size: 13px; color: #e6dcb8; font-weight: normal; }
+.sh-age { font-size: 12px; color: var(--dim); margin-top: 6px; text-align: center; }
+.sh-foot { grid-column: 1 / -1; display: flex; gap: 10px; align-items: center; margin-top: 6px; }
+.sh-info { flex: 1; font-size: 12px; color: #b9b49a; font-style: italic; min-height: 32px; display: flex; align-items: center; border-top: 1px solid #3a3220; padding-top: 4px; line-height: 1.25; }

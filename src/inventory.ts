@@ -108,7 +108,7 @@ function iconCanvas(it: Item, size = 52) {
 }
 
 // ------------------------------------------------------------ расчёт итоговых характеристик
-function memberStats(b: UnitBase) {
+export function memberStats(b: UnitBase) {
   const m = woundMods(b), e = equipStats(b);
   return {
     hp: `${b.hp}/${effMaxHp(b)}`,

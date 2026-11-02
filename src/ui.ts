@@ -226,7 +226,7 @@ export function closeSquad(onClose: () => void) { $('squad').classList.add('hidd
 export const squadOpen = () => !$('squad').classList.contains('hidden');
 
 export function exploreHint() {
-  $('hint').textContent = 'WASD / стрелки — идти · E / Пробел — говорить · клик — идти или говорить · Q — лечение · I — снаряжение · уйти за край — на карту';
+  $('hint').textContent = 'WASD / стрелки — идти · E / Пробел — говорить · клик — идти или говорить · Q — лечение · I — снаряжение · C — персонаж · уйти за край — на карту';
 }
 
 let toastTimer = 0;
