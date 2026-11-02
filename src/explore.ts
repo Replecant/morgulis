@@ -82,7 +82,7 @@ export const Explore = {
     for (const o of this.objects) this.block[o.y][o.x] = true;
 
     const mk = (kind: string, x: number, y: number): Walker => ({ kind, x, y, rx: x, ry: y, fx: x, fy: y, flip: false });
-    this.player = mk('lieutenant', 1, 13);
+    this.player = mk('pc', 1, 13);
     this.trail = [{ x: 0, y: 13 }, { x: 0, y: 12 }, { x: 0, y: 14 }];
     this.followers = G.squad.slice(1).map((s, i) => mk(s.kind, this.trail[i].x, this.trail[i].y));
     this.path = []; this.pending = null; this.moveK = 1;
@@ -196,7 +196,7 @@ export const Explore = {
       ents.push({ y: n.y, d: () => drawFigure(c, n.kind, n.x * ET + 16, n.y * ET + 29, 0.95, { t, seed: n.seed, flip: near ? p.x < n.x : n.x > 15 }) });
     }
     this.followers.forEach((f, i) => ents.push({ y: f.ry - 0.01, d: () => drawFigure(c, f.kind, f.rx * ET + 16, f.ry * ET + 29, 0.95, { t, seed: i + 1, flip: f.flip }) }));
-    ents.push({ y: p.ry, d: () => drawFigure(c, 'lieutenant', p.rx * ET + 16, p.ry * ET + 29, 0.95, { t, flip: p.flip }) });
+    ents.push({ y: p.ry, d: () => drawFigure(c, 'pc', p.rx * ET + 16, p.ry * ET + 29, 0.95, { t, flip: p.flip }) });
     ents.sort((a, b) => a.y - b.y).forEach((e) => e.d());
 
     // свет

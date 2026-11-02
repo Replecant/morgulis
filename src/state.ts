@@ -1,11 +1,13 @@
 import { makeSquad, UnitBase } from './data';
+import { Character, newCharacter } from './rules';
 
-export type Mode = 'title' | 'explore' | 'combat' | 'end';
+export type Mode = 'title' | 'create' | 'explore' | 'combat' | 'end';
 
 export const G = {
   mode: 'title' as Mode,
   flags: {} as Record<string, boolean | undefined>,
-  squad: makeSquad() as UnitBase[],
+  pc: null as Character | null,
+  squad: [] as UnitBase[],
   time: 0,
   preBattle: [] as number[],
   mouse: { x: 0, y: 0 },
@@ -15,9 +17,10 @@ export const G = {
 export function healSquad() { G.squad.forEach((s) => (s.hp = s.maxHp)); }
 export const squadHurt = () => G.squad.some((s) => s.hp < s.maxHp);
 
-export function resetGame() {
+export function resetGame(pc: Character = newCharacter()) {
   G.flags = {};
-  G.squad = makeSquad();
+  G.pc = pc;
+  G.squad = makeSquad(pc);
 }
 
 export function objectiveText(): string {

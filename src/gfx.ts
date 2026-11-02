@@ -2,6 +2,7 @@
 //  Процедурная графика: фигурки, небо с Оком, свет, пепел
 // ============================================================
 import { TAU } from './util';
+import { Character, PROFESSIONS } from './rules';
 
 type Ctx = CanvasRenderingContext2D;
 
@@ -9,8 +10,8 @@ interface Style {
   coat?: string; legs?: string; skin?: string; hair?: string; beard?: string;
   hat?: 'cap' | 'helmet' | 'tophat' | 'bonnet' | 'flatcap' | 'minerhelm';
   hatC?: string; trim?: string; belt?: string; apron?: string;
-  dress?: boolean; collar?: boolean; mask?: boolean; band?: boolean; sash?: boolean; hood?: boolean;
-  weapon?: 'saber' | 'rifle' | 'fork' | 'musket' | 'hammer' | 'staff' | 'pole' | 'bottle';
+  dress?: boolean; collar?: boolean; mask?: boolean; band?: boolean; sash?: boolean; hood?: boolean; longHair?: boolean; goggles?: boolean;
+  weapon?: 'saber' | 'rifle' | 'fork' | 'musket' | 'hammer' | 'staff' | 'pole' | 'bottle' | 'book' | 'wrench' | 'bag' | 'knife';
   scale?: number;
 }
 
@@ -32,6 +33,18 @@ export const STYLES: Record<string, Style> = {
   cultist: { coat: '#0f0f12', dress: true, hood: true, weapon: 'staff', scale: 1.05 },
   imp: {},
 };
+
+/** Внешность персонажа игрока: пол, волосы, кожа, возраст и профессия. */
+export function setPcStyle(c: Character) {
+  const p = PROFESSIONS[c.prof];
+  const grey = c.age >= 52;
+  STYLES.pc = {
+    coat: p.look.coat, trim: p.look.trim ?? '#9a8050', legs: '#1c1a17', belt: '#2a1d12',
+    hat: 'cap', hatC: '#211a16', skin: c.skin, hair: grey ? '#a8a49a' : c.hair,
+    longHair: c.gender === 'f', beard: c.gender === 'm' && c.age >= 40 ? (grey ? '#a8a49a' : c.hair) : undefined,
+    weapon: p.look.weapon, goggles: p.look.goggles, band: p.look.band,
+  };
+}
 
 export interface FigOpts { t?: number; flip?: boolean; dead?: boolean; flash?: number; seed?: number; terror?: boolean }
 
@@ -108,6 +121,10 @@ export function drawFigure(c: Ctx, kind: string, x: number, y: number, s = 1, o:
       c.fillStyle = col(st.hatC);
       c.beginPath(); c.arc(-0.6, hy - 0.3, 5, Math.PI * 0.55, Math.PI * 2.05); c.closePath(); c.fill();
     }
+    if (st.longHair && st.hair) {
+      c.fillStyle = col(st.hair);
+      c.beginPath(); c.ellipse(-1.8, hy + 1.5, 3.6, 5.2, 0.15, 0, TAU); c.fill();
+    }
     c.fillStyle = col(st.skin ?? '#c2ad94');
     c.beginPath(); c.arc(0, hy, 3.8, 0, TAU); c.fill();
     if (st.hair) { c.fillStyle = col(st.hair); c.beginPath(); c.arc(0, hy - 0.8, 3.9, Math.PI, TAU); c.fill(); }
@@ -120,6 +137,11 @@ export function drawFigure(c: Ctx, kind: string, x: number, y: number, s = 1, o:
       c.fillStyle = col('#4a4a44'); c.fillRect(1.2, hy + 2.2, 3, 2.6);
     } else {
       c.fillStyle = '#111'; c.fillRect(1.6, hy - 0.8, 1, 1);
+    }
+    if (st.goggles) {
+      c.fillStyle = col('#2a2018'); c.fillRect(-3.8, hy - 4.2, 7.8, 1.4);
+      c.fillStyle = flash ? '#fff' : '#c8a050';
+      c.beginPath(); c.arc(-0.6, hy - 3.6, 1.3, 0, TAU); c.arc(2.4, hy - 3.6, 1.3, 0, TAU); c.fill();
     }
     drawHat(c, st.hat, st.hatC, hy, col);
   }
@@ -198,6 +220,26 @@ function drawWeapon(c: Ctx, w: Style['weapon'], bob: number, col: (v?: string) =
     case 'pole':
       line(6.5, 0, 9.5, -33, '#4a3a28', 1.2);
       c.fillStyle = '#f0a040'; c.fillRect(9, -35, 1.6, 2);
+      break;
+    case 'knife':
+      line(6.5, -8 + bob, 9, -4 + bob, '#c9c9c0', 1.2);
+      c.fillStyle = col('#2a1d12'); c.fillRect(5.4, -9.4 + bob, 2, 2);
+      c.fillStyle = col('#2a1d12'); c.fillRect(-7.2, -11 + bob, 2.4, 4.5);
+      break;
+    case 'book':
+      c.fillStyle = col('#2a1612'); c.fillRect(5, -12 + bob, 5, 6.5);
+      c.fillStyle = col('#c8b88a'); c.fillRect(5.6, -11.4 + bob, 0.8, 5.3);
+      c.fillStyle = col('#8a7a4a'); c.fillRect(7.6, -10 + bob, 1.4, 1.4);
+      break;
+    case 'wrench':
+      line(6.5, -7 + bob, 10.5, 0, '#5a5a56', 1.8);
+      c.strokeStyle = col('#5a5a56'); c.lineWidth = 1.4;
+      c.beginPath(); c.arc(11, 0.5, 1.8, 0, TAU); c.stroke();
+      break;
+    case 'bag':
+      c.fillStyle = col('#2a1a12'); c.fillRect(5, -7 + bob, 6.5, 5);
+      c.strokeStyle = col('#2a1a12'); c.lineWidth = 1; c.beginPath(); c.arc(8.2, -7 + bob, 2, Math.PI, TAU); c.stroke();
+      c.fillStyle = col('#c09a52'); c.fillRect(7.8, -6 + bob, 1, 1);
       break;
     case 'bottle':
       c.fillStyle = col('#3d5a2a'); c.fillRect(6, -11 + bob, 2.2, 4.2); c.fillRect(6.6, -12.5 + bob, 1, 1.6);

@@ -2,12 +2,14 @@
 //  Данные: оружие, отряд, противники, тактические карты
 // ============================================================
 
+import { Character, PROFESSIONS, maxHp, defense, armorOf, meleeAttack, rangedAttack, meleeDamage, horrorSave } from './rules';
+
 export interface Weapon {
   name: string;
   type: 'ranged' | 'melee';
   range?: number;      // макс. дальность (клетки)
-  opt?: number;        // дальше этой дистанции точность падает
-  acc: number;         // базовая точность, %
+  opt?: number;        // дальше этой дистанции — штраф −1 за каждые 2 клетки
+  atk: number;         // бонус оружия к броску атаки
   dmg: [number, number];
   ammo?: number;
   ignoreCover?: boolean;
@@ -16,24 +18,26 @@ export interface Weapon {
 }
 
 export const WEAPONS: Record<string, Weapon> = {
-  revolver:  { name: 'Служебный револьвер', type: 'ranged', range: 7, opt: 4, acc: 78, dmg: [3, 5], ammo: 6 },
-  saber:     { name: 'Офицерская сабля', type: 'melee', acc: 88, dmg: [4, 7] },
-  carbine:   { name: 'Карабин', type: 'ranged', range: 8, opt: 5, acc: 70, dmg: [3, 5], ammo: 4 },
-  rifle:     { name: 'Магазинная винтовка', type: 'ranged', range: 11, opt: 8, acc: 72, dmg: [4, 6], ammo: 5 },
-  bayonet:   { name: 'Штык', type: 'melee', acc: 82, dmg: [2, 4] },
-  pitchfork: { name: 'Вилы', type: 'melee', acc: 72, dmg: [2, 4] },
-  musket:    { name: 'Старое ружьё', type: 'ranged', range: 7, opt: 3, acc: 58, dmg: [2, 4] },
-  hammer:    { name: 'Кузнечный молот', type: 'melee', acc: 75, dmg: [3, 6] },
-  claws:     { name: 'Когти', type: 'melee', acc: 80, dmg: [2, 3] },
-  flame:     { name: 'Зелёное пламя', type: 'ranged', range: 8, opt: 8, acc: 80, dmg: [3, 5], ignoreCover: true, splash: [1, 2], magic: true },
+  revolver:  { name: 'Служебный револьвер', type: 'ranged', range: 7, opt: 4, atk: 1, dmg: [3, 5], ammo: 6 },
+  saber:     { name: 'Офицерская сабля', type: 'melee', atk: 1, dmg: [4, 7] },
+  carbine:   { name: 'Карабин', type: 'ranged', range: 8, opt: 5, atk: 0, dmg: [3, 5], ammo: 4 },
+  rifle:     { name: 'Магазинная винтовка', type: 'ranged', range: 11, opt: 8, atk: 1, dmg: [4, 6], ammo: 5 },
+  bayonet:   { name: 'Штык', type: 'melee', atk: 0, dmg: [2, 4] },
+  knife:     { name: 'Нож', type: 'melee', atk: 1, dmg: [2, 4] },
+  wrench:    { name: 'Тяжёлый гаечный ключ', type: 'melee', atk: 0, dmg: [3, 5] },
+  pitchfork: { name: 'Вилы', type: 'melee', atk: 0, dmg: [2, 4] },
+  musket:    { name: 'Старое ружьё', type: 'ranged', range: 7, opt: 3, atk: -1, dmg: [2, 4] },
+  hammer:    { name: 'Кузнечный молот', type: 'melee', atk: 0, dmg: [3, 6] },
+  claws:     { name: 'Когти', type: 'melee', atk: 1, dmg: [2, 3] },
+  flame:     { name: 'Зелёное пламя', type: 'ranged', range: 8, opt: 8, atk: 1, dmg: [3, 5], ignoreCover: true, splash: [1, 2], magic: true },
 };
 
 export const ABILITIES: Record<string, { name: string; desc: string }> = {
   reload:  { name: 'Перезарядка', desc: '1 ОД. Полностью перезарядить оружие.' },
   rally:   { name: 'Командный клич', desc: '1 ОД. Союзник в радиусе 6 получает +1 ОД. Раз за бой.' },
-  grenade: { name: 'Граната', desc: 'Завершает ход. Взрыв 3×3, урон 3–5 — и своим тоже!' },
+  grenade: { name: 'Взрывчатка', desc: 'Завершает ход. Взрыв 3×3, урон 3–5 — и своим тоже!' },
   bandage: { name: 'Перевязка', desc: '1 ОД. +5 ОЗ себе или соседнему союзнику.' },
-  aim:     { name: 'Прицельный выстрел', desc: '2 ОД. Выстрел с +20% к точности.' },
+  aim:     { name: 'Прицельный выстрел', desc: '2 ОД. Выстрел с +4 к броску атаки.' },
 };
 
 export interface UnitBase {
@@ -44,6 +48,12 @@ export interface UnitBase {
   maxHp: number;
   move: number;
   weapons: string[];
+  atkM: number;          // бонус атаки в ближнем бою
+  atkR: number;          // бонус атаки дальнобойным оружием
+  def: number;           // Защита (КС для попадания)
+  armor?: number;        // поглощение урона
+  dmgM?: number;         // бонус урона в ближнем бою
+  horror?: number;       // бонус к спасброску против ужаса
   abil?: Record<string, number>;
   ai?: 'melee' | 'ranged' | 'caster';
   leader?: boolean;
@@ -51,26 +61,38 @@ export interface UnitBase {
   boss?: boolean;
 }
 
-export function makeSquad(): UnitBase[] {
+/** Командир отряда — персонаж игрока, собранный по правилам из rules.ts. */
+export function makeLeader(c: Character): UnitBase {
+  const p = PROFESSIONS[c.prof];
+  const hp = maxHp(c);
+  return {
+    id: 'pc', name: `Лт. ${c.last}`, kind: 'pc', hp, maxHp: hp, move: 4,
+    weapons: p.weapons.slice(), atkM: meleeAttack(c), atkR: rangedAttack(c), def: defense(c),
+    armor: armorOf(c), dmgM: meleeDamage(c), horror: horrorSave(c),
+    abil: { rally: 1, ...p.combatAbil }, leader: true,
+  };
+}
+
+export function makeSquad(c: Character): UnitBase[] {
   return [
-    { id: 'carver', name: 'Лт. Карвер', kind: 'lieutenant', hp: 14, maxHp: 14, move: 4, weapons: ['revolver', 'saber'], abil: { rally: 1 }, leader: true },
-    { id: 'halloway', name: 'Серж. Хэллоуэй', kind: 'sergeant', hp: 12, maxHp: 12, move: 4, weapons: ['carbine', 'bayonet'], abil: { grenade: 1 } },
-    { id: 'pickett', name: 'Ряд. Пиккет', kind: 'sniper', hp: 9, maxHp: 9, move: 4, weapons: ['rifle', 'bayonet'], abil: { aim: 99 } },
-    { id: 'doe', name: 'Ряд. Доу', kind: 'medic', hp: 10, maxHp: 10, move: 4, weapons: ['carbine', 'bayonet'], abil: { bandage: 3 } },
+    makeLeader(c),
+    { id: 'halloway', name: 'Серж. Хэллоуэй', kind: 'sergeant', hp: 12, maxHp: 12, move: 4, weapons: ['carbine', 'bayonet'], atkM: 3, atkR: 3, def: 11, armor: 1, abil: { grenade: 1 } },
+    { id: 'pickett', name: 'Ряд. Пиккет', kind: 'sniper', hp: 9, maxHp: 9, move: 4, weapons: ['rifle', 'bayonet'], atkM: 1, atkR: 4, def: 11, abil: { aim: 99 } },
+    { id: 'doe', name: 'Ряд. Доу', kind: 'medic', hp: 10, maxHp: 10, move: 4, weapons: ['carbine', 'bayonet'], atkM: 1, atkR: 2, def: 10, abil: { bandage: 3 } },
   ];
 }
 
-const E = (id: string, name: string, kind: string, hp: number, move: number, weapons: string[], ai: UnitBase['ai'], extra: Partial<UnitBase> = {}): UnitBase =>
-  ({ id, name, kind, hp, maxHp: hp, move, weapons, ai, ...extra });
+const E = (id: string, name: string, kind: string, hp: number, move: number, weapons: string[], ai: UnitBase['ai'], atk: number, def: number, extra: Partial<UnitBase> = {}): UnitBase =>
+  ({ id, name, kind, hp, maxHp: hp, move, weapons, ai, atkM: atk, atkR: atk, def, ...extra });
 
 export const ENEMIES: Record<string, UnitBase> = {
-  fork:        E('fork', 'Ополченец', 'militia', 7, 4, ['pitchfork'], 'melee'),
-  musket:      E('musket', 'Ополченец с ружьём', 'militia_gun', 6, 4, ['musket'], 'ranged'),
-  brem:        E('brem', 'Кузнец Брэм', 'smith', 13, 4, ['hammer'], 'melee', { boss: true }),
-  fanatic:     E('fanatic', 'Фанатик', 'fanatic', 8, 4, ['pitchfork'], 'melee'),
-  fanatic_gun: E('fanatic_gun', 'Фанатик с ружьём', 'fanatic_gun', 7, 4, ['musket'], 'ranged'),
-  vale:        E('vale', 'Мордекай Вейл', 'cultist', 22, 4, ['flame'], 'caster', { demonic: true, boss: true }),
-  imp:         E('imp', 'Бес', 'imp', 5, 6, ['claws'], 'melee', { demonic: true }),
+  fork:        E('fork', 'Ополченец', 'militia', 7, 4, ['pitchfork'], 'melee', 2, 10),
+  musket:      E('musket', 'Ополченец с ружьём', 'militia_gun', 6, 4, ['musket'], 'ranged', 2, 10),
+  brem:        E('brem', 'Кузнец Брэм', 'smith', 13, 4, ['hammer'], 'melee', 4, 11, { boss: true, armor: 1, dmgM: 1 }),
+  fanatic:     E('fanatic', 'Фанатик', 'fanatic', 8, 4, ['pitchfork'], 'melee', 3, 11),
+  fanatic_gun: E('fanatic_gun', 'Фанатик с ружьём', 'fanatic_gun', 7, 4, ['musket'], 'ranged', 3, 10),
+  vale:        E('vale', 'Мордекай Вейл', 'cultist', 22, 4, ['flame'], 'caster', 4, 12, { demonic: true, boss: true }),
+  imp:         E('imp', 'Бес', 'imp', 5, 6, ['claws'], 'melee', 3, 13, { demonic: true }),
 };
 
 export interface BattleDef {

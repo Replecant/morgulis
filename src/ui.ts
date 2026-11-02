@@ -2,7 +2,7 @@
 //  Интерфейс: диалоговое окно, HUD, боевая панель, экраны
 // ============================================================
 import { G, objectiveText } from './state';
-import { DIALOGS, SPEAKERS, DNode, Choice } from './dialogs';
+import { DIALOGS, SPEAKERS, DNode, Choice, fmt } from './dialogs';
 import { drawFigure } from './gfx';
 import { Combat } from './combat';
 import { $ } from './util';
@@ -35,7 +35,7 @@ export const Dialog = {
     const sp = SPEAKERS[n.s];
     $('dname').textContent = sp.name;
     $('dtext').className = n.s === 'nar' ? 'nar' : '';
-    this.full = typeof n.t === 'function' ? n.t(G) : n.t;
+    this.full = fmt(typeof n.t === 'function' ? n.t(G) : n.t);
     n.do?.(G); // эффект — после того, как текст уже выбран
     this.shown = 0;
     $('dtext').textContent = '';
@@ -68,7 +68,7 @@ export const Dialog = {
         const b = document.createElement('button');
         b.className = 'choice';
         b.innerHTML = `<span class="n">${i + 1}.</span>`;
-        b.append(c.t);
+        b.append(fmt(c.t));
         b.onclick = (e) => { e.stopPropagation(); this.choose(i); };
         box.append(b);
       });

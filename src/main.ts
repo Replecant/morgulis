@@ -6,7 +6,10 @@ import { G, resetGame } from './state';
 import { Explore, ET } from './explore';
 import { Combat, CT } from './combat';
 import { Dialog, refreshHud, exploreHint, toast, combatShow, combatLog, combatPanel, screen, hideScreen } from './ui';
-import { updateAsh } from './gfx';
+import { updateAsh, setPcStyle } from './gfx';
+import { drawMenuBg, showMainMenu, showAbout, openRules } from './menu';
+import { openCreation } from './creation';
+import { Character, g, fullName } from './rules';
 import { $ } from './util';
 
 const cv = $('cv') as HTMLCanvasElement;
@@ -35,7 +38,7 @@ Combat.hooks = {
   },
   defeat(id) {
     screen(
-      `<h2>Отряд разбит</h2><p>Лейтенант Карвер пал. Пустошь забирает своё.</p>`,
+      `<h2>Отряд разбит</h2><p>Лейтенант ${fullName(G.pc!)} ${g(G.pc, 'пал', 'пала')}. Пустошь забирает своё.</p>`,
       [{ label: 'Повторить бой', fn: () => { hideScreen(); G.squad.forEach((s, i) => (s.hp = G.preBattle[i])); startBattle(id); } }],
     );
   },
@@ -59,18 +62,24 @@ Dialog.onAction = (act) => {
 $('cend').onclick = () => Combat.endPlayerTurn();
 
 // ---------------------------------------------------------------- экраны
+const layer = $('layer');
+
 function showTitle() {
   G.mode = 'title';
-  screen(
-    `<h1>МОРГУЛИС</h1><h2>Пепел Эшфорда</h2>
-     <p>Звезда Моргулиса почти угасла. Над руинами Пакс-Империи висит её тусклый зелёный свет. Нефтяные бароны делят то, что осталось.</p>
-     <div class="small">Прототип · исследование, диалоги, пошаговые бои<br>WASD / клик — движение · E — говорить</div>`,
-    [{ label: 'Начать', fn: newGame }],
-  );
+  hideScreen();
+  $('hud').classList.add('hidden');
+  $('hint').textContent = '';
+  showMainMenu(layer, {
+    onNew: () => { G.mode = 'create'; openCreation(layer, newGame, showTitle); },
+    onRules: () => openRules(layer, showTitle),
+    onAbout: () => showAbout(layer, showTitle),
+  });
 }
 
-function newGame() {
-  resetGame();
+function newGame(pc: Character) {
+  layer.replaceChildren();
+  resetGame(pc);
+  setPcStyle(pc);
   Explore.init();
   hideScreen();
   G.mode = 'explore';
@@ -91,7 +100,7 @@ function showEnding() {
   screen(
     `<h1>МОРГУЛИС</h1><h2>Конец пролога</h2><p>${notes.join('<br>')}</p>
      <p>Мордекай Вейл мёртв. Но Око всё так же смотрит на Пустошь.</p>`,
-    [{ label: 'Сыграть снова', fn: newGame }],
+    [{ label: 'В главное меню', fn: showTitle }],
   );
 }
 
@@ -155,11 +164,11 @@ function frame(now: number) {
   Dialog.update(dt);
   if (G.mode === 'explore' && !Dialog.active) Explore.update(dt);
   if (G.mode === 'combat') { Combat.update(dt); Combat.draw(ctx, G.time); }
+  else if (G.mode === 'title' || G.mode === 'create') drawMenuBg(ctx, G.time);
   else Explore.draw(ctx, G.time);
   requestAnimationFrame(frame);
 }
 
-Explore.init();
 showTitle();
 requestAnimationFrame(frame);
 

@@ -1,0 +1,225 @@
+// ============================================================
+//  Главное меню, книга правил, «Об игре»
+// ============================================================
+import { Book, h, Spread } from './book';
+import { drawAsh, vignette, drawDeadTree } from './gfx';
+import { ATTRS, ATTR_ORDER, PROFESSIONS, PROF_ORDER, DC, DC_NAMES, LEVEL_XP, mastery } from './rules';
+import { seeded, TAU } from './util';
+
+const W = 960, H = 640;
+const STAR = { x: 480, y: 177 }; // за розеткой готической арки меню
+
+// ------------------------------------------------------------ фон
+let silhouettes: HTMLCanvasElement | null = null;
+
+function buildSilhouettes() {
+  const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+  const c = cv.getContext('2d')!;
+  const r = seeded(13);
+  // дальние холмы
+  c.fillStyle = '#121810';
+  c.beginPath(); c.moveTo(0, H);
+  for (let x = 0; x <= W; x += 30) c.lineTo(x, 470 + Math.sin(x * 0.01) * 14 + r() * 8);
+  c.lineTo(W, H); c.fill();
+  // собор слева
+  c.fillStyle = '#0a0d09';
+  const base = 520;
+  c.fillRect(90, 380, 220, base - 380);
+  for (const [x, w, top] of [[90, 46, 250], [264, 46, 230]] as [number, number, number][]) {
+    c.fillRect(x, top, w, base - top);
+    c.beginPath(); c.moveTo(x - 4, top); c.lineTo(x + w / 2, top - 120); c.lineTo(x + w + 4, top); c.fill();
+    for (let k = 0; k < 4; k++) { // пинакли
+      const px = x + (k % 2 ? w : 0), py = top - 6 + Math.floor(k / 2) * 60;
+      c.beginPath(); c.moveTo(px - 4, py); c.lineTo(px, py - 22); c.lineTo(px + 4, py); c.fill();
+    }
+  }
+  c.beginPath(); c.moveTo(136, 380); c.lineTo(200, 300); c.lineTo(264, 380); c.fill();
+  // светящиеся стрельчатые окна собора
+  c.fillStyle = 'rgba(120,170,90,0.35)';
+  for (const [x, y] of [[113, 320], [287, 300], [160, 420], [200, 410], [240, 420]]) {
+    c.beginPath(); c.moveTo(x - 5, y + 22); c.lineTo(x - 5, y + 6); c.quadraticCurveTo(x, y - 6, x + 5, y + 6); c.lineTo(x + 5, y + 22); c.fill();
+  }
+  c.fillStyle = 'rgba(150,200,110,0.4)';
+  c.beginPath(); c.arc(200, 350, 11, 0, TAU); c.fill();
+  // фабрики и вышки справа
+  c.fillStyle = '#0a0d09';
+  c.fillRect(640, 420, 260, base - 420);
+  for (let i = 0; i < 5; i++) { c.beginPath(); c.moveTo(640 + i * 52, 420); c.lineTo(640 + i * 52 + 40, 392); c.lineTo(640 + i * 52 + 52, 420); c.fill(); }
+  for (const [x, hgt] of [[680, 210], [760, 250], [850, 190]]) { c.fillRect(x, 420 - hgt, 18, hgt); c.fillRect(x - 3, 420 - hgt, 24, 8); }
+  c.strokeStyle = '#0a0d09'; c.lineWidth = 2;
+  for (const [x, hh] of [[560, 120], [930, 140]]) {
+    const w = hh * 0.35;
+    c.beginPath(); c.moveTo(x - w / 2, base); c.lineTo(x, base - hh); c.lineTo(x + w / 2, base);
+    for (let i = 1; i < 6; i++) { const k = i / 6, yy = base - hh * k, hw = (w / 2) * (1 - k); c.moveTo(x - hw, yy); c.lineTo(x + hw, yy); c.lineTo(x - hw * 0.8, yy - hh / 6); }
+    c.stroke();
+  }
+  c.fillStyle = 'rgba(200,170,90,0.35)';
+  for (let i = 0; i < 9; i++) c.fillRect(650 + r() * 240, 440 + r() * 60, 3, 4);
+  // передний план: земля, ограда кладбища, мёртвые деревья
+  c.fillStyle = '#060805';
+  c.beginPath(); c.moveTo(0, H);
+  for (let x = 0; x <= W; x += 20) c.lineTo(x, 540 + Math.sin(x * 0.02) * 8 + r() * 6);
+  c.lineTo(W, H); c.fill();
+  c.strokeStyle = '#060805'; c.lineWidth = 3;
+  for (let x = 20; x < 330; x += 14) { c.beginPath(); c.moveTo(x, 548); c.lineTo(x, 515 + (x % 28 ? 6 : 0)); c.stroke(); }
+  c.beginPath(); c.moveTo(14, 528); c.lineTo(330, 528); c.stroke();
+  for (const [x, y] of [[360, 545], [395, 552], [610, 548]]) { c.lineWidth = 3; c.beginPath(); c.moveTo(x, y); c.lineTo(x, y - 26); c.moveTo(x - 9, y - 18); c.lineTo(x + 9, y - 18); c.stroke(); }
+  drawDeadTree(c, 930, 560, r, 3.2);
+  drawDeadTree(c, 40, 560, r, 2.6);
+  silhouettes = cv;
+}
+
+const fog = Array.from({ length: 7 }, (_, i) => ({ x: i * 170, y: 470 + (i % 3) * 30, w: 260 + (i % 2) * 120, s: 6 + i * 1.3 }));
+
+export function drawMenuBg(c: CanvasRenderingContext2D, t: number) {
+  if (!silhouettes) buildSilhouettes();
+  const g = c.createLinearGradient(0, 0, 0, H);
+  g.addColorStop(0, '#060a06'); g.addColorStop(0.55, '#16201a'); g.addColorStop(1, '#22301f');
+  c.fillStyle = g; c.fillRect(0, 0, W, H);
+  // угасшая звезда — тусклая, зеленоватая, едва «дышит»
+  const p = 1 + Math.sin(t * 0.5) * 0.03;
+  const glow = c.createRadialGradient(STAR.x, STAR.y, 0, STAR.x, STAR.y, 330 * p);
+  glow.addColorStop(0, 'rgba(170,225,120,0.38)'); glow.addColorStop(0.25, 'rgba(120,180,90,0.13)'); glow.addColorStop(1, 'rgba(80,120,60,0)');
+  c.fillStyle = glow; c.fillRect(0, 0, W, H);
+  c.fillStyle = '#a9c989';
+  c.beginPath(); c.arc(STAR.x, STAR.y, 46 * p, 0, TAU); c.fill();
+  const inner = c.createRadialGradient(STAR.x + 6, STAR.y - 4, 4, STAR.x, STAR.y, 46 * p);
+  inner.addColorStop(0, 'rgba(210,240,170,0.6)'); inner.addColorStop(1, 'rgba(60,90,45,0.55)');
+  c.fillStyle = inner; c.beginPath(); c.arc(STAR.x, STAR.y, 46 * p, 0, TAU); c.fill();
+  // облака
+  for (let i = 0; i < 6; i++) {
+    const cx = ((i * 260 + t * (3 + i * 0.7)) % 1400) - 220;
+    c.fillStyle = 'rgba(8,12,8,0.55)';
+    c.beginPath(); c.ellipse(cx, 70 + i * 34, 230, 9 + (i % 3) * 4, 0, 0, TAU); c.fill();
+  }
+  c.drawImage(silhouettes!, 0, 0);
+  for (const f of fog) {
+    const x = ((f.x + t * f.s) % (W + 400)) - 200;
+    const fg = c.createRadialGradient(x, f.y, 0, x, f.y, f.w);
+    fg.addColorStop(0, 'rgba(110,130,100,0.12)'); fg.addColorStop(1, 'rgba(110,130,100,0)');
+    c.fillStyle = fg; c.fillRect(x - f.w, f.y - f.w, f.w * 2, f.w * 2);
+  }
+  drawAsh(c, t);
+  vignette(c, W, H);
+}
+
+// ------------------------------------------------------------ меню
+const ARCH_SVG = `
+<svg class="arch-svg" viewBox="0 0 440 580" preserveAspectRatio="none" aria-hidden="true">
+  <defs>
+    <radialGradient id="rose" cx="50%" cy="50%" r="50%">
+      <stop offset="0" stop-color="rgba(170,225,120,0)"/>
+      <stop offset="1" stop-color="rgba(6,9,5,0.2)"/>
+    </radialGradient>
+  </defs>
+  <path d="M8,572 V230 Q8,70 220,8 Q432,70 432,230 V572 Z M220,80 a62,62 0 1,0 0.01,0 Z" fill-rule="evenodd" fill="rgba(6,9,6,0.80)" stroke="#8a7444" stroke-width="2"/>
+  <path d="M22,560 V236 Q22,88 220,26 Q418,88 418,236 V560 Z" fill="none" stroke="#5a4a2a" stroke-width="1"/>
+  <circle cx="220" cy="142" r="62" fill="url(#rose)" stroke="#8a7444" stroke-width="2"/>
+  <circle cx="220" cy="142" r="20" fill="none" stroke="#8a7444" stroke-width="1.5"/>
+  ${Array.from({ length: 12 }, (_, i) => {
+    const a = (i / 12) * Math.PI * 2, x1 = 220 + Math.cos(a) * 20, y1 = 142 + Math.sin(a) * 20, x2 = 220 + Math.cos(a) * 62, y2 = 142 + Math.sin(a) * 62;
+    const cx = 220 + Math.cos(a + 0.26) * 44, cy = 142 + Math.sin(a + 0.26) * 44;
+    return `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="#8a7444" stroke-width="1.2"/><circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="7" fill="none" stroke="#5a4a2a"/>`;
+  }).join('')}
+  <path d="M60,236 H380" stroke="#5a4a2a"/>
+  <path d="M60,540 H380" stroke="#5a4a2a"/>
+</svg>`;
+
+export interface MenuHandlers { onNew: () => void; onRules: () => void; onAbout: () => void }
+
+export function showMainMenu(host: HTMLElement, hd: MenuHandlers) {
+  const item = (label: string, fn: () => void) => h('button', { class: 'mitem', onclick: fn }, h('span', { class: 'orn' }, '❦'), label, h('span', { class: 'orn r' }, '❦'));
+  const arch = h('div', { class: 'arch' },
+    h('div', { class: 'arch-bg' }),
+    h('div', { class: 'arch-content' },
+      h('h1', { class: 'mtitle' }, 'Моргулис'),
+      h('div', { class: 'msub' }, 'ролевая песочница'),
+      h('div', { class: 'mrule' }, '✦'),
+      h('nav', { class: 'mnav' },
+        item('Новая игра', hd.onNew),
+        item('Правила', hd.onRules),
+        item('Об игре', hd.onAbout)),
+      h('div', { class: 'mver' }, 'прототип · v0.2'),
+    ),
+  );
+  (arch.querySelector('.arch-bg') as HTMLElement).innerHTML = ARCH_SVG;
+  host.replaceChildren(h('div', { class: 'menu' }, arch));
+}
+
+export function showAbout(host: HTMLElement, onBack: () => void) {
+  host.replaceChildren(h('div', { class: 'menu' },
+    h('div', { class: 'about' },
+      h('h2', {}, 'Об игре'),
+      h('p', {}, 'Моргулис — самостоятельный вымышленный мир. Его звезда почти перестала светить и стала тусклой и зеленоватой. Пакс-Империя рухнула, на её руинах делят власть остатки имперской армии и нефтяные бароны.'),
+      h('p', {}, 'Это прототип ролевой песочницы: создание персонажа по d20-системе и пролог в деревне Эшфорд — исследование, диалоги и пошаговые тактические бои.'),
+      h('p', { class: 'note' }, 'Управление: WASD / стрелки или клик — движение · E — говорить · в бою: клик, 1–5, Tab, Enter.'),
+      h('button', { class: 'mitem', onclick: onBack }, '‹ Назад'),
+    )));
+}
+
+// ------------------------------------------------------------ книга правил
+export function openRules(host: HTMLElement, onClose: () => void) {
+  const P = (...t: (string | HTMLElement)[]) => h('p', {}, ...t);
+  const spreads: Spread[] = [
+    {
+      title: 'Основа',
+      left: () => h('div', {},
+        h('div', { class: 'chapter' }, 'Глава I'), h('h1', {}, 'Основа'),
+        h('p', { class: 'drop' }, 'Ролевая система Моргулиса — облегчённая d20 с духом старой школы: мало правил, быстрые проверки, опасный мир.'),
+        h('p', { class: 'formula' }, 'd20 + черта + мастерство ≥ КС'),
+        P('Мастерство добавляется, только если навык обучен. Натуральная 20 — всегда успех, натуральная 1 — всегда провал.'),
+        h('div', { class: 'dcs' }, ...Object.values(DC).map((d) => h('span', {}, `${DC_NAMES[d]} ${d}`))),
+      ),
+      right: () => h('div', {},
+        h('h3', {}, 'Черты'),
+        ...ATTR_ORDER.map((k) => h('p', {}, h('b', {}, `${ATTRS[k].name} (${ATTRS[k].short}). `), ATTRS[k].desc)),
+        h('p', { class: 'note' }, 'При создании персонажа черты лежат в пределах от −1 до +3.'),
+      ),
+    },
+    {
+      title: 'Профессии',
+      left: () => h('div', {},
+        h('div', { class: 'chapter' }, 'Глава II'), h('h1', {}, 'Профессии'),
+        ...PROF_ORDER.slice(0, 3).map((id) => h('p', {}, h('b', {}, `${PROFESSIONS[id].emblem} ${PROFESSIONS[id].name}. `), PROFESSIONS[id].desc))),
+      right: () => h('div', {},
+        ...PROF_ORDER.slice(3).map((id) => h('p', {}, h('b', {}, `${PROFESSIONS[id].emblem} ${PROFESSIONS[id].name}. `), PROFESSIONS[id].desc)),
+        h('p', { class: 'note' }, 'Позже профессии получат архетипы: например, солдат-огнемётчик или стрелок — охотник на вампиров.')),
+    },
+    {
+      title: 'Рост',
+      left: () => h('div', {},
+        h('div', { class: 'chapter' }, 'Глава III'), h('h1', {}, 'Рост персонажа'),
+        P('Десять уровней. С уровнем растут здоровье и мастерство, открываются таланты и специализации.'),
+        h('table', { class: 'stats' }, h('tr', {}, h('td', {}, h('b', {}, 'Ур.')), h('td', {}, h('b', {}, 'Опыт')), h('td', {}, h('b', {}, 'Мастерство'))),
+          ...LEVEL_XP.map((xp, i) => h('tr', {}, h('td', {}, i + 1), h('td', {}, xp), h('td', {}, `+${mastery(i + 1)}`)))),
+      ),
+      right: () => h('div', {},
+        h('h3', {}, 'Здоровье и раны'),
+        P('Здоровье (ОЗ) — запас сил до того, как вы упадёте. Броня не мешает попаданию, но поглощает часть урона.'),
+        P('Магического исцеления нет. Раны заживают медленно: перевязка в бою, отдых, хирург.'),
+        h('p', { class: 'note' }, 'Система ранений с последствиями — в разработке.'),
+      ),
+    },
+    {
+      title: 'Бой',
+      left: () => h('div', {},
+        h('div', { class: 'chapter' }, 'Глава IV'), h('h1', {}, 'Бой'),
+        P('Пошаговый, с групповой инициативой: сначала ходит весь отряд, потом все противники.'),
+        P('За ход боец может переместиться и совершить одно основное действие — или потратить действие на второй переход.'),
+        P('Атака: d20 + бонус атаки против Защиты цели. Половинное укрытие даёт цели +3 к Защите, полное — +5. Дальше оптимальной дистанции — штраф.'),
+      ),
+      right: () => h('div', {},
+        h('h3', {}, 'Боевой кураж'),
+        P('Шкала 0–3. Копится в схватке и тратится на отчаянные атаки, штыковые броски и рискованные манёвры.'),
+        h('p', { class: 'note' }, 'Кураж — в разработке.'),
+        h('h3', {}, 'Оккультизм'),
+        P('Четыре традиции: народное колдовство, демонология, астрология, руническая эзотерика. Магия ритуальна, медленна и опасна; шкала напряжения 0–6. Жреческой магии нет.'),
+        h('p', { class: 'note' }, 'Оккультизм — заготовка.'),
+      ),
+    },
+  ];
+  const book = new Book(host, spreads, { heading: 'Правила Моргулиса', onClose });
+  book.maxReached = spreads.length - 1; // все главы открыты сразу
+  book.render();
+  return book;
+}

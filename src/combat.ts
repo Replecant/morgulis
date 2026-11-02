@@ -6,6 +6,7 @@
 import { G } from './state';
 import { WEAPONS, ENEMIES, ABILITIES, battleDef, BattleDef, UnitBase } from './data';
 import { bfs, pathTo, lineTiles, BfsMap, DIRS8, Pt, clamp, cheb, dist, lerp, pick, randInt, seeded, sleep, TAU } from './util';
+import { check, checkChance } from './rules';
 import { drawFigure, Lighting, Light, drawDeadTree, drawCrate, drawAsh, vignette } from './gfx';
 
 export const CT = 40, CW = 24, CH = 14;
@@ -114,15 +115,27 @@ export const Combat = {
     if (dy && Math.abs(dy) >= Math.abs(dx) * 0.5) c = Math.max(c, this.coverAt(t.x, t.y + Math.sign(dy)));
     return c;
   },
-  hitChance(a: Pt, t: Pt, wkey: string, bonus = 0) {
+  /** Бонус укрытия к Защите: половинное +3, полное +5. */
+  coverDef(cover: number) { return cover >= 40 ? 5 : cover >= 25 ? 3 : 0; },
+  /**
+   * Бросок атаки по правилам: d20 + бонус атаки + бонус оружия − штраф дистанции
+   * против Защиты цели (+ укрытие). Возвращает null, если атака невозможна.
+   */
+  attackInfo(att: Unit, from: Pt, t: Unit, wkey: string, extra = 0) {
     const w = WEAPONS[wkey];
-    if (w.type === 'melee') return cheb(a, t) === 1 ? w.acc : 0;
-    const d = dist(a, t);
-    if (d > w.range! + 0.01 || !this.los(a, t)) return 0;
-    let c = w.acc + bonus - Math.max(0, d - w.opt!) * 6;
-    if (!w.ignoreCover) c -= this.coverOf(t, a);
-    return clamp(Math.round(c), 5, 95);
+    let bonus = w.atk + extra, dc = t.base.def;
+    if (w.type === 'melee') {
+      if (cheb(from, t) !== 1) return null;
+      bonus += att.base.atkM;
+    } else {
+      const d = dist(from, t);
+      if (d > w.range! + 0.01 || !this.los(from, t)) return null;
+      bonus += att.base.atkR - Math.floor(Math.max(0, d - w.opt!) / 2);
+      if (!w.ignoreCover) dc += this.coverDef(this.coverOf(t, from));
+    }
+    return { bonus, dc, chance: checkChance(bonus, dc) };
   },
+  hitChance(a: Unit, t: Unit, wkey: string, extra = 0) { return this.attackInfo(a, a, t, wkey, extra)?.chance ?? 0; },
 
   // ---------------------------------------------------------- ход игрока
   async startPlayerTurn() {
@@ -167,7 +180,8 @@ export const Combat = {
     for (const w of u.weapons) {
       const W_ = WEAPONS[w];
       const ammo = W_.ammo ? ` ${u.ammo[w]}/${W_.ammo}` : '';
-      const desc = W_.type === 'melee' ? `Ближний бой · урон ${W_.dmg[0]}–${W_.dmg[1]} · точность ${W_.acc}%` : `Дальность ${W_.range} · урон ${W_.dmg[0]}–${W_.dmg[1]} · точность ${W_.acc}%`;
+      const ab = (n: number) => (n >= 0 ? '+' : '') + n;
+      const desc = W_.type === 'melee' ? `Ближний бой · урон ${W_.dmg[0]}–${W_.dmg[1]} · атака ${ab(u.base.atkM + W_.atk)}` : `Дальность ${W_.range} · урон ${W_.dmg[0]}–${W_.dmg[1]} · атака ${ab(u.base.atkR + W_.atk)}`;
       out.push({ kind: 'w', key: w, label: W_.name + ammo, desc, disabled: false, active: this.action.type === 'w' && this.action.key === w });
     }
     if (Object.keys(u.ammo).length) out.push({ kind: 'a', key: 'reload', label: ABILITIES.reload.name, desc: ABILITIES.reload.desc, disabled: u.ap < 1 || Object.entries(u.ammo).every(([w, n]) => n >= WEAPONS[w].ammo!), active: false });
@@ -204,7 +218,7 @@ export const Combat = {
   /** Шанс попадания для текущего выбранного действия (для подсветки целей). */
   actionChance(u: Unit, t: Unit) {
     if (this.action.type === 'w') return this.canFire(u, this.action.key, true) ? this.hitChance(u, t, this.action.key) : 0;
-    if (this.action.key === 'aim') return this.canFire(u, u.weapons[0], true) ? this.hitChance(u, t, u.weapons[0], 20) : 0;
+    if (this.action.key === 'aim') return this.canFire(u, u.weapons[0], true) ? this.hitChance(u, t, u.weapons[0], 4) : 0;
     return 0;
   },
 
@@ -240,8 +254,8 @@ export const Combat = {
       if (!target || target.team !== 'enemy') return T('Выберите врага');
       const w = u.weapons[0];
       if (!this.canFire(u, w)) return;
-      if (this.hitChance(u, target, w, 20) <= 0) return T('Цель вне досягаемости или не видна');
-      this.run(async () => { this.float(u, 'Прицел…', '#d8c890'); await sleep(350); await this.attack(u, target, w, 20); u.ap = 0; });
+      if (this.hitChance(u, target, w, 4) <= 0) return T('Цель вне досягаемости или не видна');
+      this.run(async () => { this.float(u, 'Прицел…', '#d8c890'); await sleep(350); await this.attack(u, target, w, 4); u.ap = 0; });
     } else if (key === 'rally') {
       if (!target || target.team !== 'player' || target === u || dist(u, target) > 6.5) return T('Выберите союзника в радиусе 6');
       this.run(async () => {
@@ -310,7 +324,7 @@ export const Combat = {
     for (const w of u.weapons) {
       if (WEAPONS[w].ammo && u.ammo[w] <= 0) continue;
       for (const t of this.alive('player')) {
-        const c = this.hitChance(pos, t, w);
+        const c = this.attackInfo(u, pos, t, w)?.chance ?? 0;
         if (c <= 0) continue;
         const score = c + (t.hp <= WEAPONS[w].dmg[1] ? 15 : 0) + (t.leader ? 5 : 0);
         if (!best || score > best.score) best = { t, w, c, score };
@@ -415,24 +429,27 @@ export const Combat = {
   async attack(a: Unit, t: Unit, wkey: string, bonus = 0) {
     const w = WEAPONS[wkey];
     if (t.x !== a.x) a.flip = t.x < a.x;
-    const ch = this.hitChance(a, t, wkey, bonus);
+    const info = this.attackInfo(a, a, t, wkey, bonus) ?? { bonus: 0, dc: 99, chance: 0 };
+    const roll = check(info.bonus, info.dc), ch = info.chance, hit = roll.success;
+    const rollTxt = `d20: ${roll.roll}${info.bonus >= 0 ? '+' : ''}${info.bonus} против ${info.dc}`;
     if (w.ammo) a.ammo[wkey]--;
-    const hit = Math.random() * 100 < ch;
     if (w.type === 'melee') await this.lunge(a, t);
     else if (w.magic) { await this.projectile(a, t, '#9fef6a', 320); this.burst(t.px, t.py - 12, '#9fef6a', 26, 90); }
     else { this.muzzle(a, t, hit); await sleep(140); }
     if (hit) {
-      let d = randInt(w.dmg[0], w.dmg[1]);
-      const crit = Math.random() < 0.12;
+      let d = randInt(w.dmg[0], w.dmg[1]) + (w.type === 'melee' ? a.base.dmgM ?? 0 : 0);
+      const crit = roll.crit; // натуральная 20: полуторный урон, броня не спасает
       if (crit) d = Math.ceil(d * 1.5);
-      this.hooks.log(`${a.name} → ${t.name}: ${w.name}, ${crit ? 'КРИТ! ' : ''}${d} урона (${ch}%)`);
+      const absorbed = crit ? 0 : Math.min(d - 1, t.base.armor ?? 0);
+      d -= absorbed;
+      this.hooks.log(`${a.name} → ${t.name}: ${w.name}, ${crit ? 'КРИТ! ' : ''}${d} урона${absorbed ? ` (броня −${absorbed})` : ''} [${rollTxt}]`);
       await this.damage(t, d, crit);
       if (w.splash) {
         for (const o of this.units.filter((o) => !o.dead && o !== t && cheb(o, t) === 1)) await this.damage(o, randInt(w.splash[0], w.splash[1]), false);
       }
     } else {
       this.float(t, 'Промах', '#b8b8a8');
-      this.hooks.log(`${a.name} промахивается по цели «${t.name}» (${ch}%)`);
+      this.hooks.log(`${a.name} промахивается по цели «${t.name}» [${rollTxt}, шанс был ${ch}%]`);
     }
     await sleep(260);
   },
@@ -484,7 +501,8 @@ export const Combat = {
   async whisper(u: Unit, t: Unit) {
     this.float(u, '«Смотри в Око…»', '#b58cff');
     await this.projectile(u, t, '#b58cff', 500);
-    if (Math.random() < (G.flags.salts ? 0.3 : 0.75)) {
+    const save = check((t.base.horror ?? 0) + (G.flags.salts ? 4 : 0), 14);
+    if (!save.success) {
       t.terror = true;
       this.float(t, 'Ужас!', '#b58cff');
       this.hooks.log(`Шёпот Бездны: ${t.name} охвачен ужасом (в следующем ходу 1 ОД).`);
@@ -516,7 +534,7 @@ export const Combat = {
     if (!lead || lead.dead || !this.alive('player').length) {
       this.ended = true; this.busy = true;
       await sleep(700);
-      await this.showBanner('ЛЕЙТЕНАНТ ПАЛ', '#d0614c');
+      await this.showBanner(G.pc?.gender === 'f' ? 'КОМАНДИР ПАЛА' : 'КОМАНДИР ПАЛ', '#d0614c');
       this.hooks.defeat(this.def.id);
       return true;
     }
@@ -728,8 +746,11 @@ export const Combat = {
         const ch = this.actionChance(sel, u), w = WEAPONS[wk];
         if (ch > 0) {
           lines.push(`Попадание: ${ch}%   Урон: ${w.dmg[0]}–${w.dmg[1]}`);
+          const info = this.attackInfo(sel, sel, u, wk, this.action.key === 'aim' ? 4 : 0)!;
+          lines.push(`d20 ${info.bonus >= 0 ? '+' : ''}${info.bonus} против Защиты ${info.dc}`);
           const cv = w.type === 'ranged' && !w.ignoreCover ? this.coverOf(u, sel) : 0;
-          if (cv) lines.push(cv >= 40 ? 'Цель в полном укрытии' : 'Цель в половинном укрытии');
+          if (cv) lines.push(cv >= 40 ? 'Цель в полном укрытии (+5 к Защите)' : 'Цель в половинном укрытии (+3 к Защите)');
+          if (u.base.armor) lines.push(`Броня поглощает ${u.base.armor}`);
         } else lines.push(w.type === 'melee' ? 'Слишком далеко для ближнего боя' : 'Вне досягаемости / не видно');
       }
     }
