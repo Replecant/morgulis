@@ -170,7 +170,7 @@ export const Explore = {
       }
     };
     road([[0, 43], [22, 43], [40, 44], [56, 45], [72, 47], [88, 50], [101, 50]]);
-    road([[54, 45], [54, 30], [58, 24], [60, 20], [92, 20]]);
+    road([[54, 45], [54, 30], [55, 22], [57, 20], [92, 20]]);
     road([[54, 32], [92, 32]]); // нижняя улица Ричморда
     road([[22, 43], [22, 57]]);
     road([[22, 43], [22, 30]]);
@@ -232,11 +232,11 @@ export const Explore = {
     B('tower', 3, 38, 3, 3, { name: 'Сторожевая вышка', talk: 'ashtower' });
     B('tower', 3, 46, 3, 3, { name: 'Сторожевая вышка', talk: 'ashtower' });
     B('tower', 35, 46, 3, 3, { name: 'Сторожевая вышка', talk: 'ashtower' });
-    for (const [x, y] of [[6, 41], [6, 46], [5, 41], [5, 46]]) B('sandbags', x, y, 1, 1, { name: 'Мешки с песком', talk: 'sandbags' });
+    for (const [x, y] of [[6, 41], [6, 46], [5, 41], [6, 47]]) B('sandbags', x, y, 1, 1, { name: 'Мешки с песком', talk: 'sandbags' });
     B('lamp', 8, 45, 1, 1, { name: 'Фонарь заставы', talk: 'lamp' });
     // фонари Эшфорда
-    for (const [x, y] of [[12, 42], [20, 42], [28, 45], [21, 50], [24, 56], [10, 56], [34, 45]]) B('lamp', x, y, 1, 1, { name: 'Фонарь', talk: 'lamp' });
-    for (const [x, y] of [[21, 39], [11, 45], [24, 51], [17, 52], [34, 49]]) B('barrel', x, y, 1, 1);
+    for (const [x, y] of [[12, 42], [20, 42], [28, 45], [21, 50], [24, 56], [10, 56], [34, 46]]) B('lamp', x, y, 1, 1, { name: 'Фонарь', talk: 'lamp' });
+    for (const [x, y] of [[21, 39], [14, 45], [24, 51], [17, 52], [34, 49]]) B('barrel', x, y, 1, 1);
 
     // Ричморд
     for (const p of PENS) {
@@ -250,7 +250,7 @@ export const Explore = {
     B('farm', 88, 23, 4, 3, { name: 'Дом Пенни', talk: 'house_richmord' });
     for (const [x, y] of [[59, 11], [59, 15], [75, 8], [90, 13]]) B('feed', x, y, 2, 2, { name: 'Куча корма', talk: 'feed' });
     B('chitin', 78, 27, 2, 1, { name: 'Пустые панцири', talk: 'chitinpile' });
-    for (const [x, y] of [[62, 21], [76, 21], [88, 21]]) B('lamp', x, y, 1, 1, { name: 'Фонарь', talk: 'lamp' });
+    for (const [x, y] of [[62, 22], [76, 22], [88, 22]]) B('lamp', x, y, 1, 1, { name: 'Фонарь', talk: 'lamp' });
     // нижняя улица: жилые дома вперемешку с брошенными — многие уехали в форт
     B('house', 59, 27, 4, 3, { name: 'Дом жуковода', talk: 'house_richmord2' });
     B('house', 66, 27, 4, 3, { name: 'Заколоченный дом', talk: 'rich_empty', boarded: true });
@@ -304,9 +304,9 @@ export const Explore = {
     for (const [x, y] of [[110, 47], [124, 52], [135, 47], [106, 52], [141, 56]]) B('campfire', x, y, 1, 1, { dynamic: true, name: 'Уличный костёр', talk: 'slumfire' });
     for (const [x, y] of [[108, 48], [131, 51]]) B('lamp', x, y, 1, 1, { name: 'Фонарь', talk: 'lamp' });
     // у цехов: пар из решёток, уголь, ящики, тележки, доска объявлений о найме
-    for (const x of [107, 112, 121, 126, 133]) B('vent', x, 35, 1, 1, { dynamic: true, name: 'Решётка паропровода' });
-    B('coalheap', 128, 35, 2, 1, { name: 'Куча угля', talk: 'coalheap' });
-    B('coalheap', 102 + 24, 63, 2, 1, { name: 'Куча угля', talk: 'coalheap' });
+    for (const x of [106, 110, 119, 124, 135]) add({ kind: 'vent', x, y: 35, w: 1, h: 1, block: false, dynamic: true, name: 'Решётка паропровода' }); // решётка в земле — по ней ходят
+    B('coalheap', 129, 35, 2, 1, { name: 'Куча угля', talk: 'coalheap' });
+    B('coalheap', 130, 65, 2, 1, { name: 'Куча угля', talk: 'coalheap' });
     B('crates', 136, 35, 1, 1, { name: 'Ящики', talk: 'crates' }); B('crates', 116, 35, 1, 1, { name: 'Ящики', talk: 'crates' });
     B('noticeboard', 112, 48, 2, 1, { name: 'Доска объявлений', talk: 'notice_low' });
     B('handcart', 117, 51, 2, 1, { name: 'Тележка', talk: 'handcart' });
@@ -317,9 +317,10 @@ export const Explore = {
         if (!taken(x, row, w, 2) && x + w <= 144) {
           // часть мест между лачугами — дворики: бельё, уголь, ящики, мешки
           const k = r();
-          if (k < 0.09) B('laundry', x, row + 1, w, 1, { name: 'Бельевая верёвка', talk: 'laundry' });
-          else if (k < 0.14) B('crates', x, row + 1, 1, 1, { name: 'Ящики', talk: 'crates' });
-          else if (k < 0.18) B('sacks', x, row + 1, 1, 1, { name: 'Мешки', talk: 'sacks' });
+          const open = !taken(x, row + 2, w, 2); // за дворик не встанет постройка, закрывающая его
+          if (k < 0.09 && open) B('laundry', x, row + 1, w, 1, { name: 'Бельевая верёвка', talk: 'laundry' });
+          else if (k < 0.14 && open) B('crates', x, row + 1, 1, 1, { name: 'Ящики', talk: 'crates' });
+          else if (k < 0.18 && open) B('sacks', x, row + 1, 1, 1, { name: 'Мешки', talk: 'sacks' });
           else B('shack', x, row, w, 2, { name: 'Лачуга', talk: 'shack' });
         }
         x += w + (r() < 0.45 ? 1 : 0);
@@ -347,7 +348,7 @@ export const Explore = {
     for (const row of [34, 38, 42, 57, 61]) {
       for (let x = 147; x < 181;) {
         const w = 3;
-        if (!taken(x, row, w, 3) && x + w <= 181) {
+        if (!taken(x, row, w, 3) && !taken(x + 1, row + 3, 1, 1) && x + w <= 181) {
           if (r() < 0.1) B('laundry', x, row + 2, w, 1, { name: 'Бельевая верёвка', talk: 'laundry' }); // двор с бельём
           else B('tenement', x, row, w, 3, { name: 'Дом', talk: 'tenement' });
         }
@@ -356,7 +357,7 @@ export const Explore = {
     }
 
     // ======================= БРИММОР — рыбацкая деревня на озере
-    for (const [x, y] of [[199, 26], [212, 24], [223, 27], [205, 28]]) B('boat', x, y, 2, 1, { name: 'Лодка', talk: 'boat' });
+    for (const [x, y] of [[199, 26], [212, 24], [223, 27], [208, 27]]) B('boat', x, y, 2, 1, { name: 'Лодка', talk: 'boat' });
     B('house', 192, 34, 4, 3, { name: 'Дом старосты', talk: 'house_brimmor' });
     B('hut', 200, 35, 4, 3, { name: 'Коптильня', talk: 'smokehouse' });
     B('house', 207, 34, 4, 3, { name: 'Рыбацкий дом', talk: 'house_fisher' });
@@ -398,8 +399,8 @@ export const Explore = {
     // ограда: проходы — ворота у вахты (восток, y 37–42) и ворота железнодорожной ветки (y 24)
     for (let x = 316; x <= 357; x++) { B('fence', x, 18, 1, 1); B('fence', x, 60, 1, 1); }
     for (let y = 19; y < 60; y++) { B('fence', 316, y, 1, 1); if ((y < 37 || y > 42) && y !== 24) B('fence', 357, y, 1, 1); }
-    for (let x = 317; x <= 356; x++) if (x < 336 || x > 339) B('wire', x, 33, 1, 1, { name: 'Колючая проволока', talk: 'wire' }); // между рабочей и жилой зоной
-    for (const [x, y] of [[318, 19], [353, 19], [318, 36], [318, 56], [353, 56], [336, 56]]) B('tower', x, y, 3, 3, { name: 'Сторожевая вышка', talk: 'camptower' });
+    for (let x = 317; x <= 353; x++) if (x < 336 || x > 339) B('wire', x, 33, 1, 1, { name: 'Колючая проволока', talk: 'wire' }); // между рабочей и жилой зоной
+    for (const [x, y] of [[318, 19], [353, 19], [318, 36], [318, 56], [353, 56], [332, 57]]) B('tower', x, y, 3, 3, { name: 'Сторожевая вышка', talk: 'camptower' });
     // ворота и вахта
     B('tower', 354, 34, 3, 3, { name: 'Вышка у ворот', talk: 'camptower' }); B('tower', 354, 43, 3, 3, { name: 'Вышка у ворот', talk: 'camptower' });
     B('barracks', 346, 35, 6, 2, { name: 'Вахта', talk: 'vakhta' });
@@ -407,7 +408,7 @@ export const Explore = {
     // рабочая зона: цеха у ветки, вагоны, уголь, ящики
     B('factory', 322, 27, 9, 4, { name: 'Цех', talk: 'campfactory' });
     B('factory', 341, 27, 9, 4, { name: 'Цех', talk: 'campfactory' });
-    for (const x of [325, 330, 344, 349]) B('vent', x, 31, 1, 1, { dynamic: true, name: 'Решётка паропровода' });
+    for (const x of [325, 330, 344, 349]) add({ kind: 'vent', x, y: 31, w: 1, h: 1, block: false, dynamic: true, name: 'Решётка паропровода' });
     for (const x of [321, 328, 343]) B('wagon', x, 24, 4, 1, { name: 'Товарный вагон', talk: 'campwagon' });
     for (const [x, y] of [[333, 28], [333, 30]]) B('coalheap', x, y, 2, 1, { name: 'Уголь', talk: 'coalheap' });
     for (const [x, y] of [[351, 26], [352, 28], [321, 21], [335, 21]]) B('crates', x, y, 1, 1, { name: 'Ящики', talk: 'campcrates' });
@@ -427,7 +428,7 @@ export const Explore = {
     // ======================= ФОРТ БАРОНЕССЫ — один большой ярус и замок
     for (let x = 360; x <= 409; x++) { B('wall', x, 8, 1, 1); B('wall', x, 66, 1, 1); }
     for (let y = 9; y < 66; y++) { B('wall', 360, y, 1, 1); if (y < 35 || y > 39) B('wall', 409, y, 1, 1); }
-    for (const y of [8, 60]) B('tower', 407, y, 3, 3, { name: 'Башня', talk: 'btower' });
+    for (const y of [8, 63]) B('tower', 407, y, 3, 3, { name: 'Башня', talk: 'btower' });
     // замок баронессы за внутренней стеной
     for (let y = 9; y < 66; y++) if (y < 34 || y > 38) B('wall', 375, y, 1, 1);
     B('gate', 374, 34, 2, 5, { name: 'Ворота замка', talk: 'castle_gate' });
@@ -449,11 +450,11 @@ export const Explore = {
     const burnt = (x: number, y: number, w = 4) => B('burnt', x, y, w, 3, { name: 'Пепелище', talk: 'burnt' });
     for (const [x, y] of [[418, 21], [425, 20], [439, 21], [446, 22], [418, 37], [424, 38], [438, 37], [444, 38], [420, 44], [440, 44]]) burnt(x, y);
     B('burnt', 431, 20, 5, 3, { name: 'Сгоревшая часовня', talk: 'burnt_chapel' });
-    B('noticeboard', 436, 33, 2, 1, { name: 'Приговор на столбе', talk: 'einb_notice' });
+    B('noticeboard', 435, 36, 2, 1, { name: 'Приговор на столбе', talk: 'einb_notice' });
     for (const [x, y] of [[427, 27], [429, 27], [431, 27], [427, 29], [429, 29]]) add({ kind: 'bones', x, y, w: 1, h: 1, block: false, name: 'Свежая могила', talk: 'einb_graves' });
     B('standpipe', 443, 30, 1, 1, { name: 'Колодец', talk: 'einb_well' });
     for (const [x, y] of [[417, 28], [448, 34], [421, 49], [449, 46]]) B('tree', x, y, 1, 1, { name: 'Обгорелое дерево' });
-    for (const [x, y] of [[436, 26], [422, 33]]) B('crates', x, y, 1, 1, { name: 'Брошенный скарб', talk: 'einb_junk' });
+    for (const [x, y] of [[436, 26], [422, 35]]) B('crates', x, y, 1, 1, { name: 'Брошенный скарб', talk: 'einb_junk' });
 
     // ======================= ХОУЛИ — жуководы; беда прошла почти стороной
     B('farm', 458, 23, 4, 3, { name: 'Дом старосты', talk: 'hawley_house' });
@@ -470,8 +471,8 @@ export const Explore = {
     B('barn', 488, 45, 5, 2, { name: 'Сарай', talk: 'hawley_shed' });
     for (const [x, y] of [[490, 13], [459, 15]]) B('feed', x, y, 2, 2, { name: 'Куча корма', talk: 'feed' });
     B('chitin', 470, 27, 2, 1, { name: 'Пустые панцири', talk: 'chitinpile_n' });
-    B('rposter', 472, 31, 1, 1, { name: 'Плакат Собрания', talk: 'rposter' });
-    for (const [x, y] of [[463, 31], [482, 31], [478, 44]]) B('lamp', x, y, 1, 1, { name: 'Фонарь', talk: 'lamp' });
+    B('rposter', 472, 32, 1, 1, { name: 'Плакат Собрания', talk: 'rposter' });
+    for (const [x, y] of [[463, 32], [482, 32], [478, 44]]) B('lamp', x, y, 1, 1, { name: 'Фонарь', talk: 'lamp' });
 
     // ======================= ВУДХЭМ — лесорубы
     for (let i = 0; i < 120; i++) { // ельник вокруг поляны
@@ -487,7 +488,7 @@ export const Explore = {
     B('sawpit', 523, 34, 2, 1, { name: 'Козлы с пилой', talk: 'sawpit' });
     for (const [x, y] of [[528, 29], [510, 30], [530, 42], [516, 43], [526, 27]]) B('stump', x, y, 1, 1, { name: 'Пень', talk: 'stump' });
     B('campfire', 522, 30, 1, 1, { dynamic: true, name: 'Костёр', talk: 'woodfire' });
-    B('rposter', 529, 32, 1, 1, { name: 'Плакат Собрания', talk: 'rposter' });
+    B('rposter', 529, 34, 1, 1, { name: 'Плакат Собрания', talk: 'rposter' });
 
     // ======================= ТАРВЕЛЛ — нефтяники, вышки под охраной братьев
     const TPUMPS: [number, number][] = [[545, 18], [552, 22], [566, 18], [572, 23], [546, 40], [570, 41]];
@@ -524,7 +525,7 @@ export const Explore = {
     B('barracks', 587, 24, 9, 3, { name: 'Казарма братьев свободы', talk: 'svob_barracks' });
     B('cell', 625, 24, 4, 2, { name: 'Подвал трибунала', talk: 'svob_cell' });
     B('clinic', 587, 29, 5, 3, { name: 'Лазарет братьев свободы', talk: 'svob_clinic' });
-    for (const [x, y] of [[598, 39], [622, 39], [596, 15], [624, 15], [588, 36], [632, 36], [604, 40], [615, 21]]) B('rposter', x, y, 1, 1, { name: 'Плакат Собрания', talk: 'rposter' });
+    for (const [x, y] of [[598, 40], [626, 40], [596, 13], [624, 13], [588, 36], [632, 36], [604, 40], [615, 21]]) B('rposter', x, y, 1, 1, { name: 'Плакат Собрания', talk: 'rposter' });
     for (const [x, y] of [[602, 37], [618, 22], [607, 40], [613, 40]]) B('lamp', x, y, 1, 1, { name: 'Фонарь', talk: 'lamp' });
     B('standpipe', 596, 31, 1, 1, { name: 'Колонка', talk: 'standpipe' });
     // справа от ворот — лесной двор: паровая лесопилка, сушильный навес, брёвна и шпалы
@@ -540,10 +541,10 @@ export const Explore = {
     B('rposter', 615, 47, 1, 1, { name: 'Плакат Собрания', talk: 'rposter' });
     B('lamp', 627, 47, 1, 1, { name: 'Фонарь', talk: 'lamp' });
     // тесные дома с закрытыми ставнями
-    for (const row of [8, 16, 19, 41, 45, 49, 53, 57, 61]) {
+    for (const row of [8, 16, 20, 41, 45, 49, 53, 57, 61]) {
       for (let x = 586; x < 636;) {
         const w = 3;
-        if (!taken(x, row, w, 3) && x + w <= 636 && !(x + w > 602 && x < 617 && row < 22) && !(x + w > 603 && x < 616 && row > 40) && !(x + w > 616 && row > 40)) {
+        if (!taken(x, row, w, 3) && !taken(x + 1, row + 3, 1, 1) && x + w <= 636 && !(x + w > 602 && x < 617 && row < 22) && !(x + w > 603 && x < 616 && row > 40) && !(x + w > 616 && row > 40)) {
           const k = r();
           if (k < 0.08) B('laundry', x, row + 2, w, 1, { name: 'Бельевая верёвка', talk: 'laundry' });
           else if (k < 0.16) B('burnt', x, row, w, 3, { name: 'Сгоревший дом', talk: 'svob_burnt' });
@@ -599,7 +600,7 @@ export const Explore = {
     NPC('scrap_trader', 'Скупщик лома', 'scrapper', 260, 47, 'scrap_trader');
     NPC('moss_elder', 'Ровена, старшая', 'grower', 280, 38, 'moss_elder');
     NPC('moss_herder', 'Пастух', 'herder', 303, 29, 'moss_herder');
-    NPC('camp_gate1', 'Часовой', 'bguard', 355, 37, 'camp_gate'); NPC('camp_gate2', 'Часовой', 'bguard', 355, 43, 'camp_gate');
+    NPC('camp_gate1', 'Часовой', 'bguard', 355, 37, 'camp_gate'); NPC('camp_gate2', 'Часовой', 'bguard', 355, 42, 'camp_gate');
     NPC('camp_foreman', 'Мастер цеха', 'bofficer', 336, 36, 'camp_foreman');
     NPC('bgate1', 'Часовой', 'bguard', 407, 34, 'bgate'); NPC('bgate2', 'Часовой', 'bguard', 407, 40, 'bgate');
     NPC('castle_g1', 'Гвардеец', 'bguard', 377, 33, 'castle_gate'); NPC('castle_g2', 'Гвардеец', 'bguard', 377, 39, 'castle_gate');
@@ -917,6 +918,7 @@ export const Explore = {
 
     const inView = (o: Obj, m = 60) => (o.x + o.w) * T > cx - m && o.x * T < cx + VW + m && (o.y + o.h) * T > cy - m && o.y * T < cy + VH + m;
     for (const o of this.objs) if (!o.block && inView(o) && o.sprite) c.drawImage(o.sprite, o.x * T - o.sx!, o.y * T - o.sy!);
+    const steam = this.objs.filter((o) => o.kind === 'vent' && inView(o));
 
     // всё стоящее — по глубине
     const walking = this.moveK < 1, wf = walking ? 1 + (Math.floor(t * 8) % 2) * 2 : 0;
@@ -924,7 +926,7 @@ export const Explore = {
     for (const o of this.objs) {
       if (!o.block || !inView(o)) continue;
       const y = o.y + o.h - 0.5;
-      if (o.dynamic && o.kind === 'vent') ents.push({ y, d: () => { if (o.sprite) c.drawImage(o.sprite, o.x * T - o.sx!, o.y * T - o.sy!); drawSteam(c, o.x * T + 10, o.y * T + 12, t + o.seed * 0.7); } });
+      if (o.dynamic && o.kind === 'vent' && o.block) ents.push({ y, d: () => { if (o.sprite) c.drawImage(o.sprite, o.x * T - o.sx!, o.y * T - o.sy!); drawSteam(c, o.x * T + 10, o.y * T + 12, t + o.seed * 0.7); } });
       else if (o.dynamic) ents.push({ y, d: () => (o.kind === 'pump' ? drawPumpjack(c, o.x * T, o.y * T, t + o.seed) : drawCampfire(c, o.x * T + 10, o.y * T + 16, t)) });
       else if (o.sprite) ents.push({ y, d: () => c.drawImage(o.sprite!, o.x * T - o.sx!, o.y * T - o.sy!) });
     }
@@ -956,6 +958,7 @@ export const Explore = {
     ents.push({ y: p.ry, d: () => drawSprite(c, G.squad[0]?.look ?? 'pc', p.rx * T + T / 2, p.ry * T + T - 1, { flip: p.flip, frame: wf, bob: !walking && Math.sin(t * 1.6) > 0.75 ? 1 : 0 }) });
     ents.sort((a, b) => a.y - b.y).forEach((e) => e.d());
 
+    for (const o of steam) drawSteam(c, o.x * T + 10, o.y * T + 12, t + o.seed * 0.7);
     // дым из заводских труб
     for (const o of this.objs) {
       if (o.kind !== 'factory' || !inView(o, 140)) continue;
