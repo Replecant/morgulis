@@ -12,8 +12,9 @@ export const MW = 112, MH = 72;
 const VW = 960, VH = 640;
 const PX = MW * ET, PY = MH * ET;
 
-type Ground = 'w' | 'g' | 'r' | 'p' | 'o' | 'k' | 'f';
-// w — пустошь, g — деревенская земля, r — дорога, p — загон (грязь), o — пропитанная маслом земля, k — дощатый перрон, f — за стеной форта
+type Ground = 'w' | 'g' | 'r' | 'p' | 'o' | 'k' | 'f' | 'm' | 'x';
+// w — пустошь, g — деревенская земля, r — дорога, p — загон (грязь), o — пропитанная маслом земля, k — дощатый перрон, f — за стеной форта,
+// m — мшистая болотная земля, x — болотная вода (непроходима)
 
 interface Obj {
   kind: string; x: number; y: number; w: number; h: number;
@@ -31,10 +32,14 @@ const AREAS: { name: string; x0: number; y0: number; x1: number; y1: number }[] 
   { name: 'Разъезд Эшфорд', x0: 6, y0: 55, x1: 37, y1: 63 },
   { name: 'Эшфорд', x0: 5, y0: 31, x1: 37, y1: 57 },
   { name: 'Ричморд', x0: 57, y0: 5, x1: 93, y1: 31 },
-  { name: 'Разрушенный пост', x0: 56, y0: 51, x1: 68, y1: 59 },
-  { name: 'Ворота форта', x0: 92, y0: 40, x1: 101, y1: 66 },
-  { name: 'Старые кости', x0: 36, y0: 22, x1: 50, y1: 32 },
 ];
+/** Локальные сцены — участки большой карты. Уход за край сцены возвращает на глобальную карту. */
+export const SCENES: Record<string, { name: string; x0: number; y0: number; x1: number; y1: number; entry: Pt }> = {
+  ashford:  { name: 'Эшфорд', x0: 3, y0: 30, x1: 37, y1: 63, entry: { x: 35, y: 43 } },
+  richmord: { name: 'Ричморд', x0: 55, y0: 3, x1: 94, y1: 31, entry: { x: 57, y: 20 } },
+  fenmor:   { name: 'Фенмор', x0: 1, y0: 1, x1: 36, y1: 28, entry: { x: 19, y: 27 } },
+  fortgate: { name: 'Ворота форта', x0: 86, y0: 38, x1: 103, y1: 66, entry: { x: 88, y: 49 } },
+};
 const PENS = [{ x0: 62, y0: 9, x1: 73, y1: 17, gx: 67 }, { x0: 77, y0: 10, x1: 88, y1: 18, gx: 82 }];
 
 export const Explore = {
@@ -54,12 +59,12 @@ export const Explore = {
   pending: null as Obj | Npc | Beetle | null,
   onInteract: (_talk: string) => {},
   onLocation: (_name: string) => {},
+  onExit: (_scene: string) => {},
+  scene: 'ashford',
   lastInteract: 0,
   hoverW: null as Pt | null,
   cam: { x: 0, y: 0 },
   banner: null as { text: string; t: number } | null,
-  mapOpen: false,
-  minimap: null as HTMLCanvasElement | null,
 
   // ========================================================== построение мира
   init() {
@@ -73,6 +78,9 @@ export const Explore = {
     // деревни и загоны
     fill('g', 5, 31, 33, 26);
     fill('g', 57, 5, 36, 26);
+    // Фенмор: болотистая низина с грибными грядками
+    fill('m', 2, 2, 34, 26);
+    for (const [x, y, rr] of [[3, 7, 1], [32, 7, 2], [32, 23, 2], [15, 25, 1], [26, 27, 1]]) blob('x', x, y, rr);
     for (const p of PENS) fill('p', p.x0 + 1, p.y0 + 1, p.x1 - p.x0 - 1, p.y1 - p.y0 - 1);
     // форт: всё восточнее стены — недоступно
     fill('f', 103, 0, MW - 103, MH);
@@ -91,6 +99,8 @@ export const Explore = {
     road([[0, 43], [22, 43], [40, 44], [56, 45], [72, 47], [88, 50], [101, 50]]);
     road([[54, 45], [54, 30], [58, 24], [60, 20], [92, 20]]);
     road([[22, 43], [22, 57]]);
+    road([[22, 43], [22, 30]]);
+    road([[19, 28], [19, 14]]);
 
     // масляные пятна вокруг качалок
     const PUMPS: [number, number][] = [[9, 34], [32, 34], [18, 48], [33, 52], [11, 44]];
@@ -146,13 +156,19 @@ export const Explore = {
     B('chitin', 78, 27, 2, 1, { name: 'Пустые панцири', talk: 'chitinpile' });
     for (const [x, y] of [[62, 21], [76, 21], [88, 21]]) B('lamp', x, y, 1, 1, { name: 'Фонарь', talk: 'lamp' });
 
-    // пустошь и тракт
-    B('milestone', 40, 42, 1, 1, { name: 'Верстовой столб', talk: 'milestone' });
-    B('skeleton', 40, 25, 5, 3, { name: 'Старые кости', talk: 'skeleton' });
-    B('lorry', 68, 49, 3, 2, { name: 'Остов грузовика', talk: 'lorry' });
-    // разрушенный пост
-    for (const [x, y, w, h] of [[58, 52, 5, 1], [58, 53, 1, 3], [64, 52, 1, 4], [60, 57, 4, 1], [66, 55, 1, 2]] as number[][]) B('wallruin', x, y, w, h, { name: 'Руины поста', talk: 'postruin' });
-    B('campfire', 62, 54, 1, 1, { dynamic: true, name: 'Костёр', talk: 'campfire', block: true });
+    // Фенмор
+    B('adit', 25, 2, 6, 3, { name: 'Грибная штольня', talk: 'adit' });
+    B('cellar', 5, 3, 3, 2, { name: 'Грибной погреб', talk: 'cellar' });
+    B('cellar', 12, 3, 3, 2, { name: 'Грибной погреб', talk: 'cellar' });
+    B('hut', 8, 20, 4, 3, { name: 'Дом Агнес', talk: 'hut_agnes' });
+    B('hut', 23, 20, 4, 3, { name: 'Хижина сборщиков', talk: 'hut' });
+    B('hut', 13, 7, 4, 3, { name: 'Хижина', talk: 'hut' });
+    B('hut', 22, 9, 4, 3, { name: 'Сушильня', talk: 'drying' });
+    for (const y of [11, 13, 15, 17]) for (const x of [3, 8]) B('shroombed', x, y, 4, 1, { name: 'Грибная грядка', talk: 'shroombed' });
+    for (const y of [13, 15, 17]) for (const x of [24, 29]) B('shroombed', x, y, 4, 1, { name: 'Грибная грядка', talk: 'shroombed' });
+    for (const [x, y] of [[16, 13], [16, 17]]) B('rack', x, y, 2, 1, { name: 'Сушилка', talk: 'rack' });
+    for (const [x, y] of [[18, 11], [22, 13], [11, 19], [28, 11], [6, 9], [26, 25], [13, 24], [33, 18]]) B('bigshroom', x, y, 1, 1, { name: 'Светящийся гриб', talk: 'bigshroom' });
+    B('feed', 29, 23, 2, 2, { name: 'Грибной компост', talk: 'compost' });
     // ворота форта
     for (let y = 0; y < MH; y++) if (y < 48 || y > 52) if (y < 60 || y > 62) B('wall', 101, y, 2, 1);
     B('gate', 101, 48, 2, 5, { name: 'Ворота форта', talk: 'fortgate' });
@@ -169,7 +185,7 @@ export const Explore = {
       }
       return true;
     };
-    for (let i = 0; i < 220; i++) {
+    for (let i = 0; i < 160; i++) {
       const x = 1 + Math.floor(r() * 99), y = 1 + Math.floor(r() * (MH - 2));
       const k = r();
       if (k < 0.4) { if (free(x, y, 1, 1)) B('tree', x, y, 1, 1, { name: 'Мёртвое дерево' }); }
@@ -180,7 +196,7 @@ export const Explore = {
 
     // блокировка клеток
     for (const o of this.objs) if (o.block) for (let y = o.y; y < o.y + o.h; y++) for (let x = o.x; x < o.x + o.w; x++) if (this.inMap(x, y)) this.block[y][x] = true;
-    for (let y = 0; y < MH; y++) for (let x = 0; x < MW; x++) if (this.ground[y][x] === 'f') this.block[y][x] = true;
+    for (let y = 0; y < MH; y++) for (let x = 0; x < MW; x++) if (this.ground[y][x] === 'f' || this.ground[y][x] === 'x') this.block[y][x] = true;
 
     // ---------------- жители
     const NPC = (id: string, name: string, kind: string, x: number, y: number, talk: string, cond?: () => boolean) => this.npcs.push({ id, name, kind, x, y, talk, cond, seed: this.npcs.length * 1.7 });
@@ -191,8 +207,9 @@ export const Explore = {
     NPC('wallace', 'Уоллес, погонщик', 'herder', 66, 19, 'wallace');
     NPC('hob', 'Хоб, мясник', 'butcher', 75, 26, 'hob');
     NPC('penny', 'Пенни, пастушка', 'girl', 84, 19, 'penny');
-    NPC('scav1', 'Мародёр', 'militia_gun', 61, 54, 'scav', () => !G.flags.scavDone && !G.flags.scavLeft);
-    NPC('scav2', 'Мародёр', 'militia', 63, 55, 'scav', () => !G.flags.scavDone && !G.flags.scavLeft);
+    NPC('agnes', 'Агнес, старшая грибница', 'grower', 10, 23, 'agnes');
+    NPC('toby', 'Тоби, сборщик', 'picker', 7, 18, 'toby');
+    NPC('abe', 'Слепой Эйб', 'miner', 21, 15, 'abe');
     NPC('guard1', 'Стражник', 'guard', 99, 48, 'guard');
     NPC('guard2', 'Стражник', 'guard', 99, 52, 'guard');
 
@@ -203,20 +220,35 @@ export const Explore = {
       const x = p.x0 + 2 + r() * (p.x1 - p.x0 - 4), y = p.y0 + 2 + r() * (p.y1 - p.y0 - 4);
       this.beetles.push({ id: 'b' + n, x, y, tx: x, ty: y, pen: p, dir: r() * TAU, seed: r() * 10, wait: r() * 3, talk: 'beetle', name: `Жук «${names[n++ % names.length]}»`, scale: 0.9 + r() * 0.3 });
     }
-    this.beetles.push({ id: 'meg', x: 46.5, y: 28.5, tx: 46.5, ty: 28.5, pen: { x0: 44, y0: 26, x1: 49, y1: 31 }, dir: 0, seed: 3, wait: 0, talk: 'meg', name: 'Жучиха Мэг', scale: 1.15 });
 
     // ---------------- игрок
     const mk = (kind: string, x: number, y: number): Walker => ({ kind, x, y, rx: x, ry: y, fx: x, fy: y, flip: false });
     this.player = mk('pc', 24, 58);
-    this.followers = G.squad.slice(1).map((s) => mk(s.look ?? s.kind, 24, 58));
-    this.trail = this.followers.map(() => ({ x: 24, y: 58 }));
-    this.path = []; this.pending = null; this.moveK = 1;
-    G.location = '';
+    this.followers = [];
+    this.trail = [];
     this.light = this.light ?? new Lighting(VW, VH);
     this.renderSprites();
-    this.minimap = null;
+  },
+
+  /** Войти в локальную сцену (по умолчанию — у её въезда). */
+  enter(id: string, at?: Pt) {
+    const sc = SCENES[id];
+    this.scene = id;
+    const p = at ?? sc.entry;
+    const mk = (kind: string, x: number, y: number): Walker => ({ kind, x, y, rx: x, ry: y, fx: x, fy: y, flip: false });
+    this.player = mk('pc', p.x, p.y);
+    this.followers = G.squad.slice(1).map((s) => mk(s.look ?? s.kind, p.x, p.y));
+    this.trail = this.followers.map(() => ({ ...p }));
+    this.path = []; this.pending = null; this.moveK = 1;
+    // вернувшаяся жучиха Мэг появляется в загоне
+    if (id === 'richmord' && G.flags.beetleDone && !this.beetles.some((b) => b.id === 'meg')) {
+      const pen = PENS[0];
+      this.beetles.push({ id: 'meg', x: 67.5, y: 13, tx: 67.5, ty: 13, pen, dir: 0, seed: 3, wait: 1, talk: 'meg_home', name: 'Жучиха Мэг', scale: 1.15 });
+    }
+    G.location = '';
     this.updateLocation();
   },
+  inScene(x: number, y: number) { const s = SCENES[this.scene]; return x >= s.x0 && x <= s.x1 && y >= s.y0 && y <= s.y1; },
 
   inMap(x: number, y: number) { return x >= 0 && y >= 0 && x < MW && y < MH; },
   activeNpcs() { return this.npcs.filter((n) => !n.cond || n.cond()); },
@@ -233,10 +265,7 @@ export const Explore = {
   },
   areaAt(x: number, y: number): string {
     const a = AREAS.find((a) => x >= a.x0 && x <= a.x1 && y >= a.y0 && y <= a.y1);
-    if (a) return a.name;
-    if (this.ground[y]?.[x] === 'r') return 'Тракт';
-    if (this.rail[y]?.[x]) return 'Железная дорога';
-    return 'Серая пустошь';
+    return a && this.scene !== 'fortgate' ? a.name : SCENES[this.scene].name;
   },
   updateLocation() {
     const name = this.areaAt(this.player.x, this.player.y);
@@ -251,7 +280,6 @@ export const Explore = {
   update(dt: number) {
     this.updateBeetles(dt);
     if (this.banner) { this.banner.t += dt; if (this.banner.t > 3) this.banner = null; }
-    if (this.mapOpen) return;
     const p = this.player;
     if (this.moveK < 1) {
       this.moveK = Math.min(1, this.moveK + dt / 0.14);
@@ -280,6 +308,7 @@ export const Explore = {
   step(dx: number, dy: number) {
     const p = this.player;
     if (dx) p.flip = dx < 0;
+    if (!this.inScene(p.x + dx, p.y + dy)) { this.path = []; this.pending = null; this.onExit(this.scene); return false; }
     if (this.blocked(p.x + dx, p.y + dy)) return false;
     this.trail.unshift({ x: p.x, y: p.y }); this.trail.length = this.followers.length;
     for (const w of [p, ...this.followers]) { w.fx = w.rx; w.fy = w.ry; }
@@ -291,9 +320,6 @@ export const Explore = {
 
   updateBeetles(dt: number) {
     for (const b of this.beetles) {
-      if (b.id === 'meg' && G.flags.beetleDone && !b.homeward && b.pen && b.pen.x0 !== PENS[0].x0) {
-        b.homeward = true; b.tx = 67.5; b.ty = 20.5; // бредёт к загону
-      }
       const d = Math.hypot(b.tx - b.x, b.ty - b.y);
       if (d < 0.1) {
         if (b.homeward) { b.homeward = false; b.pen = PENS[0]; b.x = 67.5; b.y = 15; b.tx = b.x; b.ty = b.y; b.wait = 2; }
@@ -342,7 +368,6 @@ export const Explore = {
 
   /** Клик в экранных координатах. */
   click(mx: number, my: number) {
-    if (this.mapOpen) { this.mapOpen = false; return; }
     const tx = Math.floor((mx + this.cam.x) / ET), ty = Math.floor((my + this.cam.y) / ET);
     const p = this.player;
     const reach = bfs(MW, MH, p.x, p.y, (x, y) => !this.blocked(x, y), null, DIRS4);
@@ -364,8 +389,10 @@ export const Explore = {
   // ========================================================== отрисовка
   draw(c: CanvasRenderingContext2D, t: number) {
     const p = this.player;
-    this.cam.x = clamp(p.rx * ET + 16 - VW / 2, 0, PX - VW);
-    this.cam.y = clamp(p.ry * ET + 16 - VH / 2, 0, PY - VH);
+    const sc = SCENES[this.scene];
+    const sx0 = sc.x0 * ET - 64, sx1 = (sc.x1 + 1) * ET + 64, sy0 = sc.y0 * ET - 64, sy1 = (sc.y1 + 1) * ET + 64;
+    this.cam.x = sx1 - sx0 <= VW ? (sx0 + sx1 - VW) / 2 : clamp(p.rx * ET + 16 - VW / 2, sx0, sx1 - VW);
+    this.cam.y = sy1 - sy0 <= VH ? (sy0 + sy1 - VH) / 2 : clamp(p.ry * ET + 16 - VH / 2, sy0, sy1 - VH);
     const cx = Math.round(this.cam.x), cy = Math.round(this.cam.y);
     c.save();
     c.translate(-cx, -cy);
@@ -403,6 +430,19 @@ export const Explore = {
       g.addColorStop(0, 'rgba(0,0,0,0.22)'); g.addColorStop(1, 'rgba(0,0,0,0)');
       c.fillStyle = g; c.fillRect(ox - 420, oy - 420, 840, 840);
     }
+    // за пределами сцены — мгла пустоши
+    {
+      const X0 = sc.x0 * ET, X1 = (sc.x1 + 1) * ET, Y0 = sc.y0 * ET, Y1 = (sc.y1 + 1) * ET, F = 72;
+      c.fillStyle = '#080a07';
+      c.fillRect(cx - 10, cy - 10, X0 - cx + 10, VH + 20); c.fillRect(X1, cy - 10, cx + VW - X1 + 10, VH + 20);
+      c.fillRect(cx - 10, cy - 10, VW + 20, Y0 - cy + 10); c.fillRect(cx - 10, Y1, VW + 20, cy + VH - Y1 + 10);
+      const edge = (x0: number, y0: number, x1: number, y1: number, rx: number, ry: number, rw: number, rh: number) => {
+        const g = c.createLinearGradient(x0, y0, x1, y1); g.addColorStop(0, 'rgba(8,10,7,0.95)'); g.addColorStop(1, 'rgba(8,10,7,0)');
+        c.fillStyle = g; c.fillRect(rx, ry, rw, rh);
+      };
+      edge(X0, 0, X0 + F, 0, X0, Y0, F, Y1 - Y0); edge(X1, 0, X1 - F, 0, X1 - F, Y0, F, Y1 - Y0);
+      edge(0, Y0, 0, Y0 + F, X0, Y0, X1 - X0, F); edge(0, Y1, 0, Y1 - F, X0, Y1 - F, X1 - X0, F);
+    }
     c.restore();
 
     // свет (в экранных координатах)
@@ -424,7 +464,6 @@ export const Explore = {
 
     if (G.mode === 'explore') this.drawPrompts(c, cx, cy);
     if (this.banner) this.drawBanner(c);
-    if (this.mapOpen) this.drawMap(c, t);
   },
 
   drawDynamic(c: CanvasRenderingContext2D, o: Obj, t: number) {
@@ -460,39 +499,6 @@ export const Explore = {
     c.restore();
   },
 
-  // ---------------------------------------------------------- карта региона (M)
-  drawMap(c: CanvasRenderingContext2D, t: number) {
-    const S = 7, mw = MW * S, mh = MH * S, ox = (VW - mw) / 2, oy = (VH - mh) / 2 + 10;
-    if (!this.minimap) {
-      const cv = document.createElement('canvas'); cv.width = mw; cv.height = mh;
-      const m = cv.getContext('2d')!;
-      const COL: Record<Ground, string> = { w: '#5a5a50', g: '#6a6250', r: '#8a7a5a', p: '#5a4a32', o: '#26241e', k: '#7a6040', f: '#24221e' };
-      for (let y = 0; y < MH; y++) for (let x = 0; x < MW; x++) { m.fillStyle = COL[this.ground[y][x]]; m.fillRect(x * S, y * S, S, S); }
-      m.fillStyle = '#2a2622';
-      for (let y = 0; y < MH; y++) for (let x = 0; x < MW; x++) if (this.rail[y][x]) { m.fillRect(x * S, y * S + 2, S, 3); }
-      for (const o of this.objs) {
-        if (!o.block || o.kind === 'tree' || o.kind === 'rock') continue;
-        m.fillStyle = o.kind === 'fence' ? '#3a3024' : o.kind === 'ruin' || o.kind === 'wallruin' ? '#3e3a34' : o.kind === 'wall' || o.kind === 'tower' || o.kind === 'gate' ? '#4a4038' : '#2e2a24';
-        m.fillRect(o.x * S, o.y * S, o.w * S, o.h * S);
-      }
-      m.font = 'bold 14px "Playfair Display SC", serif'; m.textAlign = 'center';
-      for (const [name, x, y] of [['Эшфорд', 21, 31], ['Ричморд', 75, 5], ['Форт барона', 96, 38], ['Разрушенный пост', 62, 50], ['Старые кости', 42, 22], ['Разъезд', 22, 65]] as [string, number, number][]) {
-        m.fillStyle = 'rgba(0,0,0,0.7)'; m.fillText(name, x * S + 1, y * S + 1); m.fillStyle = '#e8dcb0'; m.fillText(name, x * S, y * S);
-      }
-      this.minimap = cv;
-    }
-    c.fillStyle = 'rgba(0,0,0,0.75)'; c.fillRect(0, 0, VW, VH);
-    c.fillStyle = '#1a1c14'; c.fillRect(ox - 10, oy - 34, mw + 20, mh + 44);
-    c.strokeStyle = '#8a7444'; c.lineWidth = 1.5; c.strokeRect(ox - 10, oy - 34, mw + 20, mh + 44);
-    c.font = 'bold 16px "Playfair Display SC", serif'; c.fillStyle = '#c09a52'; c.textAlign = 'center';
-    c.fillText('Окрестности форта барона Олдриджа', VW / 2, oy - 14); c.textAlign = 'left';
-    c.drawImage(this.minimap, ox, oy);
-    c.fillStyle = 'rgba(80,140,60,0.12)'; c.fillRect(ox, oy, mw, mh);
-    const p = this.player, pulse = 3 + Math.sin(t * 5) * 1.5;
-    c.fillStyle = '#ffd070'; c.beginPath(); c.arc(ox + p.rx * S + S / 2, oy + p.ry * S + S / 2, pulse, 0, TAU); c.fill();
-    c.font = '12px "Old Standard TT", serif'; c.fillStyle = '#8b8d76'; c.fillText('M или клик — закрыть', ox + mw - 130, oy + mh + 4);
-  },
-
   // ---------------------------------------------------------- земля (чанки)
   chunk(gx: number, gy: number): HTMLCanvasElement {
     const key = gy * 100 + gx;
@@ -517,6 +523,14 @@ export const Explore = {
         for (let i = 0; i < 4; i++) { c.beginPath(); c.moveTo(X + i * 8 + 0.5, Y); c.lineTo(X + i * 8 + 0.5, Y + ET); c.stroke(); }
       } else if (g === 'f') {
         c.fillStyle = '#16140f'; c.fillRect(X, Y, ET, ET);
+      } else if (g === 'x') {
+        c.fillStyle = '#121a12'; c.fillRect(X, Y, ET, ET);
+        c.fillStyle = 'rgba(120,180,110,0.10)'; c.beginPath(); c.ellipse(X + 8 + r() * 16, Y + 8 + r() * 16, 8, 2, 0, 0, TAU); c.fill();
+        if (r() < 0.3) { c.strokeStyle = '#3a4a2a'; c.lineWidth = 1; const rx = X + r() * ET, ry = Y + ET - 4; for (let i = 0; i < 3; i++) { c.beginPath(); c.moveTo(rx + i * 2, ry); c.lineTo(rx + i * 2 + (r() - 0.5) * 3, ry - 8 - r() * 6); c.stroke(); } }
+      } else if (g === 'm') {
+        c.fillStyle = ['#2e3226', '#2a2e22', '#323628'][Math.floor(r() * 3)]; c.fillRect(X, Y, ET, ET);
+        for (let i = 0; i < 7; i++) { c.fillStyle = `rgba(${r() < 0.5 ? '70,90,50' : '20,24,16'},0.35)`; c.beginPath(); c.arc(X + r() * ET, Y + r() * ET, 1 + r() * 2, 0, TAU); c.fill(); }
+        if (r() < 0.12) { c.fillStyle = '#c8c0a0'; const mx = X + 6 + r() * 20, my = Y + 10 + r() * 16; c.fillRect(mx, my, 1.5, 3); c.beginPath(); c.ellipse(mx + 0.7, my, 2.5, 1.5, 0, Math.PI, TAU); c.fill(); }
       } else {
         const base = g === 'w' ? ['#4a4a44', '#47473f', '#4e4d46', '#44443d'] : g === 'g' ? ['#3e3a32', '#423d34', '#3a362f'] : g === 'p' ? ['#3a3024', '#362c20', '#3e3428'] : ['#22211c', '#1e1d19', '#262420'];
         c.fillStyle = base[Math.floor(r() * base.length)]; c.fillRect(X, Y, ET, ET);
@@ -564,7 +578,7 @@ export const Explore = {
   },
 };
 
-const SPRITE_TOP: Record<string, number> = { house: 30, ruin: 30, pumphouse: 40, farm: 30, barn: 30, slaughter: 30, station: 36, tank: 30, watertower: 70, lamp: 50, tree: 44, wall: 50, gate: 70, railgate: 60, tower: 90, wagon: 20, sign: 30, feed: 16, lorry: 20, skeleton: 26, milestone: 26, wallruin: 26, chitin: 14, fence: 18 };
+const SPRITE_TOP: Record<string, number> = { hut: 30, adit: 40, cellar: 20, bigshroom: 40, rack: 26, shroombed: 14, house: 30, ruin: 30, pumphouse: 40, farm: 30, barn: 30, slaughter: 30, station: 36, tank: 30, watertower: 70, lamp: 50, tree: 44, wall: 50, gate: 70, railgate: 60, tower: 90, wagon: 20, sign: 30, feed: 16, lorry: 20, skeleton: 26, milestone: 26, wallruin: 26, chitin: 14, fence: 18 };
 
 // ============================================================ рисование объектов
 function drawStatic(c: CanvasRenderingContext2D, o: Obj, r: () => number, world: typeof Explore): Obj['lights'] | void {
@@ -699,6 +713,71 @@ function drawStatic(c: CanvasRenderingContext2D, o: Obj, r: () => number, world:
       break;
     }
     case 'barrel': drawCrate(c, 16, H - 2, ET, true); break;
+    case 'hut': {
+      const wallH = ET, wy = H - wallH;
+      c.fillStyle = 'rgba(0,0,0,0.35)'; c.fillRect(4, H - 2, W, 6);
+      // сваи
+      c.fillStyle = '#1e1a14'; for (let x = 6; x < W - 4; x += 18) c.fillRect(x, H - 6, 4, 8);
+      c.fillStyle = '#3a3428'; c.fillRect(3, wy, W - 6, wallH - 4);
+      c.strokeStyle = 'rgba(0,0,0,0.4)'; c.lineWidth = 1.5; for (let x = 3; x < W - 3; x += 7) { c.beginPath(); c.moveTo(x, wy); c.lineTo(x, H - 4); c.stroke(); }
+      c.fillStyle = '#17110c'; c.fillRect(W / 2 - 6, H - 26, 12, 22);
+      const cx = W / 2 + 22; c.fillStyle = '#5a6a30'; c.fillRect(cx - 5, wy + 8, 10, 9);
+      lights.push({ x: cx, y: wy + 12, r: 40, color: '#b0e070', a: 0.6 });
+      // мшистая крыша
+      c.fillStyle = '#2e3a24'; c.beginPath(); c.moveTo(-4, wy + 2); c.lineTo(W + 4, wy + 2); c.lineTo(W - 10, -6); c.lineTo(10, -6); c.closePath(); c.fill();
+      for (let i = 0; i < 14; i++) { c.fillStyle = r() < 0.5 ? '#3e4a2c' : '#26301e'; c.beginPath(); c.ellipse(10 + r() * (W - 20), -2 + r() * (wy - 2), 6 + r() * 6, 3, 0, 0, TAU); c.fill(); }
+      break;
+    }
+    case 'cellar': {
+      c.fillStyle = 'rgba(0,0,0,0.3)'; c.beginPath(); c.ellipse(W / 2, H - 4, W / 2, 8, 0, 0, TAU); c.fill();
+      const g = c.createRadialGradient(W / 2 - 8, H - 30, 4, W / 2, H - 14, W / 1.4);
+      g.addColorStop(0, '#4a4a34'); g.addColorStop(1, '#22241a');
+      c.fillStyle = g; c.beginPath(); c.ellipse(W / 2, H - 10, W / 2, H / 2 + 8, 0, Math.PI, TAU); c.fill();
+      for (let i = 0; i < 10; i++) { c.fillStyle = 'rgba(80,100,50,0.4)'; c.beginPath(); c.arc(8 + r() * (W - 16), H - 10 - r() * 26, 2 + r() * 3, 0, TAU); c.fill(); }
+      c.fillStyle = '#1a140c'; c.beginPath(); c.moveTo(W / 2 - 10, H - 4); c.lineTo(W / 2 - 10, H - 18); c.arc(W / 2, H - 18, 10, Math.PI, 0); c.lineTo(W / 2 + 10, H - 4); c.fill();
+      c.strokeStyle = '#3a2a1a'; c.lineWidth = 1.5; c.stroke();
+      lights.push({ x: W / 2, y: H - 12, r: 36, color: '#9fe070', a: 0.5 });
+      break;
+    }
+    case 'adit': {
+      c.fillStyle = '#2a2a24'; c.beginPath(); c.moveTo(-6, H); c.lineTo(4, -20); c.lineTo(W * 0.4, -34); c.lineTo(W - 4, -18); c.lineTo(W + 6, H); c.closePath(); c.fill();
+      for (let i = 0; i < 18; i++) { c.fillStyle = r() < 0.5 ? '#3a3a32' : '#1e1e1a'; c.beginPath(); c.ellipse(r() * W, -24 + r() * (H + 14), 6 + r() * 8, 3 + r() * 4, r() * 3, 0, TAU); c.fill(); }
+      const dw = 40, dx = W / 2 - dw / 2;
+      c.fillStyle = '#060705'; c.fillRect(dx, H - 46, dw, 46);
+      c.fillStyle = '#4a3622'; c.fillRect(dx - 5, H - 50, 5, 50); c.fillRect(dx + dw, H - 50, 5, 50); c.fillRect(dx - 6, H - 54, dw + 12, 6);
+      c.fillStyle = 'rgba(160,230,110,0.25)'; c.beginPath(); c.ellipse(W / 2, H - 10, 14, 6, 0, 0, TAU); c.fill();
+      lights.push({ x: W / 2, y: H - 20, r: 80, color: '#9fe070', a: 0.6 });
+      // вагонетка
+      c.fillStyle = '#3a3a34'; c.fillRect(dx + dw + 10, H - 16, 18, 10); c.fillStyle = '#121210'; c.beginPath(); c.arc(dx + dw + 14, H - 4, 3, 0, TAU); c.arc(dx + dw + 24, H - 4, 3, 0, TAU); c.fill();
+      break;
+    }
+    case 'shroombed': {
+      c.fillStyle = '#1e1a12'; c.fillRect(0, H - 22, W, 18);
+      c.fillStyle = '#2a2418'; c.fillRect(0, H - 22, W, 3);
+      for (let i = 0; i < W / 7; i++) {
+        const x = 3 + i * 7 + r() * 3, y = H - 8 - r() * 6, sz = 2.5 + r() * 2.5;
+        c.fillStyle = '#d0c8a8'; c.fillRect(x - 0.7, y, 1.4, 4);
+        c.fillStyle = r() < 0.3 ? '#a8d888' : '#c8c0a0'; c.beginPath(); c.ellipse(x, y, sz, sz * 0.6, 0, Math.PI, TAU); c.fill();
+      }
+      lights.push({ x: W / 2, y: H - 12, r: 44, color: '#b0f080', a: 0.35 });
+      break;
+    }
+    case 'bigshroom': {
+      c.fillStyle = 'rgba(0,0,0,0.3)'; c.beginPath(); c.ellipse(16, H - 3, 9, 3, 0, 0, TAU); c.fill();
+      c.fillStyle = '#c8c4a8'; c.fillRect(13, H - 26, 6, 24);
+      const g = c.createRadialGradient(14, H - 32, 2, 16, H - 28, 18);
+      g.addColorStop(0, '#e0ffc0'); g.addColorStop(0.5, '#90c070'); g.addColorStop(1, '#3a5a2a');
+      c.fillStyle = g; c.beginPath(); c.ellipse(16, H - 26, 16, 10, 0, Math.PI, TAU); c.fill();
+      c.fillStyle = 'rgba(30,50,20,0.6)'; for (let i = 0; i < 4; i++) { c.beginPath(); c.arc(6 + r() * 20, H - 30 + r() * 4, 1.5, 0, TAU); c.fill(); }
+      lights.push({ x: 16, y: H - 28, r: 110, color: '#a8f070', a: 0.8 });
+      break;
+    }
+    case 'rack': {
+      c.strokeStyle = '#2a2016'; c.lineWidth = 2.5;
+      c.beginPath(); c.moveTo(4, H); c.lineTo(4, H - 30); c.moveTo(W - 4, H); c.lineTo(W - 4, H - 30); c.moveTo(2, H - 28); c.lineTo(W - 2, H - 28); c.stroke();
+      for (let i = 0; i < 8; i++) { const x = 8 + i * 6; c.strokeStyle = '#3a2a1a'; c.lineWidth = 0.8; c.beginPath(); c.moveTo(x, H - 28); c.lineTo(x, H - 22); c.stroke(); c.fillStyle = '#8a7a58'; c.beginPath(); c.ellipse(x, H - 20, 3, 2, 0, 0, TAU); c.fill(); }
+      break;
+    }
     case 'crater': {
       const g = c.createRadialGradient(W / 2, H / 2, 4, W / 2, H / 2, W / 2);
       g.addColorStop(0, 'rgba(20,18,14,0.75)'); g.addColorStop(0.7, 'rgba(30,28,22,0.4)'); g.addColorStop(1, 'rgba(90,88,78,0)');

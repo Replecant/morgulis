@@ -6,6 +6,7 @@ import { DIALOGS, SPEAKERS, DNode, Choice, fmt } from './dialogs';
 import { drawFigure } from './gfx';
 import { Combat } from './combat';
 import { $ } from './util';
+import { clockText } from './worldmap';
 import { skillBonus, check, checkChance, SKILLS } from './rules';
 import { effMaxHp, woundsOf, bestHealer, bandageAmount, bandage, surgery, rest } from './wounds';
 import { COURAGE_MAX } from './combat';
@@ -146,7 +147,7 @@ function drawPortrait(cv: HTMLCanvasElement, kind: string | null, scale = 3) {
 // ------------------------------------------------------------ HUD
 export function refreshHud() {
   const j = journal().filter((q) => !q.done);
-  $('objective').innerHTML = `<b>${G.location || 'Пустошь'}</b>` + (j.length ? j.map((q) => `<div class="q">• ${q.text}</div>`).join('') : '<div class="q dim">Заданий нет — осмотритесь и поговорите с людьми.</div>');
+  $('objective').innerHTML = `<b>${G.location || 'Пустошь'} · ${clockText()}</b>` + (j.length ? j.map((q) => `<div class="q">• ${q.text}</div>`).join('') : '<div class="q dim">Заданий нет — осмотритесь и поговорите с людьми.</div>');
   $('squadbar').innerHTML = G.squad.map((s) => {
     const max = effMaxHp(s), w = woundsOf(s);
     const marks = w.map((x) => `<span class="wd ${x.heavy ? 'heavy' : ''}" title="${x.name}: ${x.desc}">✚</span>`).join('');
@@ -220,7 +221,7 @@ export function closeSquad(onClose: () => void) { $('squad').classList.add('hidd
 export const squadOpen = () => !$('squad').classList.contains('hidden');
 
 export function exploreHint() {
-  $('hint').textContent = 'WASD / стрелки — идти · E / Пробел — говорить · клик — идти или говорить · Q — лечение · I — снаряжение · M — карта';
+  $('hint').textContent = 'WASD / стрелки — идти · E / Пробел — говорить · клик — идти или говорить · Q — лечение · I — снаряжение · уйти за край — на карту';
 }
 
 let toastTimer = 0;

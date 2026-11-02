@@ -122,6 +122,29 @@ export interface BattleDef {
  */
 export function battleDef(id: string, _flags: Record<string, boolean | undefined>): BattleDef {
   switch (id) {
+    case 'waste':
+      return {
+        id: 'waste', title: 'Засада в пустоши', theme: 'road',
+        map: [
+          '.....,.........T........',
+          '..T.......c.............',
+          '.......,........cc......',
+          '.....c.....T............',
+          '..............,.....T...',
+          '...T.....c..............',
+          '.........,......c.......',
+          '...........T............',
+          '.....c..........,...c...',
+          '..T........c............',
+          '.......,.........T......',
+          '...c..........c.........',
+          '.........T.........,....',
+          '........................',
+        ],
+        players: [[3, 7], [3, 9], [2, 6], [2, 8]],
+        enemies: [{ t: 'scav_gun', x: 19, y: 5 }, { t: 'scav_knife', x: 17, y: 9 }],
+        lights: [[12, 7, 260, '#c8d0a0']],
+      };
     case 'ruins':
     default:
       return {

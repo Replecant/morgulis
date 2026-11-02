@@ -81,6 +81,7 @@ export function bandage(b: UnitBase): string | null {
 export function rest(): string {
   if (G.supplies.rations <= 0) return 'Нет пайков — на голодный желудок раны не заживают.';
   G.supplies.rations--;
+  G.clock += 8; // привал занимает ночь
   const healed: string[] = [];
   for (const b of G.squad) {
     const light = woundsOf(b).filter((w) => !w.heavy);

@@ -40,6 +40,8 @@ export const STYLES: Record<string, Style> = {
   herder: { coat: '#4a3e2c', legs: '#2a241c', belt: '#2a1d12', hat: 'flatcap', hatC: '#3a3024', skin: '#c0a080', beard: '#7a6a5a', weapon: 'goad' },
   butcher: { coat: '#4a4038', legs: '#2a2420', apron: '#7a5a50', skin: '#c89a80', hair: '#3a2a20', weapon: 'knife', scale: 1.1 },
   girl: { coat: '#5a4a3a', dress: true, hat: 'bonnet', hatC: '#4a3a2a', skin: '#d8c0a0', hair: '#8a5a2a', longHair: true, scale: 0.85, weapon: 'goad' },
+  grower: { coat: '#34402c', dress: true, hat: 'bonnet', hatC: '#26301e', skin: '#c8b498', hair: '#8a8a7a', longHair: true, weapon: 'goad' },
+  picker: { coat: '#4a4a36', legs: '#2a2a20', belt: '#2a1d12', hat: 'flatcap', hatC: '#2e2e22', skin: '#cdb498', weapon: 'bag' },
   guard: { coat: '#2e3440', legs: '#1a1c22', belt: '#2a1d12', trim: '#8a8a8a', hat: 'helmet', hatC: '#3a3e46', skin: '#c0a488', weapon: 'rifle' },
 };
 

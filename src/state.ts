@@ -2,7 +2,7 @@ import { makeSquad, UnitBase } from './data';
 import { Character, newCharacter } from './rules';
 import { START_STASH } from './items';
 
-export type Mode = 'title' | 'create' | 'explore' | 'combat' | 'end';
+export type Mode = 'title' | 'create' | 'world' | 'explore' | 'combat' | 'end';
 
 export const G = {
   mode: 'title' as Mode,
@@ -12,6 +12,7 @@ export const G = {
   supplies: newSupplies(),
   stash: [] as string[],   // общий обоз отряда (id предметов)
   location: '',            // название места, где стоит игрок
+  clock: 8,                // игровое время в часах с начала (день 1, 08:00)
   time: 0,
   mouse: { x: 0, y: 0 },
   keys: new Set<string>(),
@@ -23,6 +24,7 @@ export function newSupplies(): Supplies { return { bandages: 3, medicine: 0, rat
 
 export function resetGame(pc: Character = newCharacter()) {
   G.flags = {};
+  G.clock = 8;
   G.supplies = newSupplies();
   G.stash = [...START_STASH];
   G.pc = pc;
@@ -33,7 +35,8 @@ export function resetGame(pc: Character = newCharacter()) {
 export function journal(): { text: string; done: boolean }[] {
   const f = G.flags, out: { text: string; done: boolean }[] = [];
   if (f.valveTaken) out.push({ text: f.valveDone ? 'Клапан для Иды Кроу' : f.hasValve ? 'Отнести клапан Иде Кроу (Эшфорд)' : 'Найти клапан на старой насосной (юг Эшфорда)', done: !!f.valveDone });
-  if (f.beetleTaken) out.push({ text: f.beetleDone ? 'Жучиха Мэг вернулась в Ричморд' : 'Найти сбежавшую жучиху Мэг (к западу от Ричморда, у костей)', done: !!f.beetleDone });
-  if (f.heardScav) out.push({ text: f.scavDone ? 'Разрушенный пост свободен' : 'Мародёры у разрушенного поста (между трактом и путями)', done: !!f.scavDone });
+  if (f.beetleTaken) out.push({ text: f.beetleDone ? 'Жучиха Мэг вернулась в Ричморд' : 'Найти сбежавшую жучиху Мэг (на карте — «Старые кости»)', done: !!f.beetleDone });
+  if (f.feedTaken) out.push({ text: f.feedDone ? 'Грибной корм доставлен в Ричморд' : 'Отвезти ящик грибного корма Уоллесу в Ричморд', done: !!f.feedDone });
+  if (f.heardScav) out.push({ text: f.scavDone ? 'Разрушенный пост свободен' : 'Мародёры у разрушенного поста (на карте — между трактом и путями)', done: !!f.scavDone });
   return out;
 }
