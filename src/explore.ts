@@ -467,7 +467,7 @@ export const Explore = {
     B('farm', 459, 41, 4, 3, { name: 'Дом скорняка', talk: 'house_tanner' });
     B('house', 485, 41, 4, 3, { name: 'Дом', talk: 'hawley_quiet' });
     for (const [x, y] of [[490, 13], [459, 15]]) B('feed', x, y, 2, 2, { name: 'Куча корма', talk: 'feed' });
-    B('chitin', 470, 27, 2, 1, { name: 'Пустые панцири', talk: 'chitinpile' });
+    B('chitin', 470, 27, 2, 1, { name: 'Пустые панцири', talk: 'chitinpile_n' });
     B('rposter', 472, 31, 1, 1, { name: 'Плакат Собрания', talk: 'rposter' });
     for (const [x, y] of [[463, 31], [482, 31], [478, 44]]) B('lamp', x, y, 1, 1, { name: 'Фонарь', talk: 'lamp' });
 
@@ -608,7 +608,7 @@ export const Explore = {
     let n = 0;
     for (const p of PENS) for (let i = 0; i < (p === PENS[0] ? 4 : 3); i++) {
       const x = p.x0 + 2 + r() * (p.x1 - p.x0 - 4), y = p.y0 + 2 + r() * (p.y1 - p.y0 - 4);
-      this.beetles.push({ id: 'b' + n, x, y, tx: x, ty: y, pen: p, dir: r() * TAU, seed: r() * 10, wait: r() * 3, talk: 'beetle', name: `Жук «${names[n++ % names.length]}»`, scale: 0.9 + r() * 0.3 });
+      this.beetles.push({ id: 'b' + n, x, y, tx: x, ty: y, pen: p, dir: r() * TAU, seed: r() * 10, wait: r() * 3, talk: p.x0 > 450 ? 'beetle_hawley' : p.x0 > 250 ? 'beetle_moss' : 'beetle', name: `Жук «${names[n++ % names.length]}»`, scale: 0.9 + r() * 0.3 });
     }
 
     // ---------------- фоновые жители (точки маршрутов прижимаются к ближайшей свободной клетке)
