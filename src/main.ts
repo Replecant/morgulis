@@ -44,6 +44,7 @@ function toWorld(fromScene?: string) {
 }
 function toScene(id: string, at?: { x: number; y: number }) {
   G.mode = 'explore';
+  G.flags['visited_' + id] = true;
   Explore.enter(id, at);
   G.keys.clear();
   hint();
@@ -67,6 +68,7 @@ Combat.hooks = {
     if (id === 'waste') { World.killBand(); Dialog.start('after_band'); }
     if (id.startsWith('hungry')) { World.killHungry(); Dialog.start('after_hungry'); }
     if (id === 'lake') { World.killDemon(); Dialog.start('after_demon'); }
+    if (id.startsWith('loyal')) { World.killLoyal(); Dialog.start('after_loyal'); }
     if (id.startsWith('trench')) { World.killDead(); World.deadHit = null; Dialog.start('after_dead'); }
     refreshHud();
   },
@@ -81,6 +83,7 @@ Combat.hooks = {
           if (id === 'waste') World.calmBand(24);
           if (id.startsWith('hungry')) World.calmHungry(24);
           if (id === 'lake') World.calmDemon(24);
+          if (id.startsWith('loyal')) World.calmLoyal(24);
           if (id.startsWith('trench')) World.calmDead(12);
           combatShow(false); G.mode = returnMode; hint(); refreshHud();
         } },
@@ -115,7 +118,7 @@ World.onEncounter = () => Dialog.start('enc_band');
 Debug.load();
 Debug.weathers = WEATHER_ORDER.map((k) => ({ id: k, name: WEATHER_NAMES[k] }));
 Debug.onWeather = (k) => { if (k === 'auto') Weather.locked = false; else Weather.set(k as typeof WEATHER_ORDER[number], true); refreshHud(); };
-Debug.places = LOCS.map((l) => ({ id: l.id, name: l.name, group: l.x < -900 ? 'Земли баронессы' : l.x < 120 ? 'Поле сражений' : 'Земли барона' }));
+Debug.places = LOCS.map((l) => ({ id: l.id, name: l.name, group: l.y < 0 ? 'Север: земли Собрания' : l.x < -900 ? 'Земли баронессы' : l.x < 120 ? 'Поле сражений' : 'Земли барона' }));
 Debug.onTeleport = (id) => {
   if (G.mode === 'combat' || G.mode === 'title' || G.mode === 'create') { toast('Телепорт — только на карте или в сцене'); return; }
   const l = LOCS.find((x) => x.id === id)!;
@@ -127,7 +130,8 @@ Debug.onTeleport = (id) => {
   World.updateLocation(); World.discover(); refreshHud();
   toast(`Телепорт: ${l.name}`);
 };
-World.onPatrol = (owner) => Dialog.start(owner === 'baroness' ? 'enc_bpatrol' : 'enc_patrol');
+World.onPatrol = (owner) => Dialog.start(owner === 'baroness' ? 'enc_bpatrol' : owner === 'revo' ? 'enc_revo' : 'enc_patrol');
+World.onLoyal = () => Dialog.start('enc_loyal');
 World.onDiscover = (l) => toast(`Замечено: ${l.name}`);
 World.onDead = () => Dialog.start('enc_dead');
 World.onHungry = () => Dialog.start('enc_hungry');
@@ -170,6 +174,9 @@ Dialog.onAction = (act) => {
   else if (act === 'demon_lose') World.calmDemon(12);
   else if (act === 'battle_hungry') startBattle('hungry' + (World.hungryHit?.kinds.length ?? 2));
   else if (act === 'hungry_calm') World.calmHungry(48);
+  else if (act === 'battle_loyal') startBattle('loyal' + (World.loyalHit?.kinds.length ?? 2));
+  else if (act === 'loyal_calm') World.calmLoyal(72);
+  else if (act === 'loyal_lose') World.calmLoyal(10);
   else if (act === 'hungry_lose') World.calmHungry(6);
 };
 

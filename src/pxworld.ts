@@ -77,7 +77,7 @@ const TOP: Record<string, number> = {
   house: 16, ruin: 16, farm: 16, station: 20, pumphouse: 28, slaughter: 16, barn: 14, hut: 16,
   tank: 18, watertower: 44, wagon: 14, lamp: 30, tree: 26, rock: 6, barrel: 6, fence: 10, feed: 8, chitin: 6,
   cellar: 10, adit: 26, shroombed: 6, bigshroom: 18, rack: 14, wall: 30, gate: 40, railgate: 36, tower: 56,
-  sign: 16, fountain: 34, sandbags: 8, wire: 8, cell: 16, orecart: 8, boat: 4, nets: 20, scrapheap: 16, banner: 46, poster: 24, statue: 44, horn: 40, keep: 76, barracks: 22, laundry: 22, handcart: 12, crates: 14, coalheap: 8, standpipe: 18, noticeboard: 22, sacks: 8, vent: 4, clinic: 30, shack: 18, factory: 64, tenement: 30, stall: 18, workshop: 26, crater: 0, bones: 0, wallruin: 14, skeleton: 14, milestone: 14, lorry: 12,
+  sign: 16, fountain: 34, sandbags: 8, wire: 8, cell: 16, orecart: 8, boat: 4, nets: 20, scrapheap: 16, banner: 46, poster: 24, statue: 44, horn: 40, keep: 76, barracks: 22, laundry: 22, handcart: 12, crates: 14, coalheap: 8, standpipe: 18, noticeboard: 22, sacks: 8, vent: 4, clinic: 30, shack: 18, factory: 64, tenement: 30, stall: 18, workshop: 26, gallows: 56, gibbet: 84, burnt: 26, pine: 46, logs: 8, stump: 2, rbanner: 46, rposter: 24, sawpit: 14, crater: 0, bones: 0, wallruin: 14, skeleton: 14, milestone: 14, lorry: 12,
 };
 
 export interface ObjLike { kind: string; x: number; y: number; w: number; h: number; seed: number; ruinKind?: string; boarded?: boolean }
@@ -407,6 +407,106 @@ export function objSprite(o: ObjLike, neighbors?: { horizFence: boolean }) {
       R(W / 2, H - 17, 5, 2, '#4a4e3a');
       break;
     }
+    case 'gallows': { // виселица у дороги: столб, перекладина, повешенный в старой форме с табличкой на груди
+      const side = o.seed % 2 ? 1 : -1, px = side > 0 ? 3 : W - 5, bx = side > 0 ? 14 : 5;
+      R(px - 1, H - 2, 6, 2, 'rgba(0,0,0,0.45)');
+      R(px, -54, 2, H + 54, '#3a2a1c'); R(px + (side > 0 ? 1 : 0), -54, 1, H + 54, '#4a3826');
+      R(Math.min(px, bx), -54, Math.abs(bx - px) + 2, 2, '#3a2a1c');
+      L(px + (side > 0 ? 2 : -1), -46, px + (side > 0 ? 6 : -5), -52, '#3a2a1c');     // подкос
+      R(bx, -52, 1, 8, '#8a7a5a');                                                   // верёвка
+      const old = o.seed % 5 !== 2, coat = old ? ['#4e5462', '#4a4e58', '#464c5c'][o.seed % 3] : '#4a4438';
+      const skin = '#9a9c8a', hx = bx - 2;
+      R(hx, -44, 4, 4, skin); R(hx + 1, -41, 3, 1, shade(skin, -0.25)); P(hx + 1, -42, '#2a2a24');   // голова набок
+      if (old && o.seed % 3 === 0) R(hx - 1, -45, 6, 2, '#3a3e4a');                // фуражка ещё держится
+      R(hx - 1, -40, 6, 11, coat); R(hx - 1, -40, 1, 11, shade(coat, 0.15)); R(hx + 4, -40, 1, 11, shade(coat, -0.25));
+      R(hx - 2, -39, 1, 8, shade(coat, -0.1)); R(hx + 5, -39, 1, 8, shade(coat, -0.3)); P(hx - 2, -31, skin); P(hx + 5, -31, skin);
+      if (old) { R(hx + 1, -40, 1, 9, '#8a7a4a'); }
+      R(hx, -37, 4, 3, '#c8c0a8'); P(hx + 1, -36, '#3a2a24'); P(hx + 2, -36, '#3a2a24');                 // табличка
+      R(hx, -29, 2, 9, shade(coat, -0.35)); R(hx + 2, -29, 2, 8, shade(coat, -0.4));                    // ноги
+      R(hx, -20, 2, 1, '#1a1612'); R(hx + 2, -21, 2, 1, '#1a1612');
+      break;
+    }
+    case 'gibbet': { // помост посреди площади: высокая рама, на ней — барон в богатом камзоле
+      const cx = Math.round(W / 2);
+      R(4, H - 2, W - 8, 3, 'rgba(0,0,0,0.5)');
+      R(6, H - 22, W - 12, 20, '#4a3a26'); R(6, H - 22, W - 12, 2, '#6a5236');                          // помост
+      for (let x = 8; x < W - 8; x += 6) R(x, H - 20, 1, 18, '#3a2c1c');
+      for (let k = 0; k < 4; k++) R(cx - 8 + k, H - 2 - k * 4, 16 - k * 2, 2, '#5a4430');                // ступени
+      for (const fx of [cx - 22, cx + 20]) { R(fx, -82, 3, H + 60, '#3a2a1c'); R(fx + 1, -82, 1, H + 60, '#4a3826'); }
+      R(cx - 24, -84, 50, 3, '#3a2a1c'); L(cx - 19, -70, cx - 10, -81, '#3a2a1c', 2); L(cx + 20, -70, cx + 11, -81, '#3a2a1c', 2);
+      R(cx, -81, 1, 9, '#8a7a5a');
+      const skin = '#a0a08e', coat = '#2a2836', gold = '#c8a050';
+      R(cx - 2, -72, 5, 5, skin); P(cx - 1, -70, '#2a2a24'); R(cx - 2, -73, 5, 1, '#d0ccc0');             // голова, седой парик
+      R(cx - 4, -67, 9, 14, coat); R(cx - 4, -67, 1, 14, shade(coat, 0.2)); R(cx + 4, -67, 1, 14, shade(coat, -0.3));
+      R(cx - 1, -67, 3, 3, '#d8d4c8'); R(cx, -64, 1, 10, gold); R(cx - 4, -60, 9, 1, '#8a2a24');                     // жабо, позумент, лента
+      R(cx - 5, -66, 1, 10, coat); R(cx + 5, -66, 1, 10, coat); P(cx - 5, -56, skin); P(cx + 5, -56, skin);
+      R(cx - 3, -63, 7, 4, '#d8d0b8'); for (let k = 0; k < 5; k++) P(cx - 2 + k, -61, '#3a2018');                  // табличка «тиран»
+      R(cx - 3, -53, 3, 10, '#c8c0b0'); R(cx + 1, -53, 3, 9, '#bcb4a4');                                           // светлые штаны, без сапог
+      R(cx - 3, -43, 3, 1, skin); R(cx + 1, -44, 3, 1, skin);
+      for (const bx of [10, W - 12]) { R(bx, -40, 2, H + 18, '#3a3428'); R(bx + 2, -38, 8, 18, '#a82a22'); R(bx + 2, -38, 8, 2, '#c03a30'); }
+      break;
+    }
+    case 'burnt': { // сгоревший дом: обугленные стены с провалом посередине, пустые окна, рухнувшие балки, уцелевшая печная труба
+      R(1, H, W, 2, 'rgba(0,0,0,0.5)');
+      const wallH = 30, wy = H - wallH;
+      for (let x = 0; x < W; x += 3) {
+        const mid = Math.abs(x - W * 0.55) < W * 0.22;                 // середина обвалилась
+        const top = mid ? 10 + Math.floor(r() * 8) : Math.floor(r() * 5);
+        R(x, wy + top, 3, wallH - top, (x / 3) % 2 ? '#2a2420' : '#221e1a');
+        P(x + 1, wy + top, '#3e342c');
+      }
+      R(0, wy, 2, wallH, '#33291f'); R(W - 2, wy + 2, 2, wallH - 2, '#33291f');                       // угловые столбы
+      for (const wx of [6, W - 14]) { R(wx, wy + 6, 7, 6, '#0a0908'); P(wx, wy + 11, '#8a3a18'); P(wx + 6, wy + 6, '#6a2e14'); } // пустые окна, подпалины
+      R(Math.round(W / 2) - 3, H - 11, 7, 11, '#0a0908');
+      L(4, wy + 2, W * 0.45, H - 4, '#1a1410', 2); L(W - 6, wy + 4, W * 0.5, H - 3, '#1a1410', 2);   // рухнувшие балки
+      R(W - 16, -14, 6, H + 14 - wallH + 2, '#5a3e2e'); R(W - 16, -14, 6, 2, '#2a1c14'); for (let y = -10; y < wy; y += 4) R(W - 16, y, 6, 1, '#3e2a1e'); // труба
+      for (let i = 0; i < 26; i++) P(2 + r() * (W - 4), H - 1 - r() * 4, ['#5e5a52', '#7a746a', '#3a3632'][Math.floor(r() * 3)]); // пепел
+      for (let i = 0; i < 3; i++) P(6 + r() * (W - 12), H - 2 - r() * 3, '#d0602a');
+      lights.push({ x: Math.round(W / 2), y: H - 4, r: 16, color: '#d06a30', a: 0.35 });
+      break;
+    }
+    case 'pine': { // живая ель: тёмные ярусы хвои
+      R(3, H - 2, 14, 2, 'rgba(0,0,0,0.45)');
+      R(9, H - 8, 2, 8, '#2e2216');
+      const tiers = 5;
+      for (let k = 0; k < tiers; k++) {
+        const top = -40 + k * 8, w = 3 + k * 2;
+        for (let y = 0; y < 10; y++) { const ww = Math.round(w * (y + 1) / 10) + 1; R(10 - ww, top + y, ww * 2, 1, y > 7 ? '#162216' : k % 2 ? '#1e2e1e' : '#223422'); P(10 - ww, top + y, '#30462c'); }
+      }
+      P(9, -42, '#30462c'); P(10, -42, '#30462c');
+      break;
+    }
+    case 'stump': R(4, H - 4, 10, 2, 'rgba(0,0,0,0.4)'); R(5, H - 8, 9, 5, '#4a3622'); R(5, H - 8, 9, 2, '#a07a4a'); P(8, H - 8, '#7a5a38'); P(11, H - 7, '#7a5a38'); break;
+    case 'logs': { // штабель брёвен: торцы кругляками, на некоторых — метка краской
+      R(1, H - 1, W - 2, 2, 'rgba(0,0,0,0.45)');
+      for (let row = 0; row < 3; row++) for (let k = 0; k < (W - 4) / 6 - row; k++) {
+        const x = 4 + row * 3 + k * 6, y = H - 4 - row * 5;
+        pellipse(c, x, y, 3, 2, '#6a4a2c'); pellipse(c, x, y, 2, 1, '#a07a4a'); P(x, y, '#7a5a38');
+        if ((k + row) % 4 === 1) P(x + 1, y - 1, '#b02a22');
+      }
+      break;
+    }
+    case 'sawpit': { // козлы и бревно с двуручной пилой
+      R(2, H - 2, W - 4, 2, 'rgba(0,0,0,0.45)');
+      for (const x of [6, W - 8]) { L(x - 3, H, x + 3, H - 12, '#3a2a1c', 2); L(x + 3, H, x - 3, H - 12, '#3a2a1c', 2); }
+      R(0, H - 12, W, 4, '#7a5636'); R(0, H - 12, W, 1, '#9a7448'); R(W - 2, H - 12, 2, 4, '#a07a4a');
+      L(W / 2, H - 14, W / 2 + 4, H - 4, '#9a9a90'); R(W / 2 - 1, H - 16, 3, 2, '#5a3a22');
+      break;
+    }
+    case 'rbanner': { // красное знамя Собрания — без герба и знаков
+      R(9, -44, 2, H + 44, '#3a3428'); P(9, -46, '#8a8a80'); P(10, -46, '#8a8a80');
+      R(11, -42, 9, 20, '#a82a22'); R(11, -42, 9, 2, '#c03a30'); R(11, -26, 9, 4, '#8a2018');
+      for (let y = -40; y < -22; y += 4) P(19, y, '#8a2018');
+      break;
+    }
+    case 'rposter': { // плакат Собрания поверх старого: кулак, разорванная цепь, полосы лозунга
+      R(2, H - 22, 2, 22, '#3a2c1e'); R(W - 4, H - 22, 2, 22, '#3a2c1e');
+      R(1, H - 24, W - 2, 16, '#7a7466'); R(2, H - 23, W - 4, 14, '#d0c4a8'); R(2, H - 23, W - 4, 4, '#a82a22');
+      R(5, H - 18, 4, 5, '#3a2a24'); R(6, H - 19, 3, 1, '#3a2a24');                                  // кулак
+      P(11, H - 16, '#5a5a54'); P(13, H - 15, '#5a5a54'); P(15, H - 16, '#5a5a54');                     // цепь
+      R(4, H - 12, W - 8, 1, '#a82a22'); R(W - 7, H - 21, 3, 3, '#7a7466');                             // край старого плаката
+      break;
+    }
     case 'banner': { // знамя баронессы на шесте
       R(9, -44, 2, H + 44, '#3a3428'); P(9, -46, BRASS); P(10, -46, BRASS);
       R(11, -42, 8, 22, '#8a2a24'); R(11, -42, 8, 2, '#a83a30'); R(11, -22, 3, 2, '#8a2a24'); R(16, -22, 3, 2, '#8a2a24');  // ласточкин хвост
@@ -583,8 +683,9 @@ export function objSprite(o: ObjLike, neighbors?: { horizFence: boolean }) {
       R(0, wy + 21, W, 2, '#2e2216');                                                                     // межэтажная балка
       for (let i = 0; i < 3; i++) { const px = Math.floor(r() * (W - 10)), py = wy + Math.floor(r() * 36); R(px, py, 8, 6, '#5a5a52'); R(px, py, 8, 1, '#7a7a70'); } // заплатки жестью
       for (const [wx, wy2] of [[8, wy + 6], [W - 16, wy + 6], [W - 16, wy + 28]]) {
-        const on = r() < 0.45;
-        R(wx + lean * (wy2 < wy + 20 ? 1 : 0), wy2, 7, 7, on ? AMBER : '#1a1c20'); R(wx + 3, wy2, 1, 7, '#2a1e12');
+        const on = r() < (o.boarded ? 0.12 : 0.45), sx = wx + lean * (wy2 < wy + 20 ? 1 : 0);
+        R(sx, wy2, 7, 7, on ? AMBER : '#1a1c20'); R(wx + 3, wy2, 1, 7, '#2a1e12');
+        if (o.boarded && !on) { R(sx - 1, wy2, 3, 7, '#4a3a26'); R(sx + 5, wy2, 3, 7, '#4a3a26'); R(sx + 2, wy2, 3, 7, '#3a2c1c'); P(sx, wy2 + 3, '#2a1e12'); } // закрытые ставни
         if (on) lights.push({ x: wx + 3, y: wy2 + 3, r: 20, color: '#f0b050', a: 0.6 });
       }
       R(7, H - 13, 8, 13, '#140e0a'); P(13, H - 7, BRASS);                                                // дверь

@@ -401,6 +401,7 @@ export function miniSprite(kind: string, frame = 0): HTMLCanvasElement {
   if (st.trim) { R(4, 6, 1, 4, st.trim); }
   if (st.sash) R(3, 7, 1, 1, '#7a2020');
   if (st.number) R(3, 7, 2, 1, '#d8d4c0');
+  if (st.armband) R(2, 7, 1, 2, st.armband);
   // голова
   R(3, 2, 4, 4, skin); R(6, 2, 1, 4, shade(skin, -0.2));
   if (st.respirator) { R(3, 3, 4, 3, '#5a5a48'); R(5, 3, 1, 1, '#9ab0a0'); R(5, 5, 1, 2, '#3a3a30'); }

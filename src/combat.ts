@@ -1265,7 +1265,7 @@ export const Combat = {
     const cv = document.createElement('canvas'); cv.width = LWb; cv.height = LHb;
     const c = cv.getContext('2d')!;
     const r = pseed(this.def.id === 'road' ? 42 : this.def.id === 'waste' ? 91 : 77);
-    const factory = this.def.theme === 'factory', trench = this.def.theme === 'trench';
+    const factory = this.def.theme === 'factory', trench = this.def.theme === 'trench', forest = this.def.theme === 'forest';
     // пол
     for (let y = 0; y < CH; y++) for (let x = 0; x < CW; x++) {
       const X = x * T, Y = y * T;
@@ -1279,12 +1279,12 @@ export const Combat = {
         for (let k = 0; k < 5; k++) ppx(c, X + r() * T, Y + r() * T, r() < 0.5 ? '#2a241b' : '#4a4234');
         if (r() < 0.12) { pellipse(c, X + 10, Y + 10, 7, 4, '#4a4234'); pellipse(c, X + 10, Y + 9, 5, 3, '#1e1a14'); } // воронка
         if (this.map[y][x] === ',') for (let k = 0; k < 3; k++) prect(c, X + 3 + r() * 14, Y + 6 + r() * 10, 1, 2, '#4e5a38');
-      } else paintTile(c, X, Y, this.map[y][x] === ',' ? 'g' : 'w', r);
+      } else paintTile(c, X, Y, forest ? (this.map[y][x] === ',' ? 'g' : 'm') : this.map[y][x] === ',' ? 'g' : 'w', r);
     }
     if (trench) { // газ стелется по земле — бледные пятна растром
       for (let i = 0; i < 900; i++) { const gx = r() * LWb, gy = r() * LHb; if (Math.sin(gx / 37) + Math.cos(gy / 23) > 1.1) ppx(c, gx, gy, '#5a6e3a'); }
     }
-    if (!factory && !trench) { // разбитая дорога через поле боя
+    if (!factory && !trench && !forest) { // разбитая дорога через поле боя
       for (let x = 0; x < LWb; x++) {
         const yc = 7 * T + Math.round(Math.sin(x / 40) * 10);
         for (let y = yc - 10; y < yc + 10; y++) if (r() < 0.55) ppx(c, x, y, (x + y) % 7 ? '#4a4436' : '#5a5040');
@@ -1329,7 +1329,7 @@ export const Combat = {
           for (let k = 0; k < 20; k++) { ppx(c, X + k, Y + 6 + Math.round(Math.sin(k * 1.3) * 2), '#8a8a80'); ppx(c, X + k, Y + 12 + Math.round(Math.cos(k * 1.1) * 2), '#7a7a70'); }
           for (const [a, b] of [[6, 5], [10, 13], [17, 9]]) { ppx(c, X + a, Y + b, '#b0b0a8'); ppx(c, X + a + 1, Y + b - 1, '#b0b0a8'); }
           break;
-        case 'T': spr('tree', x, y); break;
+        case 'T': spr(forest ? 'pine' : 'tree', x, y); break;
         case 'c':
           if (r() < 0.4) spr('barrel', x, y);
           else { prect(c, X + 3, Y + 4, 14, 13, '#6a4c2c'); prect(c, X + 3, Y + 2, 14, 3, '#82603a'); pline(c, X + 3, Y + 5, X + 16, Y + 16, '#3a2a18'); prect(c, X + 3, Y + 4, 14, 1, '#3a2a18'); prect(c, X + 2, Y + 17, 16, 1, 'rgba(0,0,0,0.5)'); }

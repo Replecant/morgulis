@@ -132,6 +132,10 @@ export const ENEMIES: Record<string, UnitBase> = {
   // голодные бандиты: слабые, измождённые
   hungry:  E('hungry', 'Голодный бандит', 'hungry', 5, 4, ['knife'], 'melee', 0, 9),
   hungry2: E('hungry2', 'Голодный бандит', 'hungry2', 5, 4, ['cudgel'], 'melee', 0, 9),
+  // лоялисты старого режима: бывшие гвардейцы, загнанные в лес — стреляют метко, патронов мало
+  loyalist:  E('loyalist', 'Лоялист', 'loyalist', 8, 4, ['carbine', 'bayonet'], 'ranged', 2, 11),
+  loyalist2: E('loyalist2', 'Лоялист', 'loyalist2', 8, 4, ['carbine', 'bayonet'], 'ranged', 2, 11),
+  loyal_off: E('loyal_off', 'Офицер старой гвардии', 'loyal_off', 12, 4, ['revolver', 'saber'], 'ranged', 3, 12),
   // траншейные мертвецы: медленные, упрямые, бьют больно
   dead_soldier: E('dead_soldier', 'Окопный мертвец', 'dead_soldier', 9, 3, ['rustbayonet'], 'melee', 2, 9),
   dead_rifle:   E('dead_rifle', 'Мертвец-стрелок', 'dead_rifle', 7, 3, ['oldrifle', 'rustbayonet'], 'ranged', 1, 9),
@@ -142,7 +146,7 @@ export const ENEMIES: Record<string, UnitBase> = {
 export interface BattleDef {
   id: string;
   title: string;
-  theme: 'road' | 'factory' | 'trench';
+  theme: 'road' | 'factory' | 'trench' | 'forest';
   map: string[];
   players: [number, number][];
   /** ammo — сколько зарядов на бой (иначе — без счёта), extra — добавочное оружие, move — поправка хода */
@@ -182,6 +186,33 @@ export function battleDef(id: string, _flags: Record<string, boolean | undefined
       players: [[3, 9], [3, 11], [2, 8], [2, 10]],
       enemies: [{ t: 'salamander', x: 17, y: 5 }],
       lights: [[12, 3, 220, '#6a9a8a'], [3, 10, 110, '#e8c070']],
+    };
+  }
+  if (id.startsWith('loyal')) { // лоялисты — в лесной чаще: стволы елей, бурелом
+    const n = +(id.slice(5) || 2);
+    const comp: BattleDef['enemies'] = n >= 3
+      ? [{ t: 'loyal_off', x: 20, y: 7, ammo: { revolver: 4 } }, { t: 'loyalist', x: 18, y: 4, ammo: { carbine: 3 } }, { t: 'loyalist', x: 18, y: 10, ammo: { carbine: 3 } }]
+      : [{ t: 'loyalist', x: 19, y: 5, ammo: { carbine: 3 } }, { t: 'loyalist2', x: 18, y: 9, ammo: { carbine: 3 } }];
+    return { id, title: 'Лесная чаща', theme: 'forest',
+      map: [
+        'TT..T...T....T..T...T.TT',
+        'T...c.....T.......T....T',
+        '..T.....T....,..T....T..',
+        '.....T......c.......T...',
+        'T.......T.......T.......',
+        '..,..T.....T.......c..T.',
+        '.c........,....T........',
+        '....T..T.........T....T.',
+        'T.........c...T.........',
+        '...T...,.......T.....T..',
+        '.T.....T...T..c....T....',
+        '....c.......T......,..T.',
+        'T..T....T.......T.......',
+        'TT....T....T..T....T..TT',
+      ],
+      players: [[3, 6], [3, 8], [2, 5], [2, 9]],
+      enemies: comp,
+      lights: [[12, 6, 200, '#a8b890'], [3, 7, 110, '#e8c070']],
     };
   }
   if (id.startsWith('hungry')) { // голодные бандиты — на карте засады в пустоши

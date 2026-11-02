@@ -15,7 +15,7 @@ import { Weather } from './weather';
 
 /** Клетка на экране (низкое разрешение ×2). */
 export const ET = T * PS;
-export const MW = 412, MH = 72; // восточнее x=103 — форт барона; с x=188 — сцены земель баронессы
+export const MW = 640, MH = 72; // восточнее x=103 — форт барона; с x=188 — сцены земель баронессы; с x=412 — север (земли Собрания)
 const VW = LW, VH = LH; // видимая область в пикселях низкого разрешения
 
 type Ground = 'w' | 'g' | 'r' | 'p' | 'o' | 'k' | 'f' | 'm' | 'x' | 'l';
@@ -45,6 +45,8 @@ const AREAS: { name: string; x0: number; y0: number; x1: number; y1: number }[] 
   { name: 'Разъезд Эшфорд', x0: 6, y0: 55, x1: 37, y1: 63 },
   { name: 'Эшфорд', x0: 5, y0: 31, x1: 37, y1: 57 },
   { name: 'Ричморд', x0: 57, y0: 5, x1: 93, y1: 39 },
+  { name: 'Площадь Свободы', x0: 597, y0: 22, x1: 623, y1: 38 },
+  { name: 'Дорога к воротам', x0: 604, y0: 40, x1: 616, y1: 66 },
 ];
 /** Локальные сцены — участки большой карты. Уход за край сцены возвращает на глобальную карту. */
 export const SCENES: Record<string, { name: string; x0: number; y0: number; x1: number; y1: number; entry: Pt }> = {
@@ -60,9 +62,15 @@ export const SCENES: Record<string, { name: string; x0: number; y0: number; x1: 
   mossley:   { name: 'Мосслей', x0: 274, y0: 14, x1: 313, y1: 50, entry: { x: 294, y: 49 } },
   bcamp:     { name: 'Особый лагерь', x0: 316, y0: 18, x1: 357, y1: 60, entry: { x: 356, y: 40 } },
   bfort:     { name: 'Форт баронессы', x0: 360, y0: 8, x1: 409, y1: 66, entry: { x: 408, y: 37 } },
+  // север: земли бывшего барона Сильвера — край Народного Собрания
+  einbow:    { name: 'Эйнбоу', x0: 414, y0: 16, x1: 452, y1: 50, entry: { x: 433, y: 50 } },
+  hawley:    { name: 'Хоули', x0: 456, y0: 10, x1: 495, y1: 48, entry: { x: 457, y: 30 } },
+  woodham:   { name: 'Вудхэм', x0: 499, y0: 14, x1: 537, y1: 50, entry: { x: 537, y: 32 } },
+  tarwell:   { name: 'Тарвелл', x0: 541, y0: 14, x1: 579, y1: 50, entry: { x: 541, y: 32 } },
+  svoboda:   { name: 'Форт Свобода', x0: 583, y0: 4, x1: 638, y1: 68, entry: { x: 610, y: 68 } },
   fort2:    { name: 'Средний город', x0: 144, y0: 31, x1: 184, y1: 67, entry: { x: 147, y: 49 } },
 };
-const PENS = [{ x0: 62, y0: 9, x1: 73, y1: 17, gx: 67 }, { x0: 77, y0: 10, x1: 88, y1: 18, gx: 82 }, { x0: 296, y0: 18, x1: 307, y1: 27, gx: 301 }]; // третий — загон в Мосслее
+const PENS = [{ x0: 62, y0: 9, x1: 73, y1: 17, gx: 67 }, { x0: 77, y0: 10, x1: 88, y1: 18, gx: 82 }, { x0: 296, y0: 18, x1: 307, y1: 27, gx: 301 }, { x0: 461, y0: 13, x1: 472, y1: 21, gx: 466 }, { x0: 477, y0: 13, x1: 488, y1: 21, gx: 482 }]; // третий — загон в Мосслее, четвёртый и пятый — в Хоули
 
 const BAYER4 = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5].map((q) => (q + 0.5) / 16);
 /** Полупрозрачный клуб растром: пиксели либо есть, либо нет. */
@@ -143,6 +151,12 @@ export const Explore = {
     fill('m', 274, 14, 40, 37);                                                     // Мосслей: влажная низина
     fill('o', 316, 18, 42, 43);                                                     // Особый лагерь
     fill('p', 360, 8, 50, 59); fill('k', 384, 28, 12, 18);                          // форт баронессы: плац
+    // ---------------- север
+    fill('g', 415, 17, 37, 33); for (let i = 0; i < 16; i++) blob('o', 418 + Math.floor(r() * 31), 20 + Math.floor(r() * 27), 1 + Math.floor(r() * 2)); // Эйнбоу: пепелище
+    fill('g', 457, 11, 38, 37);                                                     // Хоули
+    fill('m', 500, 15, 37, 35); fill('g', 507, 22, 24, 21);                         // Вудхэм: поляна в лесу
+    fill('o', 542, 15, 37, 35);                                                     // Тарвелл: промасленная земля
+    fill('f', 583, 4, 56, 64); fill('p', 585, 6, 52, 61); fill('k', 599, 24, 23, 13); // форт Свобода: улицы и площадь
 
     // дороги
     const road = (pts: number[][], wdt = 1) => {
@@ -168,6 +182,12 @@ export const Explore = {
     road([[229, 47], [190, 47]]); road([[271, 48], [233, 48]]); road([[294, 50], [294, 30], [281, 30]]);
     road([[357, 40], [321, 40]]); road([[337, 26], [337, 58]]); // от ворот через лагерь; поперёк — от цехов к баракам
     road([[409, 37], [362, 37]]); road([[390, 9], [390, 65]]);
+    // север
+    road([[433, 50], [433, 33], [416, 33]]); road([[433, 33], [450, 30]]);
+    road([[456, 30], [494, 30]]); road([[475, 30], [475, 46]]);
+    road([[537, 32], [520, 32], [512, 26]]);
+    road([[541, 32], [578, 32]]); road([[560, 32], [560, 18]]);
+    road([[609, 68], [609, 38]]); road([[586, 38], [636, 38]]); road([[609, 23], [609, 14]]); road([[586, 14], [636, 14]]);
 
     // масляные пятна вокруг качалок
     const PUMPS: [number, number][] = [[9, 34], [32, 34], [18, 48], [33, 52], [11, 44]];
@@ -423,6 +443,100 @@ export const Explore = {
     for (const x of [384, 390]) B('wagon', x, 61, 4, 1, { name: 'Вагон', talk: 'bwagon' });
     for (const [x, y] of [[381, 32], [399, 32], [381, 42], [399, 33]]) B('lamp', x, y, 1, 1, { name: 'Фонарь', talk: 'lamp' });
 
+
+    // ======================= ЭЙНБОУ — сожжена за связи со старым режимом
+    const burnt = (x: number, y: number, w = 4) => B('burnt', x, y, w, 3, { name: 'Пепелище', talk: 'burnt' });
+    for (const [x, y] of [[418, 21], [425, 20], [439, 21], [446, 22], [418, 37], [424, 38], [438, 37], [444, 38], [420, 44], [440, 44]]) burnt(x, y);
+    B('burnt', 431, 20, 5, 3, { name: 'Сгоревшая часовня', talk: 'burnt_chapel' });
+    B('noticeboard', 436, 33, 2, 1, { name: 'Приговор на столбе', talk: 'einb_notice' });
+    for (const [x, y] of [[427, 27], [429, 27], [431, 27], [427, 29], [429, 29]]) add({ kind: 'bones', x, y, w: 1, h: 1, block: false, name: 'Свежая могила', talk: 'einb_graves' });
+    B('standpipe', 443, 30, 1, 1, { name: 'Колодец', talk: 'einb_well' });
+    for (const [x, y] of [[417, 28], [448, 34], [421, 49], [449, 46]]) B('tree', x, y, 1, 1, { name: 'Обгорелое дерево' });
+    for (const [x, y] of [[436, 26], [422, 33]]) B('crates', x, y, 1, 1, { name: 'Брошенный скарб', talk: 'einb_junk' });
+
+    // ======================= ХОУЛИ — жуководы; беда прошла почти стороной
+    B('farm', 458, 23, 4, 3, { name: 'Дом старосты', talk: 'hawley_house' });
+    B('rbanner', 462, 24, 1, 1, { name: 'Красный флаг', talk: 'rbanner' });
+    B('barn', 464, 23, 8, 3, { name: 'Жучиный сарай', talk: 'barn' });
+    B('barn', 480, 23, 8, 3, { name: 'Жучиный сарай', talk: 'barn' });
+    B('farm', 489, 23, 4, 3, { name: 'Дом жуковода', talk: 'house_richmord2' });
+    B('house', 459, 33, 4, 3, { name: 'Дом жуковода', talk: 'house_richmord2' });
+    B('farm', 466, 33, 4, 3, { name: 'Дом кормовщиков', talk: 'house_richmord2' });
+    B('burnt', 479, 33, 4, 3, { name: 'Сгоревший дом', talk: 'hawley_burnt' });
+    B('house', 485, 33, 4, 3, { name: 'Дом', talk: 'hawley_quiet' });
+    B('farm', 459, 41, 4, 3, { name: 'Дом скорняка', talk: 'house_tanner' });
+    B('house', 485, 41, 4, 3, { name: 'Дом', talk: 'hawley_quiet' });
+    for (const [x, y] of [[490, 13], [459, 15]]) B('feed', x, y, 2, 2, { name: 'Куча корма', talk: 'feed' });
+    B('chitin', 470, 27, 2, 1, { name: 'Пустые панцири', talk: 'chitinpile' });
+    B('rposter', 472, 31, 1, 1, { name: 'Плакат Собрания', talk: 'rposter' });
+    for (const [x, y] of [[463, 31], [482, 31], [478, 44]]) B('lamp', x, y, 1, 1, { name: 'Фонарь', talk: 'lamp' });
+
+    // ======================= ВУДХЭМ — лесорубы
+    for (let i = 0; i < 120; i++) { // ельник вокруг поляны
+      const x = 500 + Math.floor(r() * 37), y = 15 + Math.floor(r() * 35);
+      if (this.ground[y][x] === 'm' && !taken(x, y, 1, 1)) B('pine', x, y, 1, 1, { name: 'Ель', talk: 'pine' });
+    }
+    B('hut', 509, 23, 4, 3, { name: 'Дом бригадира', talk: 'wood_house' });
+    B('hut', 515, 23, 4, 3, { name: 'Дом лесоруба', talk: 'wood_house2' });
+    B('hut', 524, 23, 4, 3, { name: 'Дом лесоруба', talk: 'wood_house2' });
+    B('barn', 509, 35, 8, 3, { name: 'Пилорама', talk: 'sawmill' });
+    B('hut', 525, 37, 4, 3, { name: 'Дом лесоруба', talk: 'wood_house2' });
+    for (const [x, y] of [[519, 34], [519, 37], [519, 40], [512, 40]]) B('logs', x, y, 3, 1, { name: 'Штабель брёвен', talk: 'logs' });
+    B('sawpit', 523, 34, 2, 1, { name: 'Козлы с пилой', talk: 'sawpit' });
+    for (const [x, y] of [[528, 29], [510, 30], [530, 42], [516, 43], [526, 27]]) B('stump', x, y, 1, 1, { name: 'Пень', talk: 'stump' });
+    B('campfire', 522, 30, 1, 1, { dynamic: true, name: 'Костёр', talk: 'woodfire' });
+    B('rposter', 529, 32, 1, 1, { name: 'Плакат Собрания', talk: 'rposter' });
+
+    // ======================= ТАРВЕЛЛ — нефтяники, вышки под охраной братьев
+    const TPUMPS: [number, number][] = [[545, 18], [552, 22], [566, 18], [572, 23], [546, 40], [570, 41]];
+    for (const [x, y] of TPUMPS) B('pump', x, y, 2, 2, { dynamic: true, name: 'Нефтяная качалка', talk: 'tar_pump' });
+    B('tank', 563, 26, 3, 3, { name: 'Резервуар', talk: 'tar_tank' });
+    B('pumphouse', 553, 34, 5, 4, { name: 'Насосная', talk: 'pumphouse' });
+    B('house', 543, 34, 4, 3, { name: 'Дом нефтяников', talk: 'tar_house' });
+    B('house', 563, 35, 4, 3, { name: 'Дом нефтяников', talk: 'tar_house' });
+    B('house', 548, 44, 4, 3, { name: 'Пустой дом мастера', talk: 'tar_master', boarded: true });
+    B('house', 565, 44, 4, 3, { name: 'Дом нефтяников', talk: 'tar_house' });
+    for (const x of [574, 576]) B('wagon', x, 36, 2, 1, { name: 'Бочки', talk: 'tar_barrels' });
+    B('rbanner', 559, 29, 1, 1, { name: 'Красный флаг', talk: 'rbanner' });
+    B('rposter', 556, 30, 1, 1, { name: 'Плакат Собрания', talk: 'rposter' });
+    for (const [x, y] of [[551, 30], [569, 30], [558, 42]]) B('lamp', x, y, 1, 1, { name: 'Фонарь', talk: 'lamp' });
+    for (const [x, y] of [[549, 29], [571, 34], [555, 41]]) B('barrel', x, y, 1, 1);
+
+    // ======================= ФОРТ СВОБОДА — бывший форт барона Сильвера
+    for (let x = 584; x <= 637; x += 2) { B('wall', x, 5, 2, 1); if (x < 606 || x > 612) B('wall', x, 67, 2, 1); }
+    for (let y = 6; y < 67; y++) { B('wall', 584, y, 1, 1); B('wall', 637, y, 1, 1); }
+    for (const x of [603, 613]) B('tower', x, 64, 3, 3, { name: 'Надвратная башня', talk: 'svob_tower' });
+    for (const [x, y] of [[585, 6], [634, 6], [585, 64], [634, 64]]) B('tower', x, y, 3, 3, { name: 'Башня', talk: 'svob_tower' });
+    // вдоль дороги от ворот — виселицы с лоялистами старого режима
+    for (let y = 43; y <= 62; y += 3) { B('gallows', 606, y, 1, 1, { name: 'Повешенный', talk: 'hanged' }); B('gallows', 612, y, 1, 1, { name: 'Повешенный', talk: 'hanged' }); }
+    // площадь: помост с бароном, знамёна, громкоговорители
+    B('gibbet', 607, 28, 5, 3, { name: 'Помост — барон Сильвер', talk: 'baron_gibbet' });
+    for (const [x, y] of [[600, 25], [619, 25], [600, 35], [619, 35]]) B('rbanner', x, y, 1, 1, { name: 'Знамя Собрания', talk: 'rbanner' });
+    for (const [x, y] of [[603, 24], [616, 36]]) B('horn', x, y, 1, 1, { name: 'Громкоговоритель', talk: 'svob_horn' });
+    B('noticeboard', 614, 24, 2, 1, { name: 'Списки', talk: 'svob_list' });
+    B('stall', 621, 32, 2, 1, { name: 'Пункт распределения', talk: 'svob_stall' });
+    B('crates', 623, 31, 1, 1, { name: 'Ящики с пайками', talk: 'crates' });
+    // бывший замок барона — теперь Дом Собрания
+    B('keep', 603, 7, 13, 6, { name: 'Дом Собрания', talk: 'svob_keep' });
+    for (const x of [601, 617]) B('rbanner', x, 12, 1, 1, { name: 'Знамя Собрания', talk: 'rbanner' });
+    B('barracks', 587, 24, 9, 3, { name: 'Казарма братьев свободы', talk: 'svob_barracks' });
+    B('cell', 625, 24, 4, 2, { name: 'Подвал трибунала', talk: 'svob_cell' });
+    for (const [x, y] of [[598, 39], [622, 39], [596, 15], [624, 15], [588, 36], [632, 36], [604, 40], [615, 21]]) B('rposter', x, y, 1, 1, { name: 'Плакат Собрания', talk: 'rposter' });
+    for (const [x, y] of [[602, 37], [618, 22], [607, 40], [613, 40]]) B('lamp', x, y, 1, 1, { name: 'Фонарь', talk: 'lamp' });
+    B('standpipe', 596, 31, 1, 1, { name: 'Колонка', talk: 'standpipe' });
+    // тесные дома с закрытыми ставнями
+    for (const row of [8, 16, 19, 41, 45, 49, 53, 57, 61]) {
+      for (let x = 586; x < 636;) {
+        const w = 3;
+        if (!taken(x, row, w, 3) && x + w <= 636 && !(x + w > 602 && x < 617 && row < 22) && !(x + w > 603 && x < 616 && row > 40)) {
+          const k = r();
+          if (k < 0.08) B('laundry', x, row + 2, w, 1, { name: 'Бельевая верёвка', talk: 'laundry' });
+          else if (k < 0.16) B('burnt', x, row, w, 3, { name: 'Сгоревший дом', talk: 'svob_burnt' });
+          else B('tenement', x, row, w, 3, { name: 'Дом', talk: 'svob_house', boarded: true });
+        }
+        x += w + (r() < 0.3 ? 1 : 0);
+      }
+    }
     // случайные камни и деревья в пустоши (воронки — только на поле сражений к западу)
     const free = (x: number, y: number, w: number, h: number) => {
       for (let yy = y - 1; yy <= y + h; yy++) for (let xx = x - 1; xx <= x + w; xx++) {
@@ -476,6 +590,16 @@ export const Explore = {
     NPC('castle_g1', 'Гвардеец', 'bguard', 377, 33, 'castle_gate'); NPC('castle_g2', 'Гвардеец', 'bguard', 377, 39, 'castle_gate');
     NPC('herald', 'Глашатай', 'bherald', 389, 33, 'herald');
     NPC('quarter', 'Интендант', 'bofficer', 400, 40, 'quartermaster');
+    // север
+    NPC('einb_old', 'Старуха на пепелище', 'oldwoman', 425, 24, 'einb_old');
+    NPC('hawley_elder', 'Староста Хоули', 'herder', 461, 27, 'hawley_elder');
+    NPC('wood_boss', 'Бригадир лесорубов', 'lumber', 513, 27, 'wood_boss');
+    NPC('tar_boss', 'Старший нефтяник', 'oilworker', 557, 39, 'tar_boss');
+    NPC('tar_guard1', 'Брат при вышках', 'brother', 551, 25, 'tar_guard'); NPC('tar_guard2', 'Брат при вышках', 'brother2', 568, 21, 'tar_guard');
+    NPC('svob_gate1', 'Брат у ворот', 'brother', 608, 65, 'svob_gate'); NPC('svob_gate2', 'Брат у ворот', 'brother2', 612, 65, 'svob_gate');
+    NPC('svob_g1', 'Брат у помоста', 'brother', 606, 32, 'svob_gibguard'); NPC('svob_g2', 'Брат у помоста', 'brother_w', 612, 32, 'svob_gibguard');
+    NPC('commissar', 'Комиссар Собрания', 'brother_off', 609, 14, 'commissar');
+    NPC('distrib', 'Раздатчица', 'nb_w', 621, 33, 'distrib');
     NPC('upper1', 'Стража Верхнего города', 'guard', 179, 46, 'upper_guard');
     NPC('upper2', 'Стража Верхнего города', 'guard', 179, 52, 'upper_guard');
 

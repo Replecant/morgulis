@@ -88,6 +88,22 @@ export const STYLES: Record<string, Style> = {
   bworker_w: { coat: '#4a4a52', dress: true, apron: '#6a6458', hat: 'bonnet', hatC: '#3a3a42', skin: '#c8a890', hair: '#5a3a22', longHair: true, weapon: 'wrench' },
   bworker: { coat: '#4a4a52', legs: '#26262c', belt: '#2a1d12', hat: 'flatcap', hatC: '#3a3a42', skin: '#c0a080', weapon: 'wrench' },
   ashsoldier: { coat: '#6b6345', legs: '#5e573c', belt: '#a89c74', webbing: '#a89c74', puttees: '#9a9070', hat: 'brodie', hatC: '#5c5a40', skin: '#c8ac90', weapon: 'rifle' },
+  // ---------------- север: край Народного Собрания
+  // братья свободы: серо-бурая форма, мягкие фуражки, красные повязки на рукаве
+  brother: { coat: '#4e4a40', legs: '#3a362e', belt: '#5a3a22', webbing: '#6a5a3e', puttees: '#56503e', hat: 'cap', hatC: '#3a3630', skin: '#c4a888', armband: '#b8281e', weapon: 'rifle' },
+  brother2: { coat: '#4a463c', legs: '#36322a', belt: '#5a3a22', webbing: '#6a5a3e', hat: 'flatcap', hatC: '#2e2a24', skin: '#bfa084', beard: '#4a3a2a', armband: '#b8281e', weapon: 'rifle' },
+  brother_w: { coat: '#4e4a40', legs: '#3a362e', belt: '#5a3a22', hat: 'cap', hatC: '#3a3630', skin: '#d0b49a', hair: '#5a3a22', longHair: true, armband: '#b8281e', weapon: 'rifle' },
+  brother_off: { coat: '#2e2a26', legs: '#24201c', belt: '#4a2e1a', webbing: '#4a2e1a', hat: 'cap', hatC: '#2a2622', skin: '#ccb094', armband: '#c02a20', weapon: 'pistol' },
+  // лоялисты старого режима: выцветшая сине-серая форма гвардии барона Сильвера, небритые
+  loyalist: { coat: '#4e5462', legs: '#34363e', belt: '#2a1d12', puttees: '#4a4a48', trim: '#8a7a4a', hat: 'cap', hatC: '#3a3e4a', skin: '#b89c84', beard: '#4a3e34', weapon: 'rifle' },
+  loyalist2: { coat: '#4a4e58', legs: '#30323a', belt: '#2a1d12', hat: 'brodie', hatC: '#4a4e54', skin: '#c0a48a', beard: '#3a2e24', weapon: 'rifle' },
+  loyal_off: { coat: '#464c5c', legs: '#2a2c34', belt: '#3a2a1a', trim: '#b09a5a', hat: 'cap', hatC: '#2e3240', skin: '#c8ac92', beard: '#6a5a4a', weapon: 'saber' },
+  // жители севера
+  nb_m: { coat: '#46443c', legs: '#2c2a24', hat: 'flatcap', hatC: '#2a2824', skin: '#c0a488', beard: '#5a4a3a' },
+  nb_w: { coat: '#44404a', dress: true, apron: '#5a564c', hat: 'bonnet', hatC: '#2e2a30', skin: '#ccb098', hair: '#5a4a3a', longHair: true, weapon: 'bag' },
+  nb_red: { coat: '#4a463e', legs: '#2e2c26', hat: 'flatcap', hatC: '#2a2824', skin: '#c4a888', armband: '#b8281e', weapon: 'book' },
+  lumber: { coat: '#5a3e2c', legs: '#2e2a22', belt: '#2a1d12', hat: 'flatcap', hatC: '#3a2a1e', skin: '#bf9c7c', beard: '#6a4a2a', weapon: 'hammer', scale: 1.08 },
+  lumber2: { coat: '#4e4a32', legs: '#2c2a20', belt: '#2a1d12', hair: '#3a2a1a', skin: '#c4a080', weapon: 'shovel' },
   // фоновые жители деревень
   townsman: { coat: '#4a4438', legs: '#2a2620', hat: 'flatcap', hatC: '#2e2a22', skin: '#c4a888', beard: '#5a4a3a' },
   townswoman: { coat: '#4a3e44', dress: true, apron: '#6a6050', hat: 'bonnet', hatC: '#3a3034', skin: '#d0b49a', hair: '#6a4a2a', longHair: true },

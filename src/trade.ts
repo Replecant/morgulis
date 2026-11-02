@@ -55,6 +55,27 @@ export const SHOPS: Record<string, Shop> = {
     items: { rifle: 2, helmet: 2, greatcoat: 2, quilted: 1, bandolier: 1, boots: 1, gloves: 1 },
     cons: ['ammo_rifle', 'ammo_pistol', 'grenade', 'ration', 'bandage', 'medkit'],
   },
+  // ---------------- север
+  svoboda: {
+    name: 'Пункт распределения — форт Свобода', greet: 'Без карточки — за шиллинги. Бери и уходи.',
+    items: { clothes: 1, cap: 1 },
+    cons: ['ration', 'bandage', 'filter'],
+  },
+  hawley: {
+    name: 'Староста Хоули', greet: 'Вяленое жучье мясо. Панцирь — что осталось после разнарядки.',
+    items: { chitin: 1 },
+    cons: ['ration'],
+  },
+  woodham: {
+    name: 'Бригадир — Вудхэм', greet: 'Похлёбка, бинты да топор. Больше ничего лишнего.',
+    items: { axe: 1, gloves: 1 },
+    cons: ['ration', 'bandage'],
+  },
+  tarwell: {
+    name: 'Старший нефтяник — Тарвелл', greet: 'Пайки по норме. Фильтры для противогазов — из старых запасов.',
+    items: {},
+    cons: ['ration', 'filter'],
+  },
   // ---------------- форт
   clinic: {
     name: 'Клиника — аптечный шкаф', greet: 'Лекарства, инструменты, противогазы. За порошки из форта платят шиллингами, а не грибами.',
