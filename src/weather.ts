@@ -7,6 +7,7 @@
 //  Звуков нет — только картинка.
 // ============================================================
 import { G } from './state';
+import { Sfx } from './sfx';
 
 export type WeatherKind = 'clear' | 'overcast' | 'fog' | 'rain' | 'storm';
 export const WEATHER_NAMES: Record<WeatherKind, string> = { clear: 'Ясно', overcast: 'Пасмурно', fog: 'Туман', rain: 'Дождь', storm: 'Буря' };
@@ -29,6 +30,8 @@ export const Weather = {
   locked: false,    // отладка: погода зафиксирована
   flash: 0,         // молния: оставшееся время вспышки (с)
   nextFlash: 4,
+  thunderIn: -1,   // через сколько секунд после вспышки ударит гром
+  thunderPow: 1,
 
   reset() { this.kind = 'clear'; this.until = G.clock + 4 + Math.random() * 4; this.flash = 0; },
   set(k: WeatherKind, lock = false) { this.kind = k; this.locked = lock; this.until = G.clock + 5 + Math.random() * 6; },
@@ -43,7 +46,15 @@ export const Weather = {
       this.until = G.clock + 4 + Math.random() * 8;
     }
     if (this.flash > 0) this.flash -= dt;
-    if (this.kind === 'storm') { this.nextFlash -= dt; if (this.nextFlash <= 0) { this.flash = 0.18; this.nextFlash = 4 + Math.random() * 9; } }
+    if (this.kind === 'storm') {
+      this.nextFlash -= dt;
+      if (this.nextFlash <= 0) {
+        this.flash = 0.18; this.nextFlash = 4 + Math.random() * 9;
+        const far = Math.random();                       // молния то ближе, то дальше: гром позже и тише
+        this.thunderIn = 0.2 + far * 1.6; this.thunderPow = 1 - far * 0.6;
+      }
+    }
+    if (this.thunderIn >= 0) { this.thunderIn -= dt; if (this.thunderIn < 0 && G.mode !== 'title' && G.mode !== 'create') Sfx.thunder(this.thunderPow); }
   },
 
   /** Освещение: уровень темноты, оттенок мира, виньетка. */
