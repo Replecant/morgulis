@@ -21,6 +21,10 @@ for (const id of Object.keys(URLS) as FrameId[]) {
   ready[id] = img.decode().catch(() => {}).then(() => { done.add(id); });
 }
 
+/** Рамка загружена и раскодирована (или не загрузилась — тогда ждать больше нечего). */
+export const frameReady = (id: FrameId) => done.has(id);
+export const whenFrameReady = (id: FrameId) => ready[id];
+
 /** Показать окно, когда его рамка готова (обычно — сразу: рамки грузятся при старте). */
 export function withFrame(id: FrameId, el: HTMLElement, show: () => void) {
   el.style.backgroundImage = `url("${URLS[id]}")`;

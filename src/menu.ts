@@ -4,7 +4,7 @@
 import { Book, h, Spread } from './book';
 import { vignette, drawDeadTree } from './gfx';
 import { PixelView, pixelize } from './px';
-import { FRAMES } from './frames';
+import { FRAMES, frameReady } from './frames';
 import { ATTRS, ATTR_ORDER, PROFESSIONS, PROF_ORDER, DC, DC_NAMES, LEVEL_XP, mastery, ProfId } from './rules';
 import { seeded, TAU } from './util';
 
@@ -81,10 +81,15 @@ let frameT0 = -1;
 
 /** Заглавный экран: пиксельная рамка (скелеты-солдаты, шестерни, трубы) и падающий пепел. */
 export function drawMenuBg(out: CanvasRenderingContext2D, t: number) {
-  if (!frame.complete || !frame.naturalWidth) { drawMenuScene(out, t); return; }
+  // пока рамка грузится — тёмный экран, без мелькания запасной сцены
+  if (!frameReady('menu')) { out.fillStyle = '#060806'; out.fillRect(0, 0, W, H); return; }
+  if (!frame.naturalWidth) { drawMenuScene(out, t); return; } // картинка не загрузилась
   if (frameT0 < 0) frameT0 = t;
+  out.fillStyle = '#060806'; out.fillRect(0, 0, W, H);
   out.imageSmoothingEnabled = true; out.imageSmoothingQuality = 'high';
+  out.globalAlpha = Math.min(1, (t - frameT0) / 0.5);              // плавное проявление
   out.drawImage(frame, 0, 0, W, H);
+  out.globalAlpha = 1;
   // внутреннее поле рамки чуть «дышит» зеленоватым светом угасшей звезды
   const k = Math.min(1, (t - frameT0) / 1.5), p = 0.5 + Math.sin(t * 0.6) * 0.5;
   const g = out.createRadialGradient(480, 300, 20, 480, 320, 330);

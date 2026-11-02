@@ -11,6 +11,7 @@ import { Dialog, refreshHud, exploreHint, toast, combatShow, combatLog, combatPa
 import { setPcStyle, applyEquipLooks } from './gfx';
 import { Inventory } from './inventory';
 import { Sheet } from './sheet';
+import { frameReady, whenFrameReady } from './frames';
 import { Trade, resetShops } from './trade';
 import { drawMenuBg, showMainMenu, showAbout, openRules } from './menu';
 import { openCreation } from './creation';
@@ -130,6 +131,11 @@ const layer = $('layer');
 
 function showTitle() {
   G.mode = 'title';
+  // при первом запуске меню проявляется вместе с рамкой, а не раньше неё
+  if (!frameReady('menu')) {
+    layer.style.opacity = '0';
+    whenFrameReady('menu').then(() => { layer.style.transition = 'opacity 0.5s'; layer.style.opacity = '1'; });
+  }
   hideScreen();
   $('hud').classList.add('hidden');
   $('hint').textContent = '';
