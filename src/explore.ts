@@ -13,7 +13,7 @@ import { FOLK, FolkDef } from './folk';
 
 /** Клетка на экране (низкое разрешение ×2). */
 export const ET = T * PS;
-export const MW = 112, MH = 72;
+export const MW = 186, MH = 72; // восточнее x=103 — форт: Нижний и Средний город
 const VW = LW, VH = LH; // видимая область в пикселях низкого разрешения
 
 type Ground = 'w' | 'g' | 'r' | 'p' | 'o' | 'k' | 'f' | 'm' | 'x';
@@ -50,6 +50,9 @@ export const SCENES: Record<string, { name: string; x0: number; y0: number; x1: 
   richmord: { name: 'Ричморд', x0: 55, y0: 3, x1: 94, y1: 39, entry: { x: 57, y: 20 } },
   fenmor:   { name: 'Фенмор', x0: 1, y0: 1, x1: 36, y1: 28, entry: { x: 19, y: 27 } },
   fortgate: { name: 'Ворота форта', x0: 86, y0: 38, x1: 103, y1: 66, entry: { x: 88, y: 49 } },
+  // форт — город в три яруса: внизу трущобы и заводы, выше рынки и мастерские, на самом верху — только по пропуску
+  fort1:    { name: 'Нижний город', x0: 100, y0: 28, x1: 147, y1: 70, entry: { x: 103, y: 49 } },
+  fort2:    { name: 'Средний город', x0: 144, y0: 31, x1: 184, y1: 67, entry: { x: 147, y: 49 } },
 };
 const PENS = [{ x0: 62, y0: 9, x1: 73, y1: 17, gx: 67 }, { x0: 77, y0: 10, x1: 88, y1: 18, gx: 82 }];
 
@@ -94,8 +97,11 @@ export const Explore = {
     fill('m', 2, 2, 34, 26);
     for (const [x, y, rr] of [[3, 7, 1], [32, 7, 2], [32, 23, 2], [15, 25, 1], [26, 27, 1]]) blob('x', x, y, rr);
     for (const p of PENS) fill('p', p.x0 + 1, p.y0 + 1, p.x1 - p.x0 - 1, p.y1 - p.y0 - 1);
-    // форт: всё восточнее стены — недоступно
+    // форт: всё восточнее стены — недоступно, кроме улиц Нижнего и Среднего города
     fill('f', 103, 0, MW - 103, MH);
+    fill('o', 103, 30, 42, 39);   // Нижний город: грязь, масло, сажа
+    fill('p', 147, 33, 34, 33);   // Средний город: утоптанная земля
+    fill('k', 155, 45, 17, 11);   // рыночная площадь — дощатый настил
 
     // дороги
     const road = (pts: number[][], wdt = 1) => {
@@ -114,6 +120,9 @@ export const Explore = {
     road([[22, 43], [22, 57]]);
     road([[22, 43], [22, 30]]);
     road([[19, 28], [19, 14]]);
+    // улицы форта
+    road([[103, 49], [146, 49]]); road([[114, 30], [114, 68]]); road([[127, 30], [127, 68]]); road([[138, 51], [138, 68]]);
+    road([[147, 49], [182, 49]]); road([[163, 33], [163, 65]]);
 
     // масляные пятна вокруг качалок
     const PUMPS: [number, number][] = [[9, 34], [32, 34], [18, 48], [33, 52], [11, 44]];
@@ -203,6 +212,49 @@ export const Explore = {
     for (const [x, y] of [[98, 47], [98, 53], [98, 59], [98, 63]]) B('lamp', x, y, 1, 1, { name: 'Фонарь', talk: 'lamp' });
     for (const [x, y] of [[93, 44], [95, 44], [93, 46]]) B('barrel', x, y, 1, 1, { name: 'Товар маркитанта', talk: 'sutler_goods' });
 
+    // ---------------- Нижний город: трущобы и заводы
+    const taken = (x: number, y: number, w: number, h: number) => {
+      for (let yy = y; yy < y + h; yy++) for (let xx = x; xx < x + w; xx++) {
+        const g = this.ground[yy]?.[xx];
+        if (!g || g === 'r' || g === 'f') return true;
+      }
+      return this.objs.some((o) => x < o.x + o.w && x + w > o.x && y < o.y + o.h && y + h > o.y);
+    };
+    for (let x = 103; x < 146; x += 2) { B('wall', x, 29, 2, 1); B('wall', x, 69, 2, 1); }
+    for (let y = 30; y < 69; y++) if (y < 47 || y > 51) B('wall', 145, y, 2, 1);
+    B('gate', 145, 47, 2, 5, { name: 'Ворота Среднего города', talk: 'mid_gate' });
+    B('factory', 104, 31, 8, 4, { name: 'Литейный цех', talk: 'factory' });
+    B('factory', 117, 31, 9, 4, { name: 'Механический завод', talk: 'factory' });
+    B('factory', 130, 31, 7, 4, { name: 'Котельная', talk: 'factory' });
+    B('factory', 116, 64, 10, 4, { name: 'Заводской цех', talk: 'factory' });
+    for (const [x, y] of [[110, 47], [124, 52], [135, 47], [106, 52], [141, 56]]) B('campfire', x, y, 1, 1, { dynamic: true, name: 'Уличный костёр', talk: 'slumfire' });
+    for (const [x, y] of [[108, 48], [131, 51]]) B('lamp', x, y, 1, 1, { name: 'Фонарь', talk: 'lamp' });
+    for (const row of [36, 39, 42, 45, 52, 55, 58, 61]) {
+      for (let x = 104; x < 144;) {
+        const w = 2 + Math.floor(r() * 2);
+        if (!taken(x, row, w, 2) && x + w <= 144) B('shack', x, row, w, 2, { name: 'Лачуга', talk: 'shack' });
+        x += w + (r() < 0.45 ? 1 : 0);
+      }
+    }
+
+    // ---------------- Средний город: рынки, мастерские, тесные дома
+    for (let x = 147; x < 181; x += 2) { B('wall', x, 32, 2, 1); B('wall', x, 66, 2, 1); }
+    for (let y = 33; y < 66; y++) if (y < 47 || y > 51) B('wall', 181, y, 2, 1);
+    B('gate', 181, 47, 2, 5, { name: 'Ворота Верхнего города', talk: 'upper_gate' });
+    for (const x of [156, 159, 166, 169]) for (const y of [46, 53]) B('stall', x, y, 2, 1, { name: 'Рыночный лоток', talk: 'stall' });
+    B('workshop', 148, 45, 3, 2, { name: 'Оружейная мастерская', talk: 'workshop' });
+    B('workshop', 175, 45, 3, 2, { name: 'Мастерская механика', talk: 'workshop' });
+    B('workshop', 148, 52, 3, 2, { name: 'Кузня', talk: 'workshop' });
+    B('workshop', 175, 52, 3, 2, { name: 'Скорняжная мастерская', talk: 'workshop' });
+    for (const [x, y] of [[153, 48], [161, 51], [170, 48], [178, 51]]) B('lamp', x, y, 1, 1, { name: 'Фонарь', talk: 'lamp' });
+    for (const row of [34, 38, 42, 57, 61]) {
+      for (let x = 147; x < 181;) {
+        const w = 3;
+        if (!taken(x, row, w, 3) && x + w <= 181) B('tenement', x, row, w, 3, { name: 'Дом', talk: 'tenement' });
+        x += w + (r() < 0.25 ? 1 : 0);
+      }
+    }
+
     // случайные камни и деревья в пустоши (воронки — только на поле сражений к западу)
     const free = (x: number, y: number, w: number, h: number) => {
       for (let yy = y - 1; yy <= y + h; yy++) for (let xx = x - 1; xx <= x + w; xx++) {
@@ -239,6 +291,8 @@ export const Explore = {
     NPC('guard1', 'Стражник', 'guard', 99, 48, 'guard');
     NPC('guard2', 'Стражник', 'guard', 99, 52, 'guard');
     NPC('sutler', 'Маркитант', 'sutler', 94, 45, 'sutler');
+    NPC('upper1', 'Стража Верхнего города', 'guard', 179, 46, 'upper_guard');
+    NPC('upper2', 'Стража Верхнего города', 'guard', 179, 52, 'upper_guard');
 
     // ---------------- жуки
     const names = ['Граф', 'Пудинг', 'Чернушка', 'Старый Бен', 'Ржавый', 'Тихоня', 'Жвала'];

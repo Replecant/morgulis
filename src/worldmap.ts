@@ -846,28 +846,47 @@ function drawLocIcon(c: CanvasRenderingContext2D, l: Loc, r: () => number) {
         pellipse(s, 12, 29, 9, 4, '#2a2c20'); prect(s, 9, 29, 5, 3, '#0c0c0a'); // погреб
       });
       break;
-    case 'fort': {
-      const R = 48;
-      stamp(c, x, y + 36, 112, 96, (s) => {
-        const ox = 56, oy = 52;
-        const fort = pixelize(112, 96, (v) => {
+    case 'fort': { // город в три яруса: трущобы и заводы → рынки и мастерские → Верхний город
+      const R = 50;
+      stamp(c, x, y + 38, 120, 104, (s) => {
+        const ox = 60, oy = 60;
+        const walls = pixelize(120, 104, (v) => {
+          // ярус 1 — внешняя стена и грязь трущоб
           v.fillStyle = '#3e3a32'; v.beginPath();
-          for (let i = 0; i < 10; i++) { const a = (i / 10) * TAU, rr = i % 2 ? R : R * 0.8; v.lineTo(ox + Math.cos(a) * rr, oy + Math.sin(a) * rr * 0.7); }
+          for (let i = 0; i < 12; i++) { const a = (i / 12) * TAU, rr = i % 2 ? R : R * 0.86; v.lineTo(ox + Math.cos(a) * rr, oy + Math.sin(a) * rr * 0.62); }
           v.closePath(); v.fill();
-          v.fillStyle = '#26221e'; v.beginPath(); v.ellipse(ox, oy, R * 0.66, R * 0.44, 0, 0, TAU); v.fill();
-          for (let i = 0; i < 5; i++) { const a = (i / 5) * TAU + 0.3; v.fillStyle = '#4e4840'; v.beginPath(); v.arc(ox + Math.cos(a) * R, oy + Math.sin(a) * R * 0.7, 5, 0, TAU); v.fill(); }
+          v.fillStyle = '#2a2620'; v.beginPath(); v.ellipse(ox, oy, R * 0.8, R * 0.48, 0, 0, TAU); v.fill();
+          // ярус 2 — стена повыше
+          v.fillStyle = '#4e4840'; v.beginPath(); v.ellipse(ox, oy - 10, R * 0.56, R * 0.34, 0, 0, TAU); v.fill();
+          v.fillStyle = '#3a342c'; v.beginPath(); v.ellipse(ox, oy - 11, R * 0.5, R * 0.29, 0, 0, TAU); v.fill();
+          // ярус 3 — холм цитадели
+          v.fillStyle = '#5e5a50'; v.beginPath(); v.ellipse(ox, oy - 20, R * 0.28, R * 0.18, 0, 0, TAU); v.fill();
+          for (let i = 0; i < 6; i++) { const a = (i / 6) * TAU + 0.3; v.fillStyle = '#56504a'; v.beginPath(); v.arc(ox + Math.cos(a) * R * 0.93, oy + Math.sin(a) * R * 0.58, 4, 0, TAU); v.fill(); }
         });
-        s.drawImage(fort, 0, 0);
-        // зубцы: светлая кромка верхних стен
-        const fd = fort.getContext('2d')!.getImageData(0, 0, 112, 96).data;
-        for (let i = 0; i < 112; i += 2) for (let yy = 0; yy < 50; yy++) {
-          if (fd[(yy * 112 + i) * 4 + 3] > 0) { ppx(s, i, yy, '#6a6458'); break; }
+        s.drawImage(walls, 0, 0);
+        // ярус 1: тесные лачуги из ржавого железа и закопчённые заводы с трубами
+        const rust = ['#5a4a3a', '#4a4a44', '#6a4a30', '#3e3a32'];
+        for (let i = 0; i < 90; i++) {
+          const a = r() * TAU, d = 0.62 + r() * 0.16, hx = Math.round(ox + Math.cos(a) * R * d * 0.95), hy = Math.round(oy + Math.sin(a) * R * d * 0.58);
+          if (hy < oy - 14) continue;
+          prect(s, hx, hy, 3, 2, rust[Math.floor(r() * rust.length)]); ppx(s, hx, hy, '#7a6a5a');
+          if (r() < 0.08) ppx(s, hx + 1, hy + 1, '#e0a050');
         }
-        for (let i = 0; i < 26; i++) {
-          const a = r() * TAU, d = r() * R * 0.5, hx = Math.round(ox + Math.cos(a) * d) - 4, hy = Math.round(oy + Math.sin(a) * d * 0.6) - 6;
-          hut(s, hx, hy, r() < 0.5 ? '#2e3038' : '#3a3030', '#4a4034', r() < 0.4);
+        for (const [fx, fy] of [[22, 66], [84, 68], [34, 76]]) {
+          prect(s, fx, fy, 12, 6, '#5a3226'); prect(s, fx, fy, 12, 1, '#3a2018'); prect(s, fx + 2, fy + 2, 2, 2, '#e07028'); prect(s, fx + 7, fy + 2, 2, 2, '#e07028');
+          prect(s, fx + 9, fy - 12, 2, 12, '#4a2a1e'); prect(s, fx + 9, fy - 13, 2, 1, '#1a1410');
         }
-        for (const [dx, h] of [[-15, 35], [-4, 45], [8, 30]]) { prect(s, ox + dx, oy - h, 4, h - 5, '#2a1e18'); prect(s, ox + dx, oy - h, 1, h - 5, '#4a3428'); prect(s, ox + dx, oy - h, 4, 1, '#1a120e'); }
+        // ярус 2: рынки и мастерские — дома впритык
+        for (let i = 0; i < 16; i++) {
+          const a = r() * TAU, d = r() * 0.36, hx = Math.round(ox + Math.cos(a) * R * d) - 5, hy = Math.round(oy - 11 + Math.sin(a) * R * d * 0.55) - 5;
+          if (hy < oy - 26) continue;
+          hut(s, hx, hy, r() < 0.5 ? '#3a3632' : '#4a3a2e', '#5a4c3a', r() < 0.35);
+        }
+        // ярус 3: Верхний город — цитадель с башнями
+        prect(s, ox - 9, oy - 38, 18, 16, '#6e6a60'); prect(s, ox - 9, oy - 38, 18, 1, '#8a867a'); prect(s, ox + 7, oy - 38, 2, 16, '#55524a');
+        for (const tx of [-12, 10]) { prect(s, ox + tx, oy - 44, 4, 22, '#6a665c'); for (let k = 0; k < 4; k += 2) ppx(s, ox + tx + k, oy - 45, '#6a665c'); }
+        prect(s, ox - 2, oy - 50, 4, 12, '#76726a'); ppx(s, ox - 2, oy - 51, '#76726a'); ppx(s, ox + 1, oy - 51, '#76726a');
+        for (const [wx, wy] of [[-6, -34], [-1, -34], [4, -34], [-6, -29], [4, -29], [0, -46]]) prect(s, ox + wx, oy + wy, 2, 2, '#f0d080');
       });
       break;
     }

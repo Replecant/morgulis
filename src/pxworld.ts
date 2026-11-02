@@ -71,7 +71,7 @@ const TOP: Record<string, number> = {
   house: 16, ruin: 16, farm: 16, station: 20, pumphouse: 28, slaughter: 16, barn: 14, hut: 16,
   tank: 18, watertower: 44, wagon: 14, lamp: 30, tree: 26, rock: 6, barrel: 6, fence: 10, feed: 8, chitin: 6,
   cellar: 10, adit: 26, shroombed: 6, bigshroom: 18, rack: 14, wall: 30, gate: 40, railgate: 36, tower: 56,
-  sign: 16, crater: 0, bones: 0, wallruin: 14, skeleton: 14, milestone: 14, lorry: 12,
+  sign: 16, shack: 18, factory: 64, tenement: 30, stall: 18, workshop: 26, crater: 0, bones: 0, wallruin: 14, skeleton: 14, milestone: 14, lorry: 12,
 };
 
 export interface ObjLike { kind: string; x: number; y: number; w: number; h: number; seed: number; ruinKind?: string; boarded?: boolean }
@@ -333,6 +333,97 @@ export function objSprite(o: ObjLike, neighbors?: { horizFence: boolean }) {
       break;
     }
     case 'sign': R(9, H - 16, 2, 16, '#3a2c1e'); R(2, H - 18, 16, 6, '#4a3a26'); for (let x = 4; x < 16; x += 3) R(x, H - 16, 2, 1, '#c8b88a'); break;
+
+    // ---------------- форт: Нижний и Средний город
+    case 'shack': { // лачуга из ржавого железа и досок, кривая крыша, печная труба
+      const wy = H - 16;
+      R(1, H, W, 2, 'rgba(0,0,0,0.5)');
+      const panels = ['#5a4a3a', '#4a4a44', '#6a5238', '#3e3a32', '#5e5a4e', '#6a4a30'];
+      for (let x = 0; x < W;) {
+        const w = 5 + Math.floor(r() * 6), col = panels[Math.floor(r() * panels.length)];
+        R(x, wy, Math.min(w, W - x), 16, col);
+        if (r() < 0.5) for (let xx = x + 1; xx < Math.min(x + w, W); xx += 2) R(xx, wy + 1, 1, 14, shade(col, -0.2)); // гофра
+        if (r() < 0.4) P(x + 1, wy + 3 + Math.floor(r() * 8), '#8a5a2a');                                      // ржавый подтёк
+        x += w;
+      }
+      const tilt = r() < 0.5 ? 1 : -1;
+      for (let x = -2; x < W + 2; x++) {
+        const ty = wy - 6 + Math.round(((tilt > 0 ? x : W - x) / W) * 5);
+        R(x, ty, 1, wy - ty + 1, (x & 1) ? '#6a4a30' : '#5a5a52');
+        P(x, ty, '#7a6a5a');
+      }
+      const dx = 4 + Math.floor(r() * (W - 14));
+      R(dx, H - 11, 7, 11, '#1a140e'); R(dx + 1, H - 10, 2, 9, '#5a4a3a');                               // тряпичная занавеска
+      if (r() < 0.5) { R(dx + 10, wy + 4, 4, 3, '#c89040'); lights.push({ x: dx + 12, y: wy + 5, r: 16, color: '#e0a050', a: 0.5 }); }
+      R(W - 8, wy - 14, 2, 10, '#2a2a26'); P(W - 8, wy - 15, '#4a4a44');                                    // труба
+      break;
+    }
+    case 'factory': { // заводской цех: кирпич, высокие окна с жаром печей, пилообразная крыша, трубы
+      const wallH = 52, wy = H - wallH, brick = '#6a3a2a';
+      R(1, H, W, 2, 'rgba(0,0,0,0.55)');
+      R(0, wy, W, wallH, brick);
+      for (let y = wy + 2; y < H; y += 3) for (let x = ((y / 3) | 0) % 2 ? 0 : 3; x < W; x += 6) R(x, y, 5, 1, shade(brick, -0.2));
+      R(0, wy, W, 2, shade(brick, -0.35));
+      for (let x = 6; x < W - 8; x += 14) {                                                               // окна
+        const hot = r() < 0.6;
+        R(x, wy + 8, 8, 16, hot ? '#c85a20' : '#141210'); R(x + 1, wy + 7, 6, 1, hot ? '#c85a20' : '#141210');
+        if (hot) { R(x + 2, wy + 12, 4, 10, '#f09040'); lights.push({ x: x + 4, y: wy + 16, r: 30, color: '#f07028', a: 0.7 }); }
+        R(x + 3, wy + 8, 1, 16, '#2a1a12'); R(x, wy + 15, 8, 1, '#2a1a12');
+      }
+      const dx = Math.round(W / 2);
+      R(dx - 10, H - 20, 20, 20, '#120e0a'); R(dx - 8, H - 18, 16, 18, '#3a1a0e');                       // ворота цеха
+      lights.push({ x: dx, y: H - 8, r: 36, color: '#e86a28', a: 0.6 });
+      for (let x = 0; x < W; x += 20) for (let t = 0; t < 12; t++) R(x + t, wy - 1 - t, 20 - t, 1, t === 0 ? '#2e2e2c' : t < 3 ? '#4a4a46' : '#3a3a38'); // пилообразная крыша
+      for (const fx of [0.22, 0.72]) {                                                                    // трубы
+        const cx = Math.round(W * fx);
+        R(cx, wy - 62, 7, 50, '#5a3226'); R(cx + 5, wy - 62, 2, 50, '#3a2018');
+        for (let y = wy - 58; y < wy - 12; y += 8) R(cx, y, 7, 1, '#3a2018');
+        R(cx - 1, wy - 64, 9, 3, '#2a1a14'); R(cx, wy - 66, 7, 2, '#1a1410');                             // закопчённый верх
+      }
+      break;
+    }
+    case 'tenement': { // наспех сколоченный двухэтажный дом, окно в окно с соседом
+      const wallH = 46, wy = H - wallH, lean = r() < 0.5 ? 1 : -1;
+      R(1, H, W, 2, 'rgba(0,0,0,0.5)');
+      const wood = ['#6a5438', '#5e4a32', '#725a3c'][Math.floor(r() * 3)];
+      R(0, wy + 22, W, 24, wood);                                                                         // первый этаж
+      R(lean, wy, W, 23, shade(wood, 0.06));                                                              // второй этаж, чуть кренится
+      for (let x = 0; x < W; x += 4) { R(x, wy + 22, 1, 24, shade(wood, -0.3)); R(x + lean, wy, 1, 22, shade(wood, -0.3)); }
+      R(0, wy + 21, W, 2, '#2e2216');                                                                     // межэтажная балка
+      for (let i = 0; i < 3; i++) { const px = Math.floor(r() * (W - 10)), py = wy + Math.floor(r() * 36); R(px, py, 8, 6, '#5a5a52'); R(px, py, 8, 1, '#7a7a70'); } // заплатки жестью
+      for (const [wx, wy2] of [[8, wy + 6], [W - 16, wy + 6], [W - 16, wy + 28]]) {
+        const on = r() < 0.45;
+        R(wx + lean * (wy2 < wy + 20 ? 1 : 0), wy2, 7, 7, on ? AMBER : '#1a1c20'); R(wx + 3, wy2, 1, 7, '#2a1e12');
+        if (on) lights.push({ x: wx + 3, y: wy2 + 3, r: 20, color: '#f0b050', a: 0.6 });
+      }
+      R(7, H - 13, 8, 13, '#140e0a'); P(13, H - 7, BRASS);                                                // дверь
+      for (let x = -2; x < W + 3; x++) R(x + lean, wy - 5 + (x > W / 2 ? 1 : 0), 1, 5, (x % 3) ? '#2e2c28' : '#3a3834'); // толь на крыше
+      R(W - 10, wy - 13, 3, 9, '#3a3a36');
+      break;
+    }
+    case 'stall': { // рыночный лоток под выцветшим полосатым навесом
+      R(1, H, W, 2, 'rgba(0,0,0,0.45)');
+      R(2, -16, 2, H + 14, '#3a2c1e'); R(W - 4, -16, 2, H + 14, '#3a2c1e');                                // столбы
+      for (let x = 0; x < W; x++) R(x, -18 + ((x / 4) & 1), 1, 7, ((x / 5) | 0) % 2 ? '#7a3a2a' : '#a08a5a'); // навес
+      R(1, H - 10, W - 2, 3, '#5a4228'); R(4, H - 7, 2, 7, '#3a2a18'); R(W - 6, H - 7, 2, 7, '#3a2a18');    // прилавок
+      const goods = ['#8a6a3a', '#5a6a3a', '#a08050', '#6a4a3a', '#9a9a8a', '#7a3a2a'];
+      for (let x = 4; x < W - 4; x += 4) { const g = goods[Math.floor(r() * goods.length)]; R(x, H - 13, 3, 3, g); P(x, H - 13, shade(g, 0.2)); }
+      break;
+    }
+    case 'workshop': { // мастерская: широкая дверь, жар горна, вывеска с ключом
+      const wallH = 28, wy = H - wallH, wood = '#5e4a32';
+      R(1, H, W, 2, 'rgba(0,0,0,0.5)');
+      R(0, wy, W, wallH, wood);
+      for (let x = 0; x < W; x += 4) R(x, wy, 1, wallH, shade(wood, -0.3));
+      const dx = Math.round(W / 2) - 9;
+      R(dx, H - 18, 18, 18, '#1a0e08'); R(dx + 4, H - 8, 6, 4, '#e86a28'); R(dx + 5, H - 9, 4, 1, '#f8b060'); // открытые ворота, горн
+      lights.push({ x: dx + 7, y: H - 8, r: 34, color: '#f07028', a: 0.75 });
+      R(dx + 12, H - 6, 4, 3, '#3a3a3a');                                                                  // наковальня
+      R(W - 14, wy - 2, 12, 7, '#4a3a26'); R(W - 11, wy + 1, 6, 1, '#b0b0a8'); P(W - 5, wy, '#b0b0a8');     // вывеска с ключом
+      for (let x = -2; x < W + 3; x++) R(x, wy - 4, 1, 4, (x % 3) ? '#3a3632' : '#4a4640');
+      R(6, wy - 14, 4, 10, '#3a3a36'); R(5, wy - 15, 6, 2, '#24241f');
+      break;
+    }
   }
   if (doOutline) outline(cv, INK);
   return { cv, sx: pad, sy: top, lights };

@@ -28,7 +28,7 @@ let returnMode: 'world' | 'explore' = 'world';
 // ---------------------------------------------------------------- переходы между режимами
 function toWorld(fromScene?: string) {
   G.mode = 'world';
-  if (fromScene) World.placeAt(fromScene);
+  if (fromScene) World.placeAt(fromScene.startsWith('fort') ? 'fortgate' : fromScene);
   World.updateLocation();
   G.keys.clear();
   hint();
@@ -111,6 +111,7 @@ World.onDay = () => { // раз в сутки отряд ест
 Dialog.onClose = () => { refreshHud(); if (G.mode === 'explore' || G.mode === 'world') hint(); };
 Dialog.onAction = (act) => {
   if (act.startsWith('enter:')) toScene(act.slice(6));
+  else if (act.startsWith('goto:')) { const [, id, x, y] = act.split(':'); toScene(id, { x: +x, y: +y }); }
   else if (act === 'rest') { toast(rest()); refreshHud(); }
   else if (act.startsWith('trade:')) { G.keys.clear(); Trade.show(act.slice(6), () => { refreshHud(); hint(); }); }
   else if (act === 'battle_scav') startBattle('ruins');
