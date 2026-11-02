@@ -570,11 +570,6 @@ function renderBackground(): HTMLCanvasElement {
   const bed: number[][] = [];
   for (let i = 0; i <= 64; i++) { const x = (i / 64) * (WW / 2); bed.push([x, 180 + Math.sin(i * 0.31) * 22 + i * 1.7 + Math.sin(i * 0.9) * 4]); }
   thick(bed, '#2c2a22', 5); thick(bed, '#3a372e', 3); thick(bed, '#5a5646', 1, [3, 4]);
-  // воронки
-  for (let i = 0; i < 60; i++) {
-    const x = Math.round(r() * WW / 2), y = Math.round(r() * BH), s = 3 + Math.round(r() * 5);
-    pellipse(c, x, y + 1, s + 1, Math.ceil(s * 0.6) + 1, '#5e5c50'); pellipse(c, x, y, s, Math.ceil(s * 0.6), '#26241e'); pellipse(c, x + 1, y + 1, s - 2, Math.max(1, Math.ceil(s * 0.4) - 1), '#1a1914');
-  }
   // мёртвые рощи
   const tree = (x: number, y: number) => {
     const h = 4 + Math.floor(r() * 3);

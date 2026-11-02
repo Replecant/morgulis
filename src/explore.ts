@@ -203,7 +203,7 @@ export const Explore = {
     for (const [x, y] of [[98, 47], [98, 53], [98, 59], [98, 63]]) B('lamp', x, y, 1, 1, { name: 'Фонарь', talk: 'lamp' });
     for (const [x, y] of [[93, 44], [95, 44], [93, 46]]) B('barrel', x, y, 1, 1, { name: 'Товар маркитанта', talk: 'sutler_goods' });
 
-    // случайные камни, деревья и воронки в пустоши
+    // случайные камни и деревья в пустоши (воронки — только на поле сражений к западу)
     const free = (x: number, y: number, w: number, h: number) => {
       for (let yy = y - 1; yy <= y + h; yy++) for (let xx = x - 1; xx <= x + w; xx++) {
         if (!this.inMap(xx, yy)) return false;
@@ -217,7 +217,6 @@ export const Explore = {
       const k = r();
       if (k < 0.4) { if (free(x, y, 1, 1)) B('tree', x, y, 1, 1, { name: 'Мёртвое дерево' }); }
       else if (k < 0.75) { if (free(x, y, 1, 1)) B('rock', x, y, 1, 1); }
-      else if (k < 0.9) { if (free(x, y, 2, 2)) add({ kind: 'crater', x, y, w: 2, h: 2, block: false }); }
       else if (free(x, y, 1, 1)) add({ kind: 'bones', x, y, w: 1, h: 1, block: false });
     }
 
