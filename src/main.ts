@@ -17,6 +17,7 @@ import { Debug } from './debug';
 import { Weather, WEATHER_ORDER, WEATHER_NAMES } from './weather';
 import { charSprite } from './sprites';
 import { ProsthShop } from './prosthshop';
+import { MapWin } from './mapwin';
 import { OccultMenu } from './occultmenu';
 import { hasProsth, type Shop } from './prosthetics';
 import { frameReady, whenFrameReady, frameUrl } from './frames';
@@ -51,7 +52,7 @@ function toScene(id: string, at?: { x: number; y: number }) {
   refreshHud();
 }
 function hint() {
-  if (G.mode === 'world') $('hint').textContent = 'Клик — идти · клик по месту — войти · WASD — идти · E — войти рядом · Q — лечение и лагерь · I — снаряжение · C — персонаж · O — оккультизм · Esc — меню';
+  if (G.mode === 'world') $('hint').textContent = 'Клик — идти · клик по месту — войти · WASD — идти · E — войти рядом · Q — лечение и лагерь · I — снаряжение · C — персонаж · O — оккультизм · M — карта · Esc — меню';
   else exploreHint();
 }
 
@@ -231,13 +232,16 @@ const roaming = () => G.mode === 'explore' || G.mode === 'world';
 
 window.addEventListener('keydown', (e) => {
   if (e.code === 'F2') { e.preventDefault(); if (G.mode !== 'title' && G.mode !== 'create') Debug.toggle(); return; }
-  if (e.code === 'KeyM' && G.mode !== 'create') { toast(Music.toggle() ? 'Музыка выключена [M]' : 'Музыка включена [M]'); if (Pause.open) Pause.render(); return; }
   if (Pause.open) { if (e.code === 'Escape') Pause.close(); return; }
   // Esc вне окон — меню паузы (в бою: сначала отменяет выбранное действие)
-  const anyWindow = Dialog.active || Trade.open || ProsthShop.open || OccultMenu.open || Inventory.open || Sheet.open || squadOpen() || !!$('screen').innerHTML;
+  const anyWindow = MapWin.open || Dialog.active || Trade.open || ProsthShop.open || OccultMenu.open || Inventory.open || Sheet.open || squadOpen() || !!$('screen').innerHTML;
   if (e.code === 'Escape' && !anyWindow && (roaming() || G.mode === 'combat')) {
     const sel = Combat.sel, plain = !Combat.magic && (!sel || (Combat.action.type === 'w' && Combat.action.key === sel.weapons[0]));
     if (G.mode !== 'combat' || plain) { G.keys.clear(); Pause.show(() => { combatShow(false); showTitle(); }); return; }
+  }
+  if (MapWin.open) { if (e.code === 'Escape' || e.code === 'KeyM') MapWin.close(); return; }
+  if (e.code === 'KeyM' && roaming() && !Dialog.active && !Trade.open && !ProsthShop.open && !OccultMenu.open && !Inventory.open && !Sheet.open && !squadOpen()) {
+    G.keys.clear(); MapWin.show(() => { refreshHud(); hint(); }); return;
   }
   if (Dialog.active) { e.preventDefault(); Dialog.key(e); return; }
   if (Trade.open) { if (e.code === 'Escape') Trade.close(); return; }

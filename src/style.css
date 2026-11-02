@@ -596,3 +596,7 @@ body { font-family: 'Old Standard TT', Georgia, serif; color: var(--text); }
 .dbg-tpg { margin-bottom: 5px; }
 .dbg-tpg em { display: block; font-style: normal; font-size: 11px; color: var(--dim); margin-bottom: 2px; }
 .dbg-tpg .btn { padding: 1px 6px; font-size: 11px; margin: 0 3px 3px 0; }
+
+/* окно карты региона (M): рамка автора, внутри — вся карта */
+#mapwin { position: absolute; inset: 0; background: #0d130c 0 0 / 100% 100% no-repeat; z-index: 22; }
+#mapcv { position: absolute; left: 20.1%; top: 25.9%; width: 60.0%; height: 53.4%; cursor: default; }

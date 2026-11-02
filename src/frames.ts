@@ -8,9 +8,10 @@ import sheet from './assets/sheet-frame.webp';
 import trade from './assets/trade-frame.webp';
 import death from './assets/death.webp';
 import occult from './assets/occult-frame.webp';
+import map from './assets/map-frame.webp';
 
-export type FrameId = 'menu' | 'inv' | 'sheet' | 'trade' | 'death' | 'occult';
-const URLS: Record<FrameId, string> = { menu, inv, sheet, trade, death, occult };
+export type FrameId = 'menu' | 'inv' | 'sheet' | 'trade' | 'death' | 'occult' | 'map';
+const URLS: Record<FrameId, string> = { menu, inv, sheet, trade, death, occult, map };
 export const frameUrl = (id: FrameId) => URLS[id];
 
 export const FRAMES = {} as Record<FrameId, HTMLImageElement>;

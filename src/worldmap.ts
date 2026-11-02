@@ -479,6 +479,53 @@ export const World = {
   calmBand(hours: number) { this.band.calm = G.clock + hours; },
   killBand() { this.band.alive = false; this.band.respawn = G.clock + 72; },
 
+  // ========================================================== обзорная карта (окно по M)
+  /** Весь регион целиком: фон, найденные места, подписи, где сейчас отряд. hover — точка под мышью (в пикселях холста). */
+  drawOverview(c: CanvasRenderingContext2D, cw: number, ch: number, t: number, hover: Pt | null) {
+    if (!this.bg) return null;
+    const bg = this.bg, k = Math.min(cw / bg.width, ch / bg.height), dw = bg.width * k, dh = bg.height * k, ox = (cw - dw) / 2, oy = (ch - dh) / 2;
+    const X = (wx: number) => ox + (wx / 2 + OX) * k, Y = (wy: number) => oy + (wy / 2 + OY) * k;
+    c.fillStyle = '#0d130c'; c.fillRect(0, 0, cw, ch);
+    c.imageSmoothingEnabled = true; c.imageSmoothingQuality = 'high';
+    c.drawImage(bg, ox, oy, dw, dh);
+    c.fillStyle = 'rgba(20,26,16,0.2)'; c.fillRect(ox, oy, dw, dh); // приглушить, как под светом Ока
+    // подпись не вылезает за край холста
+    const text = (str: string, x: number, y: number, col: string) => {
+      const half = c.measureText(str).width / 2 + 4, tx = clamp(x, half, cw - half);
+      c.fillStyle = 'rgba(0,0,0,0.9)'; c.fillText(str, tx + 1, y + 1); c.fillStyle = col; c.fillText(str, tx, y);
+    };
+    for (const l of LOCS) { const ic = POI_ICONS.get(l.id); if (ic && this.known(l)) c.drawImage(ic.cv, ox + (ic.ox + OX) * k, oy + (ic.oy + OY) * k, ic.cv.width * k, ic.cv.height * k); }
+    // земли — крупными бледными буквами
+    c.textAlign = 'center';
+    c.font = `italic ${Math.round(ch * 0.034)}px "Old Standard TT", serif`;
+    for (const [name, wx, wy] of [['Земли барона', 1000, 1120], ['Старый фронт', -390, 1080], ['Земли баронессы', -1700, 1150], ['Северные леса — земли Собрания', 700, -1110]] as [string, number, number][])
+      text(name, X(wx), Y(wy), 'rgba(216,206,170,0.7)');
+    // места: точка и название
+    let hov: Loc | null = null;
+    for (const l of LOCS) {
+      if (!this.known(l)) continue;
+      const x = X(l.x), y = Y(l.y);
+      if (hover && Math.hypot(hover.x - x, hover.y - y) < (l.kind === 'fort' ? 22 : 14)) hov = l;
+    }
+    for (const l of LOCS) {
+      if (!this.known(l)) continue;
+      const x = X(l.x), y = Y(l.y), big = l.kind === 'fort', poi = l.kind === 'poi', hv = hov === l;
+      c.fillStyle = hv ? '#ffe8a0' : poi ? '#c8c0a0' : '#e8dcb0';
+      c.beginPath(); c.arc(x, y, big ? 5 : poi ? 2.5 : 3.5, 0, TAU); c.fill();
+      c.strokeStyle = 'rgba(0,0,0,0.8)'; c.lineWidth = 1.5; c.stroke();
+      c.font = poi ? `italic ${Math.round(ch * 0.026)}px "Old Standard TT", serif` : `bold ${Math.round(ch * (big ? 0.036 : 0.03))}px "Playfair Display SC", serif`;
+      text(l.name, x, l.id === 'brimmor' ? y + 18 : y - (big ? 10 : 7), hv ? '#ffe8a0' : poi ? '#c8c0a0' : '#e8dcb0');
+    }
+    // отряд — пульсирующее кольцо
+    const px = X(this.party.x), py = Y(this.party.y), pr = 6 + (Math.sin(t * 4) + 1) * 3;
+    c.strokeStyle = 'rgba(240,200,110,0.9)'; c.lineWidth = 2; c.beginPath(); c.arc(px, py, pr, 0, TAU); c.stroke();
+    c.fillStyle = '#f0c86e'; c.beginPath(); c.arc(px, py, 3, 0, TAU); c.fill(); c.strokeStyle = '#000'; c.lineWidth = 1; c.stroke();
+    c.font = `italic ${Math.round(ch * 0.028)}px "Old Standard TT", serif`;
+    text('Вы здесь', px, py + 22, '#f0d890');
+    c.textAlign = 'left';
+    return hov;
+  },
+
   // ========================================================== отрисовка
   draw(c: CanvasRenderingContext2D, t: number) {
     const p = this.party;
