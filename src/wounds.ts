@@ -152,3 +152,15 @@ export function surgery(b: UnitBase, woundId: string): { text: string; roll?: Ch
   b.hp = Math.max(1, b.hp - 2);
   return { text: `Операция не удалась: «${w.name}» осталась, ${b.name} теряет 2 ОЗ. [${rollTxt}]`, roll: r };
 }
+
+/** Знахарский заговор: снимает лёгкие ранения всего отряда и понемногу затягивает раны. */
+export function folkHeal(): string {
+  let n = 0;
+  for (const b of G.squad) {
+    const before = (b.wounds ?? []).length;
+    b.wounds = (b.wounds ?? []).filter((id) => WOUNDS[id].heavy);
+    n += before - b.wounds.length;
+    b.hp = Math.min(effMaxHp(b), b.hp + 3);
+  }
+  return n ? `Снято лёгких ранений: ${n}. Каждый в отряде восстановил до 3 ОЗ.` : 'Лёгких ранений не было; каждый в отряде восстановил до 3 ОЗ.';
+}

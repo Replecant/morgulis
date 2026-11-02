@@ -55,6 +55,10 @@ export const SHOPS: Record<string, Shop> = {
     items: { rifle: 2, helmet: 2, greatcoat: 2, quilted: 1, bandolier: 1, boots: 1, gloves: 1 },
     cons: ['ammo_rifle', 'ammo_pistol', 'grenade', 'ration', 'bandage', 'medkit'],
   },
+  // ---------------- знахари
+  wise_fen: { name: 'Шептунья — Фенмор', greet: 'Ладанки от дурного глаза, лапки на удачу, отвар от боли. Остальное — сам.', items: { wormwood: 2, rabbitfoot: 1 }, cons: ['painkiller', 'bandage'] },
+  wise_moss: { name: 'Знахарь — Мосслей', greet: 'Обереги, травы, нитки с узлами. Бери, пока никто не видит.', items: { wormwood: 1, rabbitfoot: 1, ritualkit: 1 }, cons: ['painkiller'] },
+  wise_wood: { name: 'Лесная знахарка — Вудхэм', greet: 'Смола, мох, корешки да ладанки. Что лес дал — то и продам.', items: { wormwood: 2, locket: 1 }, cons: ['painkiller', 'bandage'] },
   // ---------------- север
   svoboda: {
     name: 'Пункт распределения — форт Свобода', greet: 'Без карточки — за шиллинги. Бери и уходи.',

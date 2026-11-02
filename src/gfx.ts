@@ -102,6 +102,10 @@ export const STYLES: Record<string, Style> = {
   bmedic: { coat: '#c8c4b4', legs: '#3a3c30', apron: '#a8a498', belt: '#5a3a22', tabs: '#b03830', hat: 'cap', hatC: '#4e5040', skin: '#d0b498', goggles: true, armband: '#a03028', weapon: 'wrench' },
   rmedic: { coat: '#c4beae', legs: '#2e2c28', apron: '#9a9488', hat: 'cap', hatC: '#3a3630', skin: '#c8ac90', hair: '#4a3a2a', goggles: true, armband: '#b8281e', weapon: 'wrench' },
   hawley_prosth: { coat: '#3e3a30', legs: '#26231e', apron: '#4a3020', hat: 'flatcap', hatC: '#24221c', beard: '#9a968c', skin: '#c4b09c', goggles: true, weapon: 'pole' },
+  // знахари — народные колдуны
+  wise_fen: { coat: '#3a3a2c', dress: true, apron: '#4a5232', hat: 'bonnet', hatC: '#2a2c22', skin: '#c4ae98', hair: '#b0aca4', longHair: true, weapon: 'staff' },
+  wise_moss: { coat: '#4a3e2c', legs: '#2a241c', apron: '#5a4a30', hat: 'flatcap', hatC: '#2e2a20', skin: '#c0a488', beard: '#c0bcb0', weapon: 'staff' },
+  wise_wood: { coat: '#3e4630', dress: true, apron: '#5a4a32', hat: 'bonnet', hatC: '#5a3a2a', skin: '#c8ac90', hair: '#6a4a2a', longHair: true, weapon: 'bag' },
   // жители севера
   nb_m: { coat: '#46443c', legs: '#2c2a24', hat: 'flatcap', hatC: '#2a2824', skin: '#c0a488', beard: '#5a4a3a' },
   nb_w: { coat: '#44404a', dress: true, apron: '#5a564c', hat: 'bonnet', hatC: '#2e2a30', skin: '#ccb098', hair: '#5a4a3a', longHair: true, weapon: 'bag' },

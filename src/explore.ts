@@ -280,6 +280,8 @@ export const Explore = {
     for (const [x, y] of [[16, 13], [16, 17]]) B('rack', x, y, 2, 1, { name: 'Сушилка', talk: 'rack' });
     for (const [x, y] of [[18, 11], [22, 13], [11, 19], [28, 11], [6, 9], [26, 25], [13, 24], [33, 18]]) B('bigshroom', x, y, 1, 1, { name: 'Светящийся гриб', talk: 'bigshroom' });
     B('feed', 29, 23, 2, 2, { name: 'Грибной компост', talk: 'compost' });
+    B('hut', 2, 22, 4, 3, { name: 'Хижина шептуньи', talk: 'wise_fen_hut' });
+    B('rack', 6, 24, 2, 1, { name: 'Вешала с травами', talk: 'herbrack' });
     // ворота форта
     for (let y = 0; y < MH; y++) if (y < 48 || y > 52) if (y < 60 || y > 62) B('wall', 101, y, 2, 1);
     B('gate', 101, 48, 2, 5, { name: 'Ворота форта', talk: 'fortgate' });
@@ -396,6 +398,8 @@ export const Explore = {
     B('rack', 288, 25, 2, 1, { name: 'Сушилка', talk: 'rack' }); B('feed', 309, 20, 2, 2, { name: 'Куча корма', talk: 'feed' });
     B('cellar', 277, 15, 3, 2, { name: 'Грибной погреб', talk: 'cellar' }); B('cellar', 285, 15, 3, 2, { name: 'Грибной погреб', talk: 'cellar' });
     B('poster', 296, 45, 1, 1, { name: 'Плакат', talk: 'poster' });
+    B('cellar', 288, 45, 3, 2, { name: 'Землянка знахаря', talk: 'wise_moss_hut' });
+    B('rack', 292, 45, 2, 1, { name: 'Вешала с травами', talk: 'herbrack' });
 
     // ======================= ОСОБЫЙ ЛАГЕРЬ — лагерь принудительного труда баронессы
     // ограда: проходы — ворота у вахты (восток, y 37–42) и ворота железнодорожной ветки (y 24)
@@ -477,6 +481,9 @@ export const Explore = {
     for (const [x, y] of [[463, 32], [482, 32], [478, 44]]) B('lamp', x, y, 1, 1, { name: 'Фонарь', talk: 'lamp' });
 
     // ======================= ВУДХЭМ — лесорубы
+    fill('g', 500, 38, 7, 8);
+    B('hut', 501, 39, 4, 3, { name: 'Избушка знахарки', talk: 'wise_wood_hut' });
+    B('rack', 505, 43, 2, 1, { name: 'Вешала с травами', talk: 'herbrack' });
     for (let i = 0; i < 120; i++) { // ельник вокруг поляны
       const x = 500 + Math.floor(r() * 37), y = 15 + Math.floor(r() * 35);
       if (this.ground[y][x] === 'm' && !taken(x, y, 1, 1)) B('pine', x, y, 1, 1, { name: 'Ель', talk: 'pine' });
@@ -618,6 +625,9 @@ export const Explore = {
     NPC('svob_g1', 'Брат у помоста', 'brother', 606, 32, 'svob_gibguard'); NPC('svob_g2', 'Брат у помоста', 'brother_w', 612, 32, 'svob_gibguard');
     NPC('commissar', 'Комиссар Собрания', 'brother_off', 609, 14, 'commissar');
     NPC('distrib', 'Раздатчица', 'nb_w', 621, 33, 'distrib');
+    NPC('wise_fen', 'Шептунья', 'wise_fen', 4, 26, 'wise_fen');
+    NPC('wise_moss', 'Знахарь', 'wise_moss', 289, 48, 'wise_moss');
+    NPC('wise_wood', 'Лесная знахарка', 'wise_wood', 503, 43, 'wise_wood');
     NPC('svob_prosth', 'Протезист братьев', 'rmedic', 593, 32, 'svob_prosth');
     NPC('hawley_prosth', 'Старик с костылём', 'hawley_prosth', 484, 45, 'hawley_prosth');
     NPC('bprosth', 'Военный протезист', 'bmedic', 404, 31, 'bprosth');
