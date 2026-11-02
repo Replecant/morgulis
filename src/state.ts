@@ -8,17 +8,19 @@ export const G = {
   flags: {} as Record<string, boolean | undefined>,
   pc: null as Character | null,
   squad: [] as UnitBase[],
+  supplies: newSupplies(),
   time: 0,
-  preBattle: [] as number[],
   mouse: { x: 0, y: 0 },
   keys: new Set<string>(),
 };
 
-export function healSquad() { G.squad.forEach((s) => (s.hp = s.maxHp)); }
-export const squadHurt = () => G.squad.some((s) => s.hp < s.maxHp);
+
+export interface Supplies { bandages: number; medicine: number; rations: number }
+export function newSupplies(): Supplies { return { bandages: 4, medicine: 1, rations: 1 }; }
 
 export function resetGame(pc: Character = newCharacter()) {
   G.flags = {};
+  G.supplies = newSupplies();
   G.pc = pc;
   G.squad = makeSquad(pc);
 }

@@ -5,11 +5,11 @@ import './style.css';
 import { G, resetGame } from './state';
 import { Explore, ET } from './explore';
 import { Combat, CT } from './combat';
-import { Dialog, refreshHud, exploreHint, toast, combatShow, combatLog, combatPanel, screen, hideScreen } from './ui';
+import { Dialog, refreshHud, exploreHint, toast, combatShow, combatLog, combatPanel, screen, hideScreen, openSquad, closeSquad, squadOpen } from './ui';
 import { updateAsh, setPcStyle } from './gfx';
 import { drawMenuBg, showMainMenu, showAbout, openRules } from './menu';
 import { openCreation } from './creation';
-import { Character, g, fullName } from './rules';
+import { Character, g, fullName, newCharacter } from './rules';
 import { $ } from './util';
 
 const cv = $('cv') as HTMLCanvasElement;
@@ -39,13 +39,21 @@ Combat.hooks = {
   defeat(id) {
     screen(
       `<h2>Отряд разбит</h2><p>Лейтенант ${fullName(G.pc!)} ${g(G.pc, 'пал', 'пала')}. Пустошь забирает своё.</p>`,
-      [{ label: 'Повторить бой', fn: () => { hideScreen(); G.squad.forEach((s, i) => (s.hp = G.preBattle[i])); startBattle(id); } }],
+      [{ label: 'Повторить бой', fn: () => { hideScreen(); restoreSnapshot(); startBattle(id); } }],
     );
   },
 };
 
+// снимок отряда перед боем — для «Повторить бой»
+let snapshot = '';
+function restoreSnapshot() {
+  const d = JSON.parse(snapshot);
+  G.squad.forEach((s, i) => { s.hp = d.sq[i].hp; s.wounds = d.sq[i].wounds; });
+  G.supplies = d.sup;
+}
+
 function startBattle(id: 'road' | 'factory') {
-  G.preBattle = G.squad.map((s) => s.hp);
+  snapshot = JSON.stringify({ sq: G.squad.map((s) => ({ hp: s.hp, wounds: s.wounds ?? [] })), sup: G.supplies });
   G.mode = 'combat';
   combatShow(true);
   Combat.start(id);
@@ -60,6 +68,9 @@ Dialog.onAction = (act) => {
 };
 
 $('cend').onclick = () => Combat.endPlayerTurn();
+$('squadbar').addEventListener('click', (e) => {
+  if ((e.target as HTMLElement).closest('.res') && G.mode === 'explore' && !Dialog.active && !squadOpen()) openSquad(exploreHint);
+});
 
 // ---------------------------------------------------------------- экраны
 const layer = $('layer');
@@ -112,6 +123,11 @@ function toCanvas(e: MouseEvent) {
 
 window.addEventListener('keydown', (e) => {
   if (Dialog.active) { e.preventDefault(); Dialog.key(e); return; }
+  if (e.code === 'KeyQ' && G.mode === 'explore' && !Dialog.active) {
+    if (squadOpen()) closeSquad(exploreHint); else { G.keys.clear(); openSquad(exploreHint); }
+    return;
+  }
+  if (squadOpen()) { if (e.code === 'Escape') closeSquad(exploreHint); return; }
   if (G.mode === 'explore') {
     if (['Space', 'KeyE', 'Enter'].includes(e.code)) { e.preventDefault(); if (performance.now() - Dialog.closedAt > 200) Explore.interactKey(); return; }
     if (e.code.startsWith('Arrow')) e.preventDefault();
@@ -162,7 +178,7 @@ function frame(now: number) {
   G.time += dt;
   updateAsh(dt, 960, 640);
   Dialog.update(dt);
-  if (G.mode === 'explore' && !Dialog.active) Explore.update(dt);
+  if (G.mode === 'explore' && !Dialog.active && !squadOpen()) Explore.update(dt);
   if (G.mode === 'combat') { Combat.update(dt); Combat.draw(ctx, G.time); }
   else if (G.mode === 'title' || G.mode === 'create') drawMenuBg(ctx, G.time);
   else Explore.draw(ctx, G.time);
@@ -174,5 +190,5 @@ requestAnimationFrame(frame);
 
 // отладка: ?debug в адресе даёт доступ к состоянию из консоли
 if (new URLSearchParams(location.search).has('debug')) {
-  (window as any).morgulis = { G, Combat, Explore, Dialog, startBattle };
+  (window as any).morgulis = { G, Combat, Explore, Dialog, startBattle, newGame, newCharacter, openSquad };
 }

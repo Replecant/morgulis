@@ -2,7 +2,7 @@
 //  Данные: оружие, отряд, противники, тактические карты
 // ============================================================
 
-import { Character, PROFESSIONS, maxHp, defense, armorOf, meleeAttack, rangedAttack, meleeDamage, horrorSave } from './rules';
+import { Character, PROFESSIONS, maxHp, defense, armorOf, meleeAttack, rangedAttack, meleeDamage, horrorSave, skillBonus } from './rules';
 
 export interface Weapon {
   name: string;
@@ -54,6 +54,8 @@ export interface UnitBase {
   armor?: number;        // поглощение урона
   dmgM?: number;         // бонус урона в ближнем бою
   horror?: number;       // бонус к спасброску против ужаса
+  med?: number;          // бонус Медицины (перевязка, операции)
+  wounds?: string[];     // ранения (см. wounds.ts)
   abil?: Record<string, number>;
   ai?: 'melee' | 'ranged' | 'caster';
   leader?: boolean;
@@ -68,7 +70,7 @@ export function makeLeader(c: Character): UnitBase {
   return {
     id: 'pc', name: `Лт. ${c.last}`, kind: 'pc', hp, maxHp: hp, move: 4,
     weapons: p.weapons.slice(), atkM: meleeAttack(c), atkR: rangedAttack(c), def: defense(c),
-    armor: armorOf(c), dmgM: meleeDamage(c), horror: horrorSave(c),
+    armor: armorOf(c), dmgM: meleeDamage(c), horror: horrorSave(c), med: skillBonus(c, 'medicine'), wounds: [],
     abil: { rally: 1, ...p.combatAbil }, leader: true,
   };
 }
@@ -78,7 +80,7 @@ export function makeSquad(c: Character): UnitBase[] {
     makeLeader(c),
     { id: 'halloway', name: 'Серж. Хэллоуэй', kind: 'sergeant', hp: 12, maxHp: 12, move: 4, weapons: ['carbine', 'bayonet'], atkM: 3, atkR: 3, def: 11, armor: 1, abil: { grenade: 1 } },
     { id: 'pickett', name: 'Ряд. Пиккет', kind: 'sniper', hp: 9, maxHp: 9, move: 4, weapons: ['rifle', 'bayonet'], atkM: 1, atkR: 4, def: 11, abil: { aim: 99 } },
-    { id: 'doe', name: 'Ряд. Доу', kind: 'medic', hp: 10, maxHp: 10, move: 4, weapons: ['carbine', 'bayonet'], atkM: 1, atkR: 2, def: 10, abil: { bandage: 3 } },
+    { id: 'doe', name: 'Ряд. Доу', kind: 'medic', hp: 10, maxHp: 10, move: 4, weapons: ['carbine', 'bayonet'], atkM: 1, atkR: 2, def: 10, med: 3, abil: { bandage: 1 } },
   ];
 }
 

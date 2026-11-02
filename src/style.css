@@ -25,13 +25,13 @@ body { font-family: 'Old Standard TT', Georgia, serif; color: var(--text); }
 /* ---------- HUD ---------- */
 #hud { position: absolute; inset: 0; pointer-events: none; }
 #objective {
-  position: absolute; left: 10px; top: 8px; max-width: 470px;
+  position: absolute; left: 10px; top: 8px; max-width: 360px;
   padding: 6px 10px; background: rgba(8, 12, 7, 0.72); border-left: 3px solid var(--brass);
   font-size: 14px; line-height: 1.3;
 }
 #objective b { color: var(--brass); font-weight: 700; letter-spacing: 1px; font-size: 11px; display: block; text-transform: uppercase; }
 #squadbar { position: absolute; right: 10px; top: 8px; display: flex; gap: 6px; }
-.sq { background: rgba(8, 12, 7, 0.72); padding: 4px 7px; font-size: 12px; min-width: 92px; border-top: 2px solid var(--line); }
+.sq { background: rgba(8, 12, 7, 0.72); padding: 4px 7px; font-size: 12px; min-width: 96px; border-top: 2px solid var(--line); }
 .sq .hp { height: 4px; background: #2a1512; margin-top: 3px; }
 .sq .hp span { display: block; height: 100%; background: var(--red); }
 #hint {
@@ -70,7 +70,8 @@ body { font-family: 'Old Standard TT', Georgia, serif; color: var(--text); }
 #cunit b { color: var(--brass); font-size: 14px; }
 .hpbar { height: 5px; background: #2a1512; margin: 3px 0; width: 150px; }
 .hpbar span { display: block; height: 100%; background: var(--red); }
-#cactions { flex: 1; display: flex; gap: 6px; flex-wrap: wrap; }
+#cactions { flex: 1; display: flex; gap: 4px; flex-wrap: wrap; align-content: center; }
+#cactions .btn { font-size: 12px; padding: 4px 7px; }
 .btn {
   background: #1b2216; color: var(--text); border: 1px solid var(--line); font: inherit; font-size: 13px;
   padding: 6px 9px; cursor: pointer;
@@ -320,3 +321,34 @@ body { font-family: 'Old Standard TT', Georgia, serif; color: var(--text); }
 }
 .signature.done { clip-path: inset(0 0 0 0); }
 .sign-cap { font-size: 11px; font-style: italic; color: #7a6a54; }
+
+/* ---------- Раны, запасы, окно отряда ---------- */
+.sq .wd { color: #c9a070; font-size: 10px; }
+.sq .wd.heavy { color: #e05040; }
+.sq .hp { position: relative; }
+.sq .hp i, .mem .hp i { position: absolute; right: 0; top: 0; height: 100%; background: repeating-linear-gradient(45deg, #3a1a14 0 3px, #1a0a08 3px 6px); }
+.sq .hpn { font-size: 10px; color: var(--dim); margin-top: 1px; }
+.sq.res { pointer-events: auto; cursor: pointer; min-width: 0; border-top-color: var(--brass); white-space: nowrap; }
+#squad { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.6); z-index: 20; }
+.squad-box { width: 760px; max-height: 600px; overflow: auto; background: var(--panel); border: 1px solid var(--line); padding: 14px 18px; box-shadow: 0 10px 40px #000; }
+.squad-box h2 { margin: 0 0 6px; font-family: 'Playfair Display SC', serif; color: var(--brass); letter-spacing: 3px; font-size: 20px; }
+.squad-box .sup { font-size: 14px; margin-bottom: 8px; }
+.squad-box .sup b { color: var(--green); }
+.squad-box .healer { display: block; font-size: 12px; color: var(--dim); font-style: italic; }
+.mem { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; padding: 8px 0; border-top: 1px solid #2a3220; }
+.mem .mn b { color: #e6dcb8; }
+.mem .mhp { font-size: 13px; color: var(--dim); }
+.mem .hp { position: relative; height: 5px; background: #2a1512; margin-top: 3px; width: 300px; }
+.mem .hp span { display: block; height: 100%; background: var(--red); }
+.mem .wlist { grid-column: 1 / -1; font-size: 13px; }
+.mem .wound { margin: 2px 0; color: #d8b090; }
+.mem .wound.heavy { color: #e07060; }
+.mem .wound i { color: var(--dim); }
+.mem .wound .btn { padding: 2px 8px; font-size: 12px; }
+.mem .ok { color: #7f9a5a; font-style: italic; }
+.sfoot { display: flex; gap: 8px; justify-content: space-between; margin-top: 10px; padding-top: 10px; border-top: 1px solid #2a3220; }
+.slog { margin-top: 8px; font-size: 13px; color: #e6dcb8; font-style: italic; }
+.btn.brave { border-color: #7a4a1a; color: #f0b060; }
+.btn.brave:hover:not(:disabled) { border-color: #f0a040; color: #ffd090; }
+.btn.brave.active { background: #3a2410; border-color: #f0a040; color: #ffd090; }
+#cunit { width: 250px; }

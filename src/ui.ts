@@ -6,6 +6,8 @@ import { DIALOGS, SPEAKERS, DNode, Choice, fmt } from './dialogs';
 import { drawFigure } from './gfx';
 import { Combat } from './combat';
 import { $ } from './util';
+import { effMaxHp, woundsOf, bestHealer, bandageAmount, bandage, surgery, rest } from './wounds';
+import { COURAGE_MAX } from './combat';
 
 // ------------------------------------------------------------ Диалоги
 export const Dialog = {
@@ -134,12 +136,80 @@ function drawPortrait(cv: HTMLCanvasElement, kind: string | null, scale = 3) {
 // ------------------------------------------------------------ HUD
 export function refreshHud() {
   $('objective').innerHTML = `<b>Задача</b>${objectiveText()}`;
-  $('squadbar').innerHTML = G.squad.map((s) =>
-    `<div class="sq">${s.name}<div class="hp"><span style="width:${(s.hp / s.maxHp) * 100}%"></span></div></div>`).join('');
+  $('squadbar').innerHTML = G.squad.map((s) => {
+    const max = effMaxHp(s), w = woundsOf(s);
+    const marks = w.map((x) => `<span class="wd ${x.heavy ? 'heavy' : ''}" title="${x.name}: ${x.desc}">✚</span>`).join('');
+    return `<div class="sq">${s.name} ${marks}<div class="hp"><span style="width:${(s.hp / s.maxHp) * 100}%"></span><i style="width:${((s.maxHp - max) / s.maxHp) * 100}%"></i></div><div class="hpn">${s.hp}/${max}</div></div>`;
+  }).join('') + `<div class="sq res" title="Бинты · медикаменты · пайки">Бинты ${G.supplies.bandages} · Медик. ${G.supplies.medicine} · Пайки ${G.supplies.rations}<div class="hpn">[Q] Отряд и лечение</div></div>`;
 }
 
+// ------------------------------------------------------------ Отряд: лечение
+export function openSquad(onClose: () => void) {
+  const el = $('squad');
+  let log = '';
+  const render = () => {
+    const healer = bestHealer();
+    el.innerHTML = '';
+    const box = document.createElement('div');
+    box.className = 'squad-box';
+    box.innerHTML = `<h2>Отряд</h2>
+      <div class="sup">Бинты: <b>${G.supplies.bandages}</b> · Медикаменты: <b>${G.supplies.medicine}</b> · Пайки: <b>${G.supplies.rations}</b>
+      <span class="healer">Лекарь: ${healer.name} (Медицина ${healer.bonus >= 0 ? '+' : ''}${healer.bonus}) — перевязка +${bandageAmount(healer.bonus)} ОЗ, операция d20 против 13</span></div>`;
+    for (const s of G.squad) {
+      const max = effMaxHp(s);
+      const row = document.createElement('div');
+      row.className = 'mem';
+      row.innerHTML = `<div class="mn"><b>${s.name}</b> <span class="mhp">${s.hp}/${max} ОЗ${max < s.maxHp ? ` <i>(макс. ${s.maxHp}, −${s.maxHp - max} от ран)</i>` : ''}</span>
+        <div class="hp"><span style="width:${(s.hp / s.maxHp) * 100}%"></span><i style="width:${((s.maxHp - max) / s.maxHp) * 100}%"></i></div></div>`;
+      const acts = document.createElement('div'); acts.className = 'macts';
+      const bb = document.createElement('button');
+      bb.className = 'btn'; bb.textContent = 'Перевязать (−1 бинт)';
+      bb.disabled = s.hp >= max || G.supplies.bandages <= 0;
+      bb.onclick = () => { log = bandage(s) ?? ''; render(); };
+      acts.append(bb);
+      row.append(acts);
+      const wl = document.createElement('div'); wl.className = 'wlist';
+      const ws = woundsOf(s);
+      if (!ws.length) wl.innerHTML = '<span class="ok">Ранений нет</span>';
+      for (const w of ws) {
+        const it = document.createElement('div');
+        it.className = 'wound' + (w.heavy ? ' heavy' : '');
+        it.innerHTML = `<b>${w.name}</b> — ${w.desc} <i>${w.heavy ? 'нужна операция' : 'пройдёт после привала'}</i>`;
+        if (w.heavy) {
+          const ob = document.createElement('button');
+          ob.className = 'btn'; ob.textContent = 'Оперировать (−1 медикаменты)';
+          ob.disabled = G.supplies.medicine <= 0;
+          ob.onclick = () => { log = surgery(s, w.id).text; render(); };
+          it.append(' ', ob);
+        }
+        wl.append(it);
+      }
+      row.append(wl);
+      box.append(row);
+    }
+    const foot = document.createElement('div'); foot.className = 'sfoot';
+    const rb = document.createElement('button');
+    rb.className = 'btn'; rb.textContent = 'Разбить привал (−1 паёк)';
+    rb.title = 'Каждый восстанавливает половину недостающих ОЗ, лёгкие ранения заживают.';
+    rb.disabled = G.supplies.rations <= 0;
+    rb.onclick = () => { log = rest(); render(); };
+    const cb = document.createElement('button');
+    cb.className = 'btn'; cb.textContent = 'Закрыть [Q]';
+    cb.onclick = () => closeSquad(onClose);
+    foot.append(rb, cb);
+    box.append(foot);
+    if (log) { const l = document.createElement('div'); l.className = 'slog'; l.textContent = log; box.append(l); }
+    el.append(box);
+    refreshHud();
+  };
+  el.classList.remove('hidden');
+  render();
+}
+export function closeSquad(onClose: () => void) { $('squad').classList.add('hidden'); onClose(); }
+export const squadOpen = () => !$('squad').classList.contains('hidden');
+
 export function exploreHint() {
-  $('hint').textContent = 'WASD / стрелки — идти · E / Пробел — говорить · клик — идти или говорить';
+  $('hint').textContent = 'WASD / стрелки — идти · E / Пробел — говорить · клик — идти или говорить · Q — отряд и лечение';
 }
 
 let toastTimer = 0;
@@ -178,15 +248,17 @@ export function combatPanel() {
     return;
   }
   const ap = '◆'.repeat(u.ap) + '◇'.repeat(Math.max(0, 2 - u.ap));
+  const cour = '✦'.repeat(u.courage) + '✧'.repeat(COURAGE_MAX - u.courage);
+  const wnds = (u.base.wounds ?? []).length;
   $('cunit').innerHTML = `<canvas width="56" height="56"></canvas><div><b>${u.name}</b>
     <div class="hpbar"><span style="width:${(u.hp / u.maxHp) * 100}%"></span></div>
-    ОЗ ${u.hp}/${u.maxHp} · ОД <span style="color:#e0c070">${ap}</span></div>`;
+    ОЗ ${u.hp}/${u.maxHp} · ОД <span style="color:#e0c070">${ap}</span><br>Кураж <span style="color:#f0a040" title="Копится: устоять под ударом, сразить врага, точный удар, клич командира. Гаснет от ужаса.">${cour}</span>${wnds ? ` · <span style="color:#e09080">ран: ${wnds}</span>` : ''}</div>`;
   drawPortrait($('cunit').querySelector('canvas')!, u.kind, 1.7);
   const box = $('cactions');
   box.innerHTML = '';
   Combat.buttons().forEach((b, i) => {
     const el = document.createElement('button');
-    el.className = 'btn' + (b.active ? ' active' : '');
+    el.className = 'btn' + (b.active ? ' active' : '') + (b.kind === 'c' ? ' brave' : '');
     el.disabled = b.disabled || !myTurn;
     el.title = b.desc;
     el.innerHTML = `<span class="k">${i + 1}</span>`;
