@@ -89,8 +89,18 @@ function railY(x: number) {
   return RAIL[RAIL.length - 1][1];
 }
 const RAIL: number[][] = [[-2080, 700], [-1800, 760], [-1450, 830], [-1150, 880], [-900, 870], [-500, 885], [0, 875], [200, 840], [330, 806], [430, 798], [540, 806], [700, 848], [850, 905], [1000, 950], [1300, 940], [1550, 910], [1730, 880]];
-/** Разъезд Эшфорд: второй путь параллельно главному, со съездами на концах. */
-const SIDING: number[][] = [[290, 0], [345, 16], [380, 16], [430, 16], [480, 16], [520, 16], [575, 0]].map(([x, d]) => [x, Math.round(railY(x) + d)]);
+/** Ломаная, сдвинутая вбок на d (по нормали; углы — по среднему из соседних нормалей). */
+function offsetPoly(poly: number[][], d: number) {
+  return poly.map(([x, y], i) => {
+    const a = poly[Math.max(0, i - 1)], b = poly[Math.min(poly.length - 1, i + 1)];
+    const dx = b[0] - a[0], dy = b[1] - a[1], l = Math.hypot(dx, dy) || 1;
+    return [x - (dy / l) * d, y + (dx / l) * d];
+  });
+}
+/** Двухпутная линия: два главных пути по обе стороны от оси RAIL. */
+const TRACK_GAP = 7;
+/** Разъезд Эшфорд: третий путь южнее главных, со съездами на концах. */
+const SIDING: number[][] = [[280, TRACK_GAP], [340, 24], [380, 24], [430, 24], [480, 24], [525, 24], [585, TRACK_GAP]].map(([x, d]) => [x, Math.round(railY(x) + d)]);
 
 // патрули барона: первый ходит от Фенмора через Эшфорд по тракту до форта, второй — от форта к Ричморду
 // братья свободы: один ходит по северному тракту, второй — между Эйнбоу и Хоули, третий — от Вудхэма через форт к Тарвеллу
@@ -880,14 +890,14 @@ function renderBackground(): HTMLCanvasElement {
   // железная дорога: насыпь, шпалы, рельсы
   const track = (poly: number[][]) => {
     const rail = pts(poly);
-    thick(rail, '#2a2620', 6);
     for (let i = 1; i < rail.length; i++) {
       const [x0, y0] = rail[i - 1], [x1, y1] = rail[i], len = Math.hypot(x1 - x0, y1 - y0), nx = -(y1 - y0) / len, ny = (x1 - x0) / len;
       for (let k = 0; k < len; k += 3) { const x = x0 + (x1 - x0) * (k / len), y = y0 + (y1 - y0) * (k / len); pline(c, x - nx * 3, y - ny * 3, x + nx * 3, y + ny * 3, '#4a3a28'); }
       for (const o of [-1.6, 1.6]) pline(c, x0 + nx * o, y0 + ny * o, x1 + nx * o, y1 + ny * o, '#8a8a80');
     }
   };
-  track(SIDING); track(RAIL);
+  thick(pts(RAIL), '#2a2620', 13); thick(pts(SIDING), '#2a2620', 6); // общая насыпь
+  track(SIDING); track(offsetPoly(RAIL, -TRACK_GAP)); track(offsetPoly(RAIL, TRACK_GAP));
   // дороги
   for (const rd of ROADS) { const pr = pts(rd); thick(pr, '#26221a', 6); thick(pr, '#6a604a', 4); thick(pr, '#7e7458', 2, [2, 5]); }
   // атмосферные руины — без подписей и событий
