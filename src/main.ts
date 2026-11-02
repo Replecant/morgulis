@@ -95,6 +95,7 @@ Explore.onLocation = () => refreshHud();
 Explore.onExit = (scene) => toWorld(scene);
 World.onArrive = (l) => Dialog.start(l.talk);
 World.onEncounter = () => Dialog.start('enc_band');
+World.onPatrol = () => Dialog.start('enc_patrol');
 World.onDay = () => { // раз в сутки отряд ест
   if (G.supplies.ration > 0) { G.supplies.ration--; toast(`${clockText()}: отряд съел паёк (осталось ${G.supplies.ration})`); }
   else { G.squad.forEach((s) => (s.hp = Math.max(1, s.hp - 2))); Dialog.start('hunger'); }

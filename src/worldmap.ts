@@ -33,6 +33,20 @@ const ROADS: number[][][] = [
 ];
 const RAIL: number[][] = [[0, 900], [300, 890], [440, 880], [700, 910], [1000, 950], [1300, 940], [1550, 910], [1730, 880]];
 
+// патрули барона: первый ходит по тракту Эшфорд — форт, второй — от форта к Ричморду
+const PATROL_PATHS: number[][][] = [ROADS[0], [...ROADS[0].slice(2).reverse(), ...ROADS[1].slice(1)]];
+const PATROL_SPEED = 36;   // пикселей карты в час
+interface Patrol { path: number[][]; len: number; s: number; dir: 1 | -1; wait: number; cool: number; speed: number }
+const polyLen = (pts: number[][]) => pts.reduce((a, pt, i) => (i ? a + Math.hypot(pt[0] - pts[i - 1][0], pt[1] - pts[i - 1][1]) : 0), 0);
+function polyAt(pts: number[][], s: number): Pt & { dx: number } {
+  for (let i = 1; i < pts.length; i++) {
+    const [x0, y0] = pts[i - 1], [x1, y1] = pts[i], l = Math.hypot(x1 - x0, y1 - y0);
+    if (s <= l || i === pts.length - 1) { const k = clamp(s / l, 0, 1); return { x: x0 + (x1 - x0) * k, y: y0 + (y1 - y0) * k, dx: x1 - x0 }; }
+    s -= l;
+  }
+  return { x: pts[0][0], y: pts[0][1], dx: 0 };
+}
+
 const SPEED = 55;          // пикселей карты в час по бездорожью
 const ROAD_BONUS = 1.7;    // по дороге быстрее
 const HOURS_PER_SEC = 1.2; // сколько игровых часов проходит за секунду пути
@@ -54,6 +68,8 @@ export const World = {
   band: { x: 1050, y: 1080, tx: 1050, ty: 1080, alive: true, respawn: 0, calm: 0, seen: false },
   onArrive: (_l: Loc) => {},
   onEncounter: () => {},
+  onPatrol: () => {},
+  patrols: [] as Patrol[],
   onDay: () => {},
   lastDay: 0,
 
@@ -61,7 +77,28 @@ export const World = {
     this.bg = renderBackground();
     this.band = { x: 1050, y: 1080, tx: 1050, ty: 1080, alive: true, respawn: 0, calm: 0, seen: false };
     this.lastDay = Math.floor(G.clock / 24);
+    // первый выходит из Эшфорда к форту, второй — из форта к Ричморду: идут навстречу и расходятся
+    this.patrols = PATROL_PATHS.map((path, i) => { const len = polyLen(path); return { path, len, s: i ? 0 : len * 0.2, dir: 1 as const, wait: 0, cool: 0, speed: i ? PATROL_SPEED * 1.15 : PATROL_SPEED * 0.9 }; });
   },
+  patrolPos(pt: Patrol) { return polyAt(pt.path, pt.s); },
+  /** Патрули идут по дорогам туда и обратно, на концах отдыхают. Встретив отряд — останавливают его. */
+  updatePatrols(dt: number) {
+    const hours = dt * HOURS_PER_SEC, p = this.party;
+    for (const pt of this.patrols) {
+      if (pt.wait > 0) pt.wait -= hours;
+      else {
+        pt.s += pt.dir * pt.speed * hours;
+        if (pt.s >= pt.len || pt.s <= 0) { pt.s = clamp(pt.s, 0, pt.len); pt.dir = pt.dir === 1 ? -1 : 1; pt.wait = 3 + Math.random() * 3; }
+      }
+      if (G.clock >= pt.cool && dist(this.patrolPos(pt), p) < 24) {
+        pt.cool = G.clock + 18;
+        p.moving = false; this.pending = null; G.keys.clear();
+        this.onPatrol();
+        return;
+      }
+    }
+  },
+  nearPatrol(q: Pt, r: number) { return this.patrols.some((pt) => dist(this.patrolPos(pt), q) < r); },
 
   /** Поставить отряд рядом с местом (после выхода из сцены). */
   placeAt(id: string) {
@@ -115,6 +152,7 @@ export const World = {
       this.updateLocation();
       const day = Math.floor(G.clock / 24);
       if (day > this.lastDay) { this.lastDay = day; this.onDay(); }
+      this.updatePatrols(dt);
       this.updateBand(dt);
     }
   },
@@ -131,10 +169,17 @@ export const World = {
       return;
     }
     const d = dist(b, p);
-    const chase = d < 230 && G.clock >= b.calm && !LOCS.some((l) => l.kind !== 'poi' && dist(l, p) < 110);
+    // при патруле рядом мародёры не нападают и уходят подальше от дороги
+    const patrolNear = this.nearPatrol(b, 200);
+    const chase = d < 230 && G.clock >= b.calm && !patrolNear && !this.nearPatrol(p, 220) && !LOCS.some((l) => l.kind !== 'poi' && dist(l, p) < 110);
+    if (patrolNear) {
+      const pt = this.patrols.reduce((a, q) => (dist(this.patrolPos(q), b) < dist(this.patrolPos(a), b) ? q : a));
+      const pp = this.patrolPos(pt), a = Math.atan2(b.y - pp.y, b.x - pp.x);
+      b.tx = clamp(b.x + Math.cos(a) * 260, 100, WW - 250); b.ty = clamp(b.y + Math.sin(a) * 260, 100, WH - 100);
+    }
     b.seen = d < 330;
     if (chase) { b.tx = p.x; b.ty = p.y; }
-    else if (dist(b, { x: b.tx, y: b.ty }) < 4 || (G.clock < b.calm && dist(b, p) < 300)) {
+    else if (!patrolNear && (dist(b, { x: b.tx, y: b.ty }) < 4 || (G.clock < b.calm && dist(b, p) < 300))) {
       // бродим (или уходим подальше, если откупились)
       const away = G.clock < b.calm;
       const a = away ? Math.atan2(b.y - p.y, b.x - p.x) + (Math.random() - 0.5) : Math.random() * TAU;
@@ -198,6 +243,16 @@ export const World = {
       mini('militia_gun', X(b.x) - 4, Y(b.y), b.tx < b.x, fr(bm));
       mini('militia', X(b.x) + 4, Y(b.y) + 2, b.tx < b.x, fr(bm, 2));
     }
+    // патрули барона: трое стражников гуськом
+    const pm0 = p.moving || ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'KeyA', 'KeyD', 'KeyW', 'KeyS'].some((kk) => G.keys.has(kk));
+    for (const pt of this.patrols) {
+      const pos = this.patrolPos(pt), back = pt.dir === 1 ? -1 : 1, walk = pm0 && pt.wait <= 0;
+      const fl = (pt.dir === 1 ? pos.dx : -pos.dx) < 0;
+      for (let k = 2; k >= 0; k--) {
+        const q = polyAt(pt.path, clamp(pt.s + back * k * 9, 0, pt.len));
+        mini('guard', X(q.x), Y(q.y), fl, fr(walk, k * 1.3));
+      }
+    }
     // отряд
     const pm = p.moving || ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'KeyA', 'KeyD', 'KeyW', 'KeyS'].some((kk) => G.keys.has(kk));
     mini(G.squad[0]?.look ?? 'pc', X(p.x), Y(p.y), p.flip, fr(pm));
@@ -211,6 +266,7 @@ export const World = {
     }
     L(fl.x, fl.y - 30, 80, 0.7 + Math.sin(t * 9) * 0.08, '#ff9a40');
     L(p.x, p.y, 58, 0.55, '#d8c890');
+    for (const pt of this.patrols) { const q = this.patrolPos(pt); L(q.x, q.y - 8, 34, 0.5, '#f0d090'); } // фонарь патруля
     applyLight(lc, LW, LH, lights, 0.6, [0.84, 1, 0.78], 0.3);
     // пепел — по одному пикселю
     lc.fillStyle = 'rgba(190,196,170,0.55)';
@@ -237,6 +293,15 @@ export const World = {
       c.fillStyle = '#e07060'; c.fillText(G.clock < b.calm ? 'Мародёры (отстали)' : dist(b, p) < 230 ? 'Мародёры — преследуют!' : 'Мародёры', b.x - cx, b.y - cy - 40);
       c.textAlign = 'left';
     }
+    this.patrols.forEach((pt, i) => {
+      const q = this.patrolPos(pt), sx = q.x - cx, sy = q.y - cy;
+      if (sx < -60 || sx > VW + 60 || sy < -40 || sy > VH + 60) return;
+      if (this.patrols.slice(0, i).some((o) => dist(this.patrolPos(o), q) < 60)) return; // два патруля рядом — одна подпись
+      c.font = 'italic 12px "Old Standard TT", serif'; c.textAlign = 'center';
+      c.fillStyle = 'rgba(0,0,0,0.85)'; c.fillText('Патруль барона', sx + 1, sy - 39);
+      c.fillStyle = '#d8c080'; c.fillText('Патруль барона', sx, sy - 40);
+      c.textAlign = 'left';
+    });
     const near = this.nearLoc();
     if (near && !p.moving) {
       const label = `[E] ${near.name}`;
