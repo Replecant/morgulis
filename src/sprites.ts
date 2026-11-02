@@ -158,10 +158,15 @@ function buildChar(kind: string, frame: number): HTMLCanvasElement {
     R(10, hy + 2, 4, 5, '#030303');
     P(11, hy + 4, '#b8ff80'); P(13, hy + 4, '#b8ff80');
   } else {
-    if (st.longHair && st.hair) R(8, hy + 1, 3, 10, shade(st.hair, -0.1));
+    if (st.longHair && st.hair) { R(7, hy + 1, 4, 10, shade(st.hair, -0.1)); P(7, hy + 11, shade(st.hair, -0.25)); P(10, hy + 11, shade(st.hair, -0.25)); } // волосы по плечам сзади
     R(hx0, hy, 6, 7, skin); R(hx0 + 5, hy, 1, 7, skinD);
     P(hx0 + 1, hy + 3, skinD);                                      // ухо
     if (st.hair) { R(hx0, hy - 1, 6, 2, st.hair); R(hx0, hy, 2, 4, st.hair); }
+    if (st.longHair && st.hair) { // женская причёска: чёлка и прядь с лицевой стороны, спадающая на плечо
+      const hd = shade(st.hair, -0.15), hl = shade(st.hair, 0.15);
+      R(hx0 - 1, hy - 1, 8, 1, st.hair); P(hx0 + 1, hy - 1, hl); P(hx0 + 2, hy, st.hair); P(hx0 + 5, hy, st.hair);
+      R(hx0 + 6, hy, 1, 11, st.hair); R(hx0 + 5, hy + 5, 1, 5, st.hair); P(hx0 + 6, hy + 2, hl); P(hx0 + 6, hy + 6, hl); P(hx0 + 7, hy + 10, hd); P(hx0 + 5, hy + 10, hd);
+    }
     if (st.beard) { R(hx0 + 2, hy + 5, 4, 2, st.beard); R(hx0 + 3, hy + 7, 3, 1, st.beard); }
     if (st.respirator) { // противогаз: прорезиненная маска, круглые стёкла, хобот к сумке на груди
       R(hx0, hy, 6, 7, '#6a6a54'); R(hx0 + 5, hy, 1, 7, '#4e4e40'); R(hx0, hy, 6, 1, '#7a7a62');
@@ -410,7 +415,7 @@ export function miniSprite(kind: string, frame = 0): HTMLCanvasElement {
   if (st.tanks) R(0, 6, 2, 4, '#5a5e4a');
   if (st.beard) R(3, 5, 4, 1, st.beard);
   if (st.hair && !st.hat) R(3, 1, 4, 2, st.hair);
-  if (st.longHair && st.hair) R(2, 2, 1, 4, st.hair);
+  if (st.longHair && st.hair) { R(2, 2, 1, 5, st.hair); R(7, 2, 1, 4, st.hair); }
   if (st.hood) { R(2, 1, 6, 2, coat); R(2, 2, 1, 4, coat); R(7, 2, 1, 4, coat); R(3, 3, 3, 2, '#000'); }
   const hc = st.hatC ?? '#2a2620';
   switch (st.hat) {
