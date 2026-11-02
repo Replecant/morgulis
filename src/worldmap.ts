@@ -10,6 +10,7 @@ import { miniSprite } from './sprites';
 import { hasTool } from './state';
 import { addWoundId } from './wounds';
 import { Debug } from './debug';
+import { Weather } from './weather';
 
 const VW = 960, VH = 640;
 export const WW = 1920, WH = 1280;
@@ -144,7 +145,7 @@ export const World = {
     this.band = { x: 1050, y: 1080, tx: 1050, ty: 1080, alive: true, respawn: 0, calm: 0, seen: false };
     this.lastDay = Math.floor(G.clock / 24);
     // первый выходит из Эшфорда к форту, второй — из форта к Ричморду: идут навстречу и расходятся
-    this.clouds = [[200, 300], [760, 1080], [1250, 560], [-300, 420], [-650, 900], [1560, 1120], [900, 180]].map(([x, y], i) => ({
+    this.clouds = [[200, 300], [760, 1080], [1250, 560], [-300, 420], [-650, 900], [1560, 1120], [900, 180], [-1250, 220], [-2050, 950], [-1500, 1150], [-2300, 380]].map(([x, y], i) => ({
       x, y, r: 70 + ((i * 37) % 50), vx: 9 + (i % 3) * 3, vy: ((i % 2) * 2 - 1) * 2, seed: i * 1.9 }));
     this.inGas = false; this.gasDose = 0; this.filterUse = 0;
     this.demons = [0.6, 3.6].map((a, i) => { const q = lakeRing(a, 1.25); return { id: i, x: q.x, y: q.y, tx: q.x, ty: q.y, alive: true, respawn: 0, calm: 0, seen: false, a }; });
@@ -178,7 +179,7 @@ export const World = {
   /** Примечательные места видны на карте, только когда отряд их нашёл — подошёл близко. */
   known(l: Loc) { return l.kind !== 'poi' || !!G.flags['found_' + l.id]; },
   discover() {
-    for (const l of LOCS) if (l.kind === 'poi' && !G.flags['found_' + l.id] && dist(l, this.party) < FIND_R) { G.flags['found_' + l.id] = true; this.onDiscover(l); }
+    for (const l of LOCS) if (l.kind === 'poi' && !G.flags['found_' + l.id] && dist(l, this.party) < FIND_R * Weather.sightK()) { G.flags['found_' + l.id] = true; this.onDiscover(l); }
   },
   locAt(x: number, y: number, r = 26) { return LOCS.find((l) => this.known(l) && Math.hypot(l.x - x, l.y - y) < (l.kind === 'fort' ? 70 : r)) ?? null; },
   nearLoc() { return LOCS.find((l) => this.known(l) && dist(l, this.party) < (l.kind === 'fort' ? 90 : 40)) ?? null; },
@@ -227,7 +228,7 @@ export const World = {
     if (k.has('ArrowUp') || k.has('KeyW')) vy -= 1;
     if (k.has('ArrowDown') || k.has('KeyS')) vy += 1;
     let moved = 0;
-    const speed = SPEED * (onRoad(p) ? ROAD_BONUS : 1) * HOURS_PER_SEC * Debug.speed;
+    const speed = SPEED * (onRoad(p) ? ROAD_BONUS : 1) * HOURS_PER_SEC * Debug.speed * Weather.speedK();
     if (vx || vy) {
       const n = Math.hypot(vx, vy);
       p.x = clamp(p.x + (vx / n) * speed * dt, WX0 + 10, WW - 10); p.y = clamp(p.y + (vy / n) * speed * dt, 10, WH - 10);
@@ -519,7 +520,9 @@ export const World = {
     L(p.x, p.y, 58, 0.55, '#d8c890');
     for (const pt of this.patrols) { const q = this.patrolPos(pt); L(q.x, q.y - 8, 34, 0.5, '#f0d090'); } // фонарь патруля
     for (const g of this.dead) if (g.alive && g.seen) L(g.x, g.y - 6, 22, 0.35, '#a8f070'); // гнилушечный отсвет глаз
-    applyLight(lc, LW, LH, lights, 0.6, [0.84, 1, 0.78], 0.3);
+    const wl = Weather.light([0.84, 1, 0.78], 0.3);
+    applyLight(lc, LW, LH, lights, wl.ambient, wl.tint, wl.vig);
+    Weather.draw(lc, LW, LH, t, lx, ly);
     // пепел — по одному пикселю
     lc.fillStyle = 'rgba(190,196,170,0.55)';
     for (let i = 0; i < 40; i++) {

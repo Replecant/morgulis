@@ -1,6 +1,7 @@
 // ============================================================
 //  Интерфейс: диалоговое окно, HUD, боевая панель, экраны
 // ============================================================
+import { Weather } from './weather';
 import { G, journal, gearBonus, hasTool } from './state';
 import { DIALOGS, SPEAKERS, DNode, Choice, fmt } from './dialogs';
 import { drawFigure, applyEquipLooks } from './gfx';
@@ -147,7 +148,7 @@ function drawPortrait(cv: HTMLCanvasElement, kind: string | null, scale = 3) {
 // ------------------------------------------------------------ HUD
 export function refreshHud() {
   const j = journal().filter((q) => !q.done);
-  $('objective').innerHTML = `<b>${G.location || 'Пустошь'} · ${clockText()}</b>` + (j.length ? j.map((q) => `<div class="q">• ${q.text}</div>`).join('') : '<div class="q dim">Заданий нет — осмотритесь и поговорите с людьми.</div>');
+  $('objective').innerHTML = `<b>${G.location || 'Пустошь'} · ${clockText()} · ${Weather.label()}</b>` + (j.length ? j.map((q) => `<div class="q">• ${q.text}</div>`).join('') : '<div class="q dim">Заданий нет — осмотритесь и поговорите с людьми.</div>');
   $('squadbar').innerHTML = G.squad.map((s) => {
     const max = effMaxHp(s), w = woundsOf(s);
     const marks = w.map((x) => `<span class="wd ${x.heavy ? 'heavy' : ''}" title="${x.name}: ${x.desc}">✚</span>`).join('');

@@ -7,6 +7,7 @@ import { T, prect, ppx, pline, pellipse, shade, outline, seeded } from './px';
 type Ctx = CanvasRenderingContext2D;
 export interface PxLight { x: number; y: number; r: number; color: string; a?: number }
 
+const TAU = Math.PI * 2;
 const INK = '#0c0e0a', BRASS = '#c8a050', AMBER = '#e0a848', AMBER_D = '#9a6a28';
 
 // ============================================================ земля
@@ -76,7 +77,7 @@ const TOP: Record<string, number> = {
   house: 16, ruin: 16, farm: 16, station: 20, pumphouse: 28, slaughter: 16, barn: 14, hut: 16,
   tank: 18, watertower: 44, wagon: 14, lamp: 30, tree: 26, rock: 6, barrel: 6, fence: 10, feed: 8, chitin: 6,
   cellar: 10, adit: 26, shroombed: 6, bigshroom: 18, rack: 14, wall: 30, gate: 40, railgate: 36, tower: 56,
-  sign: 16, sandbags: 8, wire: 8, cell: 16, orecart: 8, boat: 4, nets: 20, scrapheap: 16, banner: 46, poster: 24, statue: 44, horn: 40, keep: 76, barracks: 22, laundry: 22, handcart: 12, crates: 14, coalheap: 8, standpipe: 18, noticeboard: 22, sacks: 8, vent: 4, clinic: 30, shack: 18, factory: 64, tenement: 30, stall: 18, workshop: 26, crater: 0, bones: 0, wallruin: 14, skeleton: 14, milestone: 14, lorry: 12,
+  sign: 16, fountain: 34, sandbags: 8, wire: 8, cell: 16, orecart: 8, boat: 4, nets: 20, scrapheap: 16, banner: 46, poster: 24, statue: 44, horn: 40, keep: 76, barracks: 22, laundry: 22, handcart: 12, crates: 14, coalheap: 8, standpipe: 18, noticeboard: 22, sacks: 8, vent: 4, clinic: 30, shack: 18, factory: 64, tenement: 30, stall: 18, workshop: 26, crater: 0, bones: 0, wallruin: 14, skeleton: 14, milestone: 14, lorry: 12,
 };
 
 export interface ObjLike { kind: string; x: number; y: number; w: number; h: number; seed: number; ruinKind?: string; boarded?: boolean }
@@ -339,6 +340,20 @@ export function objSprite(o: ObjLike, neighbors?: { horizFence: boolean }) {
     }
     case 'sign': R(9, H - 16, 2, 16, '#3a2c1e'); R(2, H - 18, 16, 6, '#4a3a26'); for (let x = 4; x < 16; x += 3) R(x, H - 16, 2, 1, '#c8b88a'); break;
 
+    case 'fountain': { // фонтан на площади: каменная чаша, вода, в центре — статуя баронессы
+      const cx = W / 2, cy = H - 26;
+      pellipse(c, cx, cy + 2, W / 2 - 1, 22, 'rgba(0,0,0,0.45)');
+      pellipse(c, cx, cy, W / 2 - 2, 21, '#6e6a60'); pellipse(c, cx, cy - 1, W / 2 - 4, 19, '#8a867a');   // бортик
+      pellipse(c, cx, cy, W / 2 - 8, 15, '#1e2c2c'); pellipse(c, cx, cy - 1, W / 2 - 10, 13, '#26383a');   // вода
+      for (let k = 0; k < 14; k++) { const a = r() * TAU, d = 6 + r() * 20; R(cx + Math.cos(a) * d, cy + Math.sin(a) * d * 0.55, 3, 1, '#4a6a68'); }
+      pellipse(c, cx, cy - 1, 7, 4, '#5e5a52');                                                          // постамент
+      R(cx - 4, cy - 14, 8, 13, '#5e5a52'); R(cx - 4, cy - 14, 8, 1, '#7a766a');
+      R(cx - 3, cy - 28, 6, 14, '#6a6a62'); R(cx - 5, cy - 20, 10, 6, '#6a6a62');                         // мантия
+      R(cx - 2, cy - 34, 4, 6, '#7a7a70'); R(cx - 3, cy - 36, 6, 2, '#6a6a62');                         // голова
+      L(cx + 3, cy - 26, cx + 8, cy - 38, '#7a7a70', 2);                                                 // рука вверх, к востоку
+      for (const [dx, dy] of [[-10, -6], [10, -6], [0, -2]]) { P(cx + dx, cy + dy - 6, '#9ab8b4'); P(cx + dx, cy + dy - 4, '#7a9a98'); } // брызги
+      break;
+    }
     case 'sandbags': { // мешки с песком в два ряда
       for (let row = 0; row < 2; row++) for (let k = -1; k < 3; k++) {
         const bx = k * 8 + (row % 2 ? 4 : 0), by = H - 12 + row * 6;

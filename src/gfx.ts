@@ -15,6 +15,7 @@ interface Style {
   hatC?: string; trim?: string; belt?: string; apron?: string;
   dress?: boolean; collar?: boolean; mask?: boolean; band?: boolean; sash?: boolean; hood?: boolean; longHair?: boolean; goggles?: boolean; cuirass?: boolean;
   undead?: boolean; tanks?: boolean;
+  armband?: string; // повязка на рукаве
   puttees?: string; webbing?: string; respirator?: boolean; tabs?: string; number?: boolean; // number — нашивка с номером (заключённые) // военная форма: обмотки, ремни с подсумками, противогаз, петлицы
   limbs?: Partial<Record<string, string>>; // утраченные части тела и протезы (prosthetics.ts) — видны на фигурке // траншейные мертвецы: гнилая кожа, светящиеся глаза; газовые баллоны за спиной
   weapon?: 'saber' | 'rifle' | 'fork' | 'musket' | 'hammer' | 'staff' | 'pole' | 'bottle' | 'book' | 'wrench' | 'bag' | 'knife' | 'pistol' | 'goad' | 'shovel';
@@ -64,12 +65,20 @@ export const STYLES: Record<string, Style> = {
   medic_civ: { coat: '#d0ccc0', legs: '#2a2826', apron: '#a8a498', hair: '#5a5a56', skin: '#c8b096', goggles: true, weapon: 'wrench' },
   // земли баронессы
   // солдаты баронессы: тёмный серо-оливковый мундир, красные петлицы, та же каска — и противогаз на лице
+  // горожане форта баронессы — у многих красные повязки
+  bcit_m: { coat: '#5a5248', legs: '#3a362e', hat: 'flatcap', hatC: '#3a342c', skin: '#c4a888', beard: '#5a4a3a', armband: '#a03028' },
+  bcit_w: { coat: '#4e4a52', dress: true, apron: '#6a5a50', hat: 'bonnet', hatC: '#8a2a24', skin: '#d0b49a', hair: '#5a3a22', longHair: true, weapon: 'bag' },
+  bcit_w2: { coat: '#6a5a44', dress: true, apron: '#a09070', skin: '#d8c0a0', hair: '#b09060', longHair: true, armband: '#a03028' },
+  bcit_old: { coat: '#4a4a40', legs: '#32322a', trim: '#c8a050', hat: 'cap', hatC: '#3a3a32', skin: '#c4b09c', beard: '#c0bcb0', weapon: 'pole' },
+  bcit_youth: { coat: '#3e4a3a', legs: '#2e3428', belt: '#5a3a22', hat: 'cap', hatC: '#7a2a24', skin: '#d4b89c', armband: '#a03028', weapon: 'book', scale: 0.88 },
+  bcit_work: { coat: '#4a4438', legs: '#2e2a24', apron: '#5a3e28', hat: 'flatcap', hatC: '#2a2620', skin: '#b89878', weapon: 'wrench' },
   bguard: { coat: '#4e5040', legs: '#44463a', belt: '#7a7458', webbing: '#8a8466', puttees: '#7a7c66', tabs: '#b03830', hat: 'brodie', hatC: '#3e4234', skin: '#c4a888', respirator: true, weapon: 'rifle' },
   bofficer: { coat: '#4e5040', legs: '#3a3c30', belt: '#5a3a22', webbing: '#5a3a22', puttees: '#4a3a26', tabs: '#a03028', trim: '#c8a050', hat: 'cap', hatC: '#4e5040', skin: '#d0b498', weapon: 'saber' },
   bherald: { coat: '#4a2a2a', legs: '#1e1a1a', trim: '#c8a050', hat: 'cap', hatC: '#2e323c', skin: '#c8ac90', beard: '#4a3a2a', weapon: 'book' },
   fisher: { coat: '#4a5048', legs: '#2a2c28', apron: '#3a3a30', hat: 'flatcap', hatC: '#3a3e38', skin: '#b89878', beard: '#6a5a4a', weapon: 'pole' },
   fisher_w: { coat: '#4a4448', dress: true, apron: '#5a5a4a', hat: 'bonnet', hatC: '#3a3a3a', skin: '#c8a890', hair: '#5a4a3a', longHair: true, weapon: 'bag' },
   prospector: { coat: '#5a4a38', legs: '#2e2820', belt: '#2a1d12', hat: 'minerhelm', hatC: '#5a4a2a', skin: '#b08a6a', beard: '#3a2a1a', weapon: 'hammer' },
+  prospector_w: { coat: '#5a4a38', legs: '#2e2820', belt: '#2a1d12', hat: 'minerhelm', hatC: '#5a4a2a', skin: '#c0a088', hair: '#6a4a2a', longHair: true, weapon: 'hammer' },
   scrapper: { coat: '#4a4238', legs: '#2a2620', hat: 'flatcap', hatC: '#2a2620', skin: '#a8886a', goggles: true, weapon: 'bag' },
   hungry: { coat: '#4e4436', legs: '#3a342a', skin: '#b8a08a', hair: '#3a2e24', beard: '#4a3e30', apron: '#5a4a38', weapon: 'knife' },
   hungry2: { coat: '#46443c', legs: '#36342c', hat: 'flatcap', hatC: '#2e2a24', skin: '#c0a690', weapon: 'pole' },

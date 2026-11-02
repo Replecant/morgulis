@@ -14,6 +14,7 @@ import { PixelView, applyLight, PLight, T, PS, prect, ppx, pline, pellipse, shad
 import { drawSprite } from './sprites';
 import { paintTile, objSprite } from './pxworld';
 import { hasProsth } from './prosthetics';
+import { Weather } from './weather';
 import { SPELLS, SCHOOLS, STRAIN_MAX, knows, occultBonus, addStrain, strainCheck } from './occult';
 
 export const CT = 40, CW = 24, CH = 14;
@@ -1116,7 +1117,9 @@ export const Combat = {
     }
     for (const f of this.fx) if (f.type === 'proj') lights.push({ x: lerp(f.x1, f.x2, f.k!) / PS, y: lerp(f.y1, f.y2, f.k!) / PS, r: 36, a: 1, color: f.color });
     for (let i = 0; i < 30; i++) ppx(lc, (i * 97 + t * (6 + (i % 4) * 3)) % lw, (i * 53 + t * (9 + (i % 3) * 4)) % lh, '#8a8c7a');
-    applyLight(lc, lw, lh, lights, 0.6, [0.84, 1, 0.78], 0.25);
+    const wl = Weather.light([0.84, 1, 0.78], 0.25);
+    applyLight(lc, lw, lh, lights, wl.ambient, wl.tint, wl.vig);
+    Weather.draw(lc, lw, lh, t);
 
     c.save();
     if (this.shake > 0) c.translate(Math.round((Math.random() - 0.5) * this.shake), Math.round((Math.random() - 0.5) * this.shake));

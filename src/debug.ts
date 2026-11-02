@@ -12,6 +12,8 @@ export const Debug = {
   clickTp: false,      // телепорт кликом по карте мира
   open: false,
   onTeleport: (_id: string) => {},
+  onWeather: (_k: string) => {},
+  weathers: [] as { id: string; name: string }[],
   places: [] as { id: string; name: string; group: string }[],
 
   load() {
@@ -43,6 +45,8 @@ export const Debug = {
       flag('Невидимость на карте', 'invisible', 'Мародёры и мертвецы не замечают отряд.'),
       speeds,
       flag('Телепорт кликом по карте мира', 'clickTp', 'Клик по глобальной карте переносит отряд в эту точку.'),
+      h('div', { class: 'dbg-h' }, 'Погода'),
+      h('div', { class: 'dbg-row' }, ...this.weathers.map((w) => h('button', { class: 'btn', onclick: () => this.onWeather(w.id) }, w.name)), h('button', { class: 'btn', onclick: () => this.onWeather('auto') }, 'Сама')),
       h('div', { class: 'dbg-h' }, 'Телепорт к месту'),
       h('div', { class: 'dbg-tp' }, ...tp)));
   },

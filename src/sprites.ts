@@ -80,6 +80,7 @@ function buildChar(kind: string, frame: number): HTMLCanvasElement {
     const metal = armL === 'piston' || armL === 'galvanic';
     R(tx0 - 1, sy(tTop + 1), 2, 8, metal ? (armL === 'galvanic' ? shade(COPPER, -0.25) : '#6e726c') : coatD);
     if (st.band && !metal) { R(tx0 - 1, sy(tTop + 2), 2, 2, '#e0dcc8'); P(tx0 - 1, sy(tTop + 3), '#a02a20'); }
+    if (st.armband && !metal) R(tx0 - 1, sy(tTop + 2), 2, 2, st.armband);
     const hcol = armL === 'hook' ? STEEL : armL === 'hinged' ? BRASS : metal ? STEEL : armL === 'flesh' ? '#b89a8a' : skinD;
     if (armL === 'hook') { P(tx0 - 1, sy(tTop + 9), STEEL); P(tx0, sy(tTop + 10), STEEL); }
     else R(tx0 - 1, sy(tTop + 9), 2, 1, hcol);

@@ -11,6 +11,7 @@ import { drawSprite, beetleSprite } from './sprites';
 import { paintTile, paintRail, objSprite, drawPumpjack, drawCampfire } from './pxworld';
 import { FOLK, FolkDef } from './folk';
 import { Debug } from './debug';
+import { Weather } from './weather';
 
 /** Клетка на экране (низкое разрешение ×2). */
 export const ET = T * PS;
@@ -103,7 +104,7 @@ export const Explore = {
   moveK: 1,
   path: [] as Pt[],
   pending: null as Obj | Npc | Beetle | Folk | null,
-  exitDir: null as [number, number] | null, // после пути — шаг за край сцены (выход на карту)
+  exitDir: null as [number, number] | null, exitTarget: null as Pt | null, exitTries: 0, // после пути — шаг за край сцены (выход на карту)
   onInteract: (_talk: string) => {},
   onLocation: (_name: string) => {},
   onExit: (_scene: string) => {},
@@ -414,7 +415,7 @@ export const Explore = {
     B('banner', 371, 22, 1, 1, { name: 'Знамя баронессы', talk: 'banner' }); B('banner', 371, 41, 1, 1, { name: 'Знамя баронессы', talk: 'banner' });
     // большой ярус: казармы рядами, плац, статуя, агитация
     for (const y of [11, 17, 49, 55]) for (const x of [378, 397]) B('barracks', x, y, 9, 3, { name: y < 30 ? 'Казарма' : 'Дом горожан', talk: y < 30 ? 'bbarracks' : 'bhouse' });
-    B('statue', 388, 35, 3, 2, { name: 'Статуя баронессы', talk: 'statue' });
+    B('fountain', 389, 36, 4, 4, { name: 'Фонтан со статуей баронессы', talk: 'statue' }); // ровно на перекрёстке площади
     for (const [x, y] of [[384, 27], [395, 27], [384, 46], [395, 46]]) B('banner', x, y, 1, 1, { name: 'Знамя баронессы', talk: 'banner' });
     for (const [x, y] of [[379, 24], [400, 24], [379, 44], [400, 44], [405, 34]]) B('poster', x, y, 1, 1, { name: 'Плакат', talk: 'poster' });
     for (const [x, y] of [[392, 25], [392, 47], [378, 36]]) B('horn', x, y, 1, 1, { name: 'Громкоговоритель', talk: 'horn' });
@@ -465,7 +466,7 @@ export const Explore = {
     // земли баронессы
     NPC('fish_elder', 'Старый Гарт, староста', 'fisher', 195, 38, 'fish_elder');
     NPC('fish_buyer', 'Скупщица', 'fisher_w', 218, 54, 'fish_buyer');
-    NPC('prosp_boss', 'Мэйбл, старшина старателей', 'prospector', 255, 45, 'prosp_boss');
+    NPC('prosp_boss', 'Мэйбл, старшина старателей', 'prospector_w', 255, 45, 'prosp_boss');
     NPC('scrap_trader', 'Скупщик лома', 'scrapper', 260, 47, 'scrap_trader');
     NPC('moss_elder', 'Ровена, старшая', 'grower', 280, 38, 'moss_elder');
     NPC('moss_herder', 'Пастух', 'herder', 303, 29, 'moss_herder');
@@ -597,13 +598,21 @@ export const Explore = {
     else if (k.has('ArrowRight') || k.has('KeyD')) dir = [1, 0];
     else if (k.has('ArrowUp') || k.has('KeyW')) dir = [0, -1];
     else if (k.has('ArrowDown') || k.has('KeyS')) dir = [0, 1];
-    if (dir) { this.path = []; this.pending = null; this.exitDir = null; this.step(dir[0], dir[1]); return; }
+    if (dir) { this.path = []; this.pending = null; this.exitDir = null; this.exitTarget = null; this.step(dir[0], dir[1]); return; }
     if (this.path.length) {
       const n = this.path.shift()!;
-      if (!this.step(n.x - p.x, n.y - p.y)) { this.path = []; this.pending = null; }
+      if (!this.step(n.x - p.x, n.y - p.y)) {
+        this.path = []; this.pending = null;
+        // шли к выходу, а дорогу перегородили — проложить путь заново в обход
+        if (this.exitTarget && this.exitTries++ < 20) {
+          const reach = bfs(MW, MH, p.x, p.y, (x, y) => !this.blocked(x, y), null, DIRS4);
+          if (reach.has(this.exitTarget.y * MW + this.exitTarget.x)) this.path = pathTo(reach, MW, this.exitTarget.x, this.exitTarget.y).slice(1);
+        } else { this.exitDir = null; this.exitTarget = null; }
+      }
       return;
     }
-    if (this.exitDir) { const d = this.exitDir; this.exitDir = null; this.step(d[0], d[1]); return; }
+    if (this.exitDir && this.exitTarget && (p.x !== this.exitTarget.x || p.y !== this.exitTarget.y)) { this.exitDir = null; this.exitTarget = null; }
+    if (this.exitDir) { const d = this.exitDir; this.exitDir = null; this.exitTarget = null; this.step(d[0], d[1]); return; }
     if (this.pending) {
       const it = this.pending; this.pending = null;
       if (this.isAdjacent(it)) this.interact(it);
@@ -730,9 +739,10 @@ export const Explore = {
       if (best) { this.path = pathTo(reach, MW, best.x, best.y).slice(1); this.pending = thing; }
       return;
     }
-    if (reach.has(ty * MW + tx)) { this.path = pathTo(reach, MW, tx, ty).slice(1); this.pending = null; this.exitDir = null; return; }
+    if (reach.has(ty * MW + tx)) { this.path = pathTo(reach, MW, tx, ty).slice(1); this.pending = null; this.exitDir = null; this.exitTarget = null; return; }
     // клик за краем сцены — дойти до ближайшего открытого места на краю и выйти на карту
-    if (!this.inScene(tx, ty)) {
+    const sc0 = SCENES[this.scene], onEdge = tx <= sc0.x0 || tx >= sc0.x1 || ty <= sc0.y0 || ty >= sc0.y1;
+    if (!this.inScene(tx, ty) || (onEdge && this.blocked(tx, ty))) {
       const sc = SCENES[this.scene];
       let best: { x: number; y: number; d: number; dir: [number, number] } | null = null;
       for (const n of reach.values()) {
@@ -741,7 +751,7 @@ export const Explore = {
         const d = Math.hypot(n.x - tx, n.y - ty) + n.d * 0.15;
         if (!best || d < best.d) best = { x: n.x, y: n.y, d, dir };
       }
-      if (best) { this.path = pathTo(reach, MW, best.x, best.y).slice(1); this.pending = null; this.exitDir = best.dir; }
+      if (best) { this.path = pathTo(reach, MW, best.x, best.y).slice(1); this.pending = null; this.exitDir = best.dir; this.exitTarget = { x: best.x, y: best.y }; this.exitTries = 0; }
     }
   },
   hover(mx: number, my: number) { this.hoverW = { x: Math.floor((mx / PS + this.cam.x) / T), y: Math.floor((my / PS + this.cam.y) / T) }; },
@@ -842,7 +852,9 @@ export const Explore = {
       }
     }
     L(p.rx * T + T / 2, p.ry * T + T / 2, 74, 0.8, '#d8c890');
-    applyLight(c, VW, VH, lights, 0.6, [0.82, 1, 0.76]);
+    const wl = Weather.light([0.82, 1, 0.76], 0.35);
+    applyLight(c, VW, VH, lights, wl.ambient, wl.tint, wl.vig);
+    Weather.draw(c, VW, VH, t, cx, cy);
     v.present(out);
 
     if (G.mode === 'explore') { this.drawBarks(out, cx, cy); this.drawPrompts(out, cx, cy); }

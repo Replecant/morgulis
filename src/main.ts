@@ -14,6 +14,7 @@ import { Sheet } from './sheet';
 import { Music } from './music';
 import { Pause } from './pause';
 import { Debug } from './debug';
+import { Weather, WEATHER_ORDER, WEATHER_NAMES } from './weather';
 import { charSprite } from './sprites';
 import { ProsthShop } from './prosthshop';
 import { OccultMenu } from './occultmenu';
@@ -112,6 +113,8 @@ World.onArrive = (l) => Dialog.start(l.talk);
 World.onEncounter = () => Dialog.start('enc_band');
 // ---------------------------------------------------------------- отладка (F2)
 Debug.load();
+Debug.weathers = WEATHER_ORDER.map((k) => ({ id: k, name: WEATHER_NAMES[k] }));
+Debug.onWeather = (k) => { if (k === 'auto') Weather.locked = false; else Weather.set(k as typeof WEATHER_ORDER[number], true); refreshHud(); };
 Debug.places = LOCS.map((l) => ({ id: l.id, name: l.name, group: l.x < -900 ? 'Земли баронессы' : l.x < 120 ? 'Поле сражений' : 'Земли барона' }));
 Debug.onTeleport = (id) => {
   if (G.mode === 'combat' || G.mode === 'title' || G.mode === 'create') { toast('Телепорт — только на карте или в сцене'); return; }
@@ -199,6 +202,7 @@ function showTitle() {
 function newGame(pc: Character, intro = true) {
   layer.replaceChildren();
   resetGame(pc);
+  Weather.reset();
   resetShops();
   setPcStyle(pc);
   applyEquipLooks(G.squad);
@@ -316,7 +320,8 @@ function frame(now: number) {
   else if (G.mode === 'world') World.draw(ctx, G.time);
   else Explore.draw(ctx, G.time);
   if (G.mode === 'world' && (hudT += dt) > 0.5) { hudT = 0; refreshHud(); }
-  Music.update(dt, G.mode === 'combat'); // в бою — боевая тема, иначе мирные
+  Music.update(dt, G.mode === 'combat');
+  if (G.mode !== 'title' && G.mode !== 'create') Weather.update(dt); // в бою — боевая тема, иначе мирные
   requestAnimationFrame(frame);
 }
 
@@ -328,5 +333,5 @@ requestAnimationFrame(frame);
 
 // отладка: ?debug в адресе даёт доступ к состоянию из консоли
 if (new URLSearchParams(location.search).has('debug')) {
-  (window as any).morgulis = { G, Combat, Explore, World, Dialog, startBattle, newGame, newCharacter, openSquad, Inventory, Trade, Sheet, Music, Pause, ProsthShop, OccultMenu, Debug, charSprite, toScene, toWorld };
+  (window as any).morgulis = { G, Combat, Explore, World, Dialog, startBattle, newGame, newCharacter, openSquad, Inventory, Trade, Sheet, Music, Pause, ProsthShop, OccultMenu, Debug, Weather, charSprite, toScene, toWorld };
 }
