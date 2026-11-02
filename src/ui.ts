@@ -1,11 +1,12 @@
 // ============================================================
 //  Интерфейс: диалоговое окно, HUD, боевая панель, экраны
 // ============================================================
-import { G, objectiveText } from './state';
+import { G, journal } from './state';
 import { DIALOGS, SPEAKERS, DNode, Choice, fmt } from './dialogs';
 import { drawFigure } from './gfx';
 import { Combat } from './combat';
 import { $ } from './util';
+import { skillBonus, check, checkChance, SKILLS } from './rules';
 import { effMaxHp, woundsOf, bestHealer, bandageAmount, bandage, surgery, rest } from './wounds';
 import { COURAGE_MAX } from './combat';
 
@@ -29,7 +30,7 @@ export const Dialog = {
     this.goto(typeof tree.start === 'function' ? tree.start(G) : tree.start);
   },
 
-  goto(id: string | undefined) {
+  goto(id: string | undefined, prefix = '') {
     if (!id) return this.close();
     const n = DIALOGS[this.tree].nodes[id];
     if (!n) return this.close();
@@ -37,7 +38,7 @@ export const Dialog = {
     const sp = SPEAKERS[n.s];
     $('dname').textContent = sp.name;
     $('dtext').className = n.s === 'nar' ? 'nar' : '';
-    this.full = fmt(typeof n.t === 'function' ? n.t(G) : n.t);
+    this.full = prefix + fmt(typeof n.t === 'function' ? n.t(G) : n.t);
     n.do?.(G); // эффект — после того, как текст уже выбран
     this.shown = 0;
     $('dtext').textContent = '';
@@ -71,6 +72,10 @@ export const Dialog = {
         b.className = 'choice';
         b.innerHTML = `<span class="n">${i + 1}.</span>`;
         b.append(fmt(c.t));
+        if (c.check && G.pc) {
+          const bonus = skillBonus(G.pc, c.check.skill);
+          b.append(Object.assign(document.createElement('span'), { className: 'chk', textContent: ` (${SKILLS[c.check.skill].name}, КС ${c.check.dc} · шанс ${checkChance(bonus, c.check.dc)}%)` }));
+        }
         b.onclick = (e) => { e.stopPropagation(); this.choose(i); };
         box.append(b);
       });
@@ -85,6 +90,11 @@ export const Dialog = {
   choose(i: number) {
     const c = this.choices[i];
     if (!c) return;
+    if (c.check && G.pc) { // проверка навыка: d20 + бонус против КС
+      const bonus = skillBonus(G.pc, c.check.skill), res = check(bonus, c.check.dc);
+      const tag = `[${SKILLS[c.check.skill].name}: d20 (${res.roll}) ${bonus >= 0 ? '+' : '−'} ${Math.abs(bonus)} = ${res.total} против ${c.check.dc} — ${res.success ? 'успех' : 'провал'}] `;
+      return this.goto(res.success ? c.check.ok : c.check.fail, tag);
+    }
     if (c.act) return this.close(c.act);
     this.goto(c.go);
   },
@@ -135,7 +145,8 @@ function drawPortrait(cv: HTMLCanvasElement, kind: string | null, scale = 3) {
 
 // ------------------------------------------------------------ HUD
 export function refreshHud() {
-  $('objective').innerHTML = `<b>Задача</b>${objectiveText()}`;
+  const j = journal().filter((q) => !q.done);
+  $('objective').innerHTML = `<b>${G.location || 'Пустошь'}</b>` + (j.length ? j.map((q) => `<div class="q">• ${q.text}</div>`).join('') : '<div class="q dim">Заданий нет — осмотритесь и поговорите с людьми.</div>');
   $('squadbar').innerHTML = G.squad.map((s) => {
     const max = effMaxHp(s), w = woundsOf(s);
     const marks = w.map((x) => `<span class="wd ${x.heavy ? 'heavy' : ''}" title="${x.name}: ${x.desc}">✚</span>`).join('');
@@ -209,7 +220,7 @@ export function closeSquad(onClose: () => void) { $('squad').classList.add('hidd
 export const squadOpen = () => !$('squad').classList.contains('hidden');
 
 export function exploreHint() {
-  $('hint').textContent = 'WASD / стрелки — идти · E / Пробел — говорить · клик — идти или говорить · Q — лечение · I — снаряжение';
+  $('hint').textContent = 'WASD / стрелки — идти · E / Пробел — говорить · клик — идти или говорить · Q — лечение · I — снаряжение · M — карта';
 }
 
 let toastTimer = 0;

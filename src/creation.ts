@@ -58,8 +58,7 @@ export function openCreation(host: HTMLElement, onDone: (c: Character) => void, 
       const ageLbl = h('span', { class: 'age-lbl' }, `${c.age} · ${ageWord(c.age, c.gender === 'f')}`);
       return h('div', {},
         h('div', { class: 'chapter' }, 'Глава I'), h('h1', {}, 'Происхождение'),
-        h('p', { class: 'drop' }, 'Сим удостоверяется, что нижеподписавш', g(c, 'ийся', 'аяся'), ' принят', g(c, '', 'а'),
-          ' на службу его милости барона Сайласа Олдриджа в чине лейтенанта и назначен', g(c, '', 'а'), ' командиром карательного отряда.'),
+        h('p', { class: 'drop' }, 'Сим удостоверяется личность предъявител', g(c, 'я', 'ьницы'), ' сего, следующ', g(c, 'его', 'ей'), ' по землям его милости барона Сайласа Олдриджа. Документ надлежит предъявлять по первому требованию стражи.'),
         h('label', { class: 'field' }, h('span', {}, 'Имя'),
           h('input', { value: c.first, maxlength: 18, oninput: (e: Event) => { c.first = (e.target as HTMLInputElement).value.trim(); } })),
         h('label', { class: 'field' }, h('span', {}, 'Фамилия'),
@@ -85,7 +84,7 @@ export function openCreation(host: HTMLElement, onDone: (c: Character) => void, 
     right: () => h('div', { class: 'center' },
       h('h3', {}, 'Фотокарточка'),
       h('div', { class: 'photo' }, portrait(c)),
-      h('div', { class: 'caption' }, `Лейтенант ${fullName(c) || '…'}`),
+      h('div', { class: 'caption' }, fullName(c) || '…'),
       h('div', { class: 'row' }, h('span', { class: 'lbl' }, 'Волосы'), swatches(HAIR, c.hair, (v) => { c.hair = v; refresh(); }, c.age >= 52)),
       h('div', { class: 'row' }, h('span', { class: 'lbl' }, 'Кожа'), swatches(SKIN, c.skin, (v) => { c.skin = v; refresh(); })),
       h('p', { class: 'note' }, 'Пол, возраст и внешность не влияют на характеристики.'),
@@ -239,7 +238,7 @@ export function openCreation(host: HTMLElement, onDone: (c: Character) => void, 
     },
     right: () => h('div', { class: 'center' },
       h('div', { class: 'photo small' }, portrait(c, 150, 190, 4.6)),
-      h('p', {}, 'К службе признан', g(c, '', 'а'), ' годн', g(c, 'ым', 'ой'), '.'),
+      h('p', {}, 'Личность удостоверена. Подорожная выдана.'),
       h('div', { class: 'sign-line' }, h('span', { class: 'signature' }, fullName(c))),
       h('div', { class: 'sign-cap' }, 'подпись'),
       h('button', { class: 'bbtn big', disabled: signed, onclick: () => {
@@ -247,7 +246,7 @@ export function openCreation(host: HTMLElement, onDone: (c: Character) => void, 
         signed = true; refresh();
         requestAnimationFrame(() => requestAnimationFrame(() => book.R.querySelector('.signature')?.classList.add('done')));
         setTimeout(() => onDone(c), 1500);
-      } }, signed ? 'Отряд ждёт…' : 'Подписать и выступить'),
+      } }, signed ? 'В путь…' : 'Подписать и отправиться'),
     ),
   };
 

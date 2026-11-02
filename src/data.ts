@@ -74,21 +74,17 @@ export function makeLeader(c: Character): UnitBase {
   const p = PROFESSIONS[c.prof];
   const hp = maxHp(c);
   return {
-    id: 'pc', name: `Лт. ${c.last}`, kind: 'pc', hp, maxHp: hp, move: 4,
+    id: 'pc', name: `${c.first.slice(0, 1)}. ${c.last}`, kind: 'pc', hp, maxHp: hp, move: 4,
     weapons: p.weapons.slice(), atkM: meleeAttack(c), atkR: rangedAttack(c), def: defense(c),
     armor: 0, dmgM: meleeDamage(c), horror: horrorSave(c), med: skillBonus(c, 'medicine'), wounds: [],
     equip: { ...PROF_EQUIP[c.prof] }, // броня теперь даётся предметами
-    abil: { rally: 1, ...p.combatAbil }, leader: true,
+    abil: { ...p.combatAbil }, leader: true,
   };
 }
 
+/** Игрок начинает один — отряд пока состоит только из героя. */
 export function makeSquad(c: Character): UnitBase[] {
-  return [
-    makeLeader(c),
-    { id: 'halloway', name: 'Серж. Хэллоуэй', kind: 'sergeant', hp: 12, maxHp: 12, move: 4, weapons: [], atkM: 3, atkR: 3, def: 11, abil: { grenade: 1 }, equip: { ...SQUAD_EQUIP.halloway } },
-    { id: 'pickett', name: 'Ряд. Пиккет', kind: 'sniper', hp: 9, maxHp: 9, move: 4, weapons: [], atkM: 1, atkR: 4, def: 11, abil: { aim: 99 }, equip: { ...SQUAD_EQUIP.pickett } },
-    { id: 'doe', name: 'Ряд. Доу', kind: 'medic', hp: 10, maxHp: 10, move: 4, weapons: [], atkM: 1, atkR: 2, def: 10, med: 3, abil: { bandage: 1 }, equip: { ...SQUAD_EQUIP.doe } },
-  ];
+  return [makeLeader(c)];
 }
 
 const E = (id: string, name: string, kind: string, hp: number, move: number, weapons: string[], ai: UnitBase['ai'], atk: number, def: number, extra: Partial<UnitBase> = {}): UnitBase =>
@@ -102,10 +98,12 @@ export const ENEMIES: Record<string, UnitBase> = {
   fanatic_gun: E('fanatic_gun', 'Фанатик с ружьём', 'fanatic_gun', 7, 4, ['musket'], 'ranged', 3, 10),
   vale:        E('vale', 'Мордекай Вейл', 'cultist', 22, 4, ['flame'], 'caster', 4, 12, { demonic: true, boss: true }),
   imp:         E('imp', 'Бес', 'imp', 5, 6, ['claws'], 'melee', 3, 13, { demonic: true }),
+  scav_gun:    E('scav_gun', 'Мародёр с ружьём', 'militia_gun', 6, 4, ['musket'], 'ranged', 2, 10),
+  scav_knife:  E('scav_knife', 'Мародёр с ножом', 'militia', 7, 4, ['knife'], 'melee', 2, 10),
 };
 
 export interface BattleDef {
-  id: 'road' | 'factory';
+  id: string;
   title: string;
   theme: 'road' | 'factory';
   map: string[];
@@ -118,78 +116,35 @@ export interface BattleDef {
  *  .  земля / пол        ,  сухая трава
  *  #  стена (полное укрытие, блокирует обзор)
  *  T  мёртвое дерево     m  станок    P  колонна   (полное укрытие)
- *  c  ящики/бочки        f  забор                  (половинное укрытие)
- *  w  лужа нефти / чан с краской (непроходимо, обзор не закрывает)
+ *  c  ящики/бочки/обломки  f  забор                (половинное укрытие)
+ *  w  лужа нефти (непроходимо, обзор не закрывает)
  *  o  ритуальный круг (проходимо)
  */
-export function battleDef(id: 'road' | 'factory', flags: Record<string, boolean | undefined>): BattleDef {
-  if (id === 'road') {
-    const p1 = flags.persuade1, p2 = flags.persuade2;
-    let en = [
-      { t: 'fork', x: 16, y: 5 }, { t: 'fork', x: 16, y: 9 }, { t: 'musket', x: 21, y: 3 },
-      { t: 'fork', x: 15, y: 7 }, { t: 'musket', x: 21, y: 11 },
-    ];
-    let brem: { t: string; x: number; y: number } | null = { t: 'brem', x: 19, y: 7 };
-    if (p1 || p2) en = en.slice(0, 3);          // часть ополченцев сложила оружие
-    if (p1 && p2) {                              // Брэм ушёл, остались фанатики
-      brem = null;
-      en = en.map((e) => ({ ...e, t: e.t === 'fork' ? 'fanatic' : 'fanatic_gun' }));
-    }
-    if (brem) en.push(brem);
-    return {
-      id, title: 'Дорога к красильне', theme: 'road',
-      map: [
-        '..........,,......f.....',
-        '...c..........T...f..T..',
-        '......ffff..............',
-        '..T...........#.....c...',
-        '..............#.........',
-        '........c.....#.....,...',
-        ',.......c...........,...',
-        '............w...........',
-        '.....ff.....w.....c.....',
-        '..........,......cc.....',
-        '..c.....#...............',
-        '........#.....T....ff...',
-        '...T....#...........,...',
-        '............,...........',
-      ],
-      players: [[2, 6], [2, 8], [1, 5], [1, 9]],
-      enemies: en,
-      lights: [[6, 2, 150, '#e8c070'], [12, 10, 140, '#e8c070'], [20, 6, 160, '#e8c070']],
-    };
+export function battleDef(id: string, _flags: Record<string, boolean | undefined>): BattleDef {
+  switch (id) {
+    case 'ruins':
+    default:
+      return {
+        id: 'ruins', title: 'Разрушенный пост', theme: 'road',
+        map: [
+          '......,.........T.......',
+          '..c......####...........',
+          '.........#..#.....c.....',
+          '.....c...#......#.......',
+          '.........#......#..,....',
+          '..T.............#.......',
+          '........ww..............',
+          '.....#.........c........',
+          '.....#..c...............',
+          '.....###.......#..T.....',
+          '...............#........',
+          '..c.....,......####.....',
+          '............c...........',
+          '........................',
+        ],
+        players: [[2, 7], [2, 9], [1, 6], [1, 8]],
+        enemies: [{ t: 'scav_gun', x: 18, y: 4 }, { t: 'scav_knife', x: 15, y: 8 }],
+        lights: [[13, 6, 170, '#f0a050'], [4, 10, 110, '#e8c070']],
+      };
   }
-  const tommy = flags.tommy;
-  const map = [
-    '########################',
-    '#.....c........m.......#',
-    '#..P.......P...m....P..#',
-    '#......................#',
-    '#..mm.....oooo.....cc..#',
-    '#..mm....oooooo........#',
-    '#........oooooo...P....#',
-    '#..c.....oooooo........#',
-    '#........oooooo....mm..#',
-    '#..P......oooo.....mm..#',
-    '#.....c................#',
-    '#..........P.....c.....#',
-    '#...ww.............P...#',
-    '########################',
-  ];
-  if (tommy) { // пролом в восточной стене
-    map[10] = map[10].slice(0, 23) + '.';
-    map[11] = map[11].slice(0, 23) + '.';
-  }
-  const enemies = [
-    { t: 'vale', x: 12, y: 6 },
-    { t: 'fanatic', x: 8, y: 4 }, { t: 'fanatic', x: 8, y: 9 },
-    { t: 'fanatic_gun', x: 17, y: 3 }, { t: 'fanatic_gun', x: 16, y: 10 },
-  ];
-  if (!tommy) enemies.push({ t: 'imp', x: 14, y: 5 }, { t: 'imp', x: 14, y: 8 });
-  return {
-    id, title: 'Цех красильни Хартвелла', theme: 'factory', map,
-    players: tommy ? [[22, 10], [21, 11], [22, 11], [21, 10]] : [[2, 6], [2, 8], [1, 5], [1, 7]],
-    enemies,
-    lights: [[5, 3, 120, '#e0a050'], [18, 11, 120, '#e0a050'], [12, 6.5, 230, '#9fef6a']],
-  };
 }

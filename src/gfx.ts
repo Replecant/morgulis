@@ -13,7 +13,7 @@ interface Style {
   hat?: 'cap' | 'helmet' | 'tophat' | 'bonnet' | 'flatcap' | 'minerhelm';
   hatC?: string; trim?: string; belt?: string; apron?: string;
   dress?: boolean; collar?: boolean; mask?: boolean; band?: boolean; sash?: boolean; hood?: boolean; longHair?: boolean; goggles?: boolean; cuirass?: boolean;
-  weapon?: 'saber' | 'rifle' | 'fork' | 'musket' | 'hammer' | 'staff' | 'pole' | 'bottle' | 'book' | 'wrench' | 'bag' | 'knife' | 'pistol';
+  weapon?: 'saber' | 'rifle' | 'fork' | 'musket' | 'hammer' | 'staff' | 'pole' | 'bottle' | 'book' | 'wrench' | 'bag' | 'knife' | 'pistol' | 'goad';
   scale?: number;
 }
 
@@ -34,6 +34,13 @@ export const STYLES: Record<string, Style> = {
   smith: { coat: '#3a2d22', legs: '#221c16', apron: '#5b3b22', hair: '#1c1a18', beard: '#1c1a18', weapon: 'hammer', scale: 1.15, skin: '#b89a7c' },
   cultist: { coat: '#0f0f12', dress: true, hood: true, weapon: 'staff', scale: 1.05 },
   imp: {},
+  // жители региона
+  foreman: { coat: '#3a3428', dress: true, apron: '#211b14', hat: 'flatcap', hatC: '#2a2218', skin: '#c8ac90', hair: '#5a3a22', longHair: true, weapon: 'wrench' },
+  oilworker: { coat: '#2e2c26', legs: '#1e1c18', apron: '#1a1712', hat: 'flatcap', hatC: '#1e1c18', skin: '#b89878', beard: '#3a2a1a', weapon: 'wrench' },
+  herder: { coat: '#4a3e2c', legs: '#2a241c', belt: '#2a1d12', hat: 'flatcap', hatC: '#3a3024', skin: '#c0a080', beard: '#7a6a5a', weapon: 'goad' },
+  butcher: { coat: '#4a4038', legs: '#2a2420', apron: '#7a5a50', skin: '#c89a80', hair: '#3a2a20', weapon: 'knife', scale: 1.1 },
+  girl: { coat: '#5a4a3a', dress: true, hat: 'bonnet', hatC: '#4a3a2a', skin: '#d8c0a0', hair: '#8a5a2a', longHair: true, scale: 0.85, weapon: 'goad' },
+  guard: { coat: '#2e3440', legs: '#1a1c22', belt: '#2a1d12', trim: '#8a8a8a', hat: 'helmet', hatC: '#3a3e46', skin: '#c0a488', weapon: 'rifle' },
 };
 
 /** Внешность персонажа игрока: пол, волосы, кожа, возраст и профессия. */
@@ -251,6 +258,10 @@ function drawWeapon(c: Ctx, w: Style['weapon'], bob: number, col: (v?: string) =
     case 'pole':
       line(6.5, 0, 9.5, -33, '#4a3a28', 1.2);
       c.fillStyle = '#f0a040'; c.fillRect(9, -35, 1.6, 2);
+      break;
+    case 'goad':
+      line(6.5, 1, 10, -34, '#5a4630', 1.3);
+      line(10, -34, 11, -37, '#888', 1);
       break;
     case 'pistol':
       c.fillStyle = col('#1e1e1c'); c.fillRect(6, -10 + bob, 5, 1.8); c.fillRect(6, -9 + bob, 1.6, 3);

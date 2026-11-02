@@ -66,6 +66,7 @@ export const ITEMS: Record<string, Item> = {
   // ---------------- тело
   greatcoat: { id: 'greatcoat', name: 'Плотная шинель', kind: 'body', icon: 'coat', armor: 1, desc: 'Толстое сукно гасит удар ножа и излёт пули.' },
   apron:     { id: 'apron', name: 'Кожаный фартук', kind: 'body', icon: 'apron', armor: 1, desc: 'Рабочий фартук техника из воловьей кожи.' },
+  chitin:    { id: 'chitin', name: 'Хитиновый нагрудник', kind: 'body', icon: 'chitin', armor: 1, mods: { def: 1 }, desc: 'Ричмордская работа: пластины жучьего панциря на кожаной основе. Лёгкий и прочный.' },
   cuirass:   { id: 'cuirass', name: 'Стальная кираса', kind: 'body', icon: 'cuirass', armor: 2, mods: { move: -1 }, desc: 'Тяжёлый нагрудник старой имперской гвардии. Спасает жизнь, но сковывает шаг.' },
   // ---------------- руки
   gloves:    { id: 'gloves', name: 'Кожаные перчатки', kind: 'hands', icon: 'gloves', mods: { atkM: 1 }, desc: 'Крепкий хват рукояти: +1 к атакам вблизи.' },
@@ -103,7 +104,7 @@ export const SQUAD_EQUIP: Record<string, Equip> = {
   doe:      { main: 'carbine', side: 'bayonet', head: 'helmet', belt: 'pouches' },
 };
 /** Что лежит в обозе в начале игры. */
-export const START_STASH = ['bandolier', 'boots', 'gloves', 'rabbitfoot', 'locket', 'wormwood', 'sawnoff', 'helmet', 'cuirass', 'greaves', 'grenadier'];
+export const START_STASH = ['helmet', 'rabbitfoot'];
 
 export function canEquip(slot: Slot, itemId: string) { return ITEMS[itemId]?.kind === SLOTS[slot].kind; }
 

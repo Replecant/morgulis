@@ -411,3 +411,6 @@ body { font-family: 'Old Standard TT', Georgia, serif; color: var(--text); }
 .inv-detail .dcmp { margin-top: 4px; color: var(--dim); font-size: 12px; }
 .inv-detail .dbtns { margin-top: 6px; }
 .inv-hint { font-size: 11px; color: var(--dim); text-align: center; margin-top: 6px; }
+#objective .q { font-size: 13px; margin-top: 2px; }
+#objective .q.dim { color: var(--dim); font-style: italic; }
+.choice .chk { color: var(--brass); font-size: 12px; }

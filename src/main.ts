@@ -1,9 +1,9 @@
 // ============================================================
-//  МОРГУЛИС: Пепел Эшфорда — точка входа
+//  МОРГУЛИС — точка входа
 // ============================================================
 import './style.css';
 import { G, resetGame } from './state';
-import { Explore, ET } from './explore';
+import { Explore } from './explore';
 import { Combat, CT } from './combat';
 import { Dialog, refreshHud, exploreHint, toast, combatShow, combatLog, combatPanel, screen, hideScreen, openSquad, closeSquad, squadOpen } from './ui';
 import { updateAsh, setPcStyle, applyEquipLooks } from './gfx';
@@ -24,23 +24,16 @@ Combat.hooks = {
   victory(id) {
     G.mode = 'explore';
     combatShow(false);
-    if (id === 'road') {
-      G.flags.battle1Won = true;
-      // отряд оказывается у ворот, где стоял Брэм
-      Explore.player.x = 25; Explore.player.y = 12; Explore.player.rx = 25; Explore.player.ry = 12;
-      Explore.followers.forEach((f, i) => { f.x = f.rx = 24 - i; f.y = f.ry = 13; });
-      Explore.trail = Explore.followers.map((f) => ({ x: f.x, y: f.y }));
-      Dialog.start('after1');
-    } else {
-      G.flags.won = true;
-      Dialog.start('ending');
-    }
+    if (id === 'ruins') { G.flags.scavDone = true; Dialog.start('after_scav'); }
     refreshHud();
   },
   defeat(id) {
     screen(
-      `<h2>Отряд разбит</h2><p>Лейтенант ${fullName(G.pc!)} ${g(G.pc, 'пал', 'пала')}. Пустошь забирает своё.</p>`,
-      [{ label: 'Повторить бой', fn: () => { hideScreen(); restoreSnapshot(); startBattle(id); } }],
+      `<h2>Поражение</h2><p>${fullName(G.pc!)} ${g(G.pc, 'падает', 'падает')} без сил. Пустошь забирает своё.</p>`,
+      [
+        { label: 'Повторить бой', fn: () => { hideScreen(); restoreSnapshot(); startBattle(id); } },
+        { label: 'Отступить', fn: () => { hideScreen(); restoreSnapshot(); G.squad.forEach((s) => (s.hp = Math.max(1, Math.ceil(s.hp / 2)))); G.mode = 'explore'; combatShow(false); refreshHud(); } },
+      ],
     );
   },
 };
@@ -53,7 +46,7 @@ function restoreSnapshot() {
   G.supplies = d.sup;
 }
 
-function startBattle(id: 'road' | 'factory') {
+function startBattle(id: string) {
   snapshot = JSON.stringify({ sq: G.squad.map((s) => ({ hp: s.hp, wounds: s.wounds ?? [] })), sup: G.supplies });
   G.mode = 'combat';
   combatShow(true);
@@ -61,11 +54,10 @@ function startBattle(id: 'road' | 'factory') {
 }
 
 Explore.onInteract = (d) => Dialog.start(d);
+Explore.onLocation = () => refreshHud();
 Dialog.onClose = () => { refreshHud(); if (G.mode === 'explore') exploreHint(); };
 Dialog.onAction = (act) => {
-  if (act === 'battle1') startBattle('road');
-  else if (act === 'battle2') startBattle('factory');
-  else if (act === 'ending') showEnding();
+  if (act === 'battle_scav') startBattle('ruins');
 };
 
 $('cend').onclick = () => Combat.endPlayerTurn();
@@ -102,21 +94,6 @@ function newGame(pc: Character) {
   Dialog.start('intro');
 }
 
-function showEnding() {
-  G.mode = 'end';
-  const f = G.flags;
-  const notes = [
-    f.persuade1 && f.persuade2 ? 'Вы убедили Брэма — Эшфорд вам поверил.' : 'Вы проложили путь силой.',
-    f.salts ? 'Отец Бенедикт дал вам нюхательную соль против шёпота Вейла.' : 'Вы не заходили к отцу Бенедикту за помощью.',
-    f.tommy ? 'Мальчишка Томми показал вам пролом в стене.' : 'Вы вошли через главные ворота.',
-  ];
-  screen(
-    `<h1>МОРГУЛИС</h1><h2>Конец пролога</h2><p>${notes.join('<br>')}</p>
-     <p>Мордекай Вейл мёртв. Но Око всё так же смотрит на Пустошь.</p>`,
-    [{ label: 'В главное меню', fn: showTitle }],
-  );
-}
-
 // ---------------------------------------------------------------- ввод
 function toCanvas(e: MouseEvent) {
   const r = cv.getBoundingClientRect();
@@ -135,6 +112,8 @@ window.addEventListener('keydown', (e) => {
     return;
   }
   if (squadOpen()) { if (e.code === 'Escape') closeSquad(exploreHint); return; }
+  if (G.mode === 'explore' && (e.code === 'KeyM' || (e.code === 'Escape' && Explore.mapOpen))) { Explore.mapOpen = !Explore.mapOpen; G.keys.clear(); return; }
+  if (G.mode === 'explore' && Explore.mapOpen) return;
   if (G.mode === 'explore') {
     if (['Space', 'KeyE', 'Enter'].includes(e.code)) { e.preventDefault(); if (performance.now() - Dialog.closedAt > 200) Explore.interactKey(); return; }
     if (e.code.startsWith('Arrow')) e.preventDefault();
@@ -156,10 +135,10 @@ cv.addEventListener('mousemove', (e) => {
     const h = { x: Math.floor(p.x / CT), y: Math.floor(p.y / CT) };
     Combat.hover = h.y < 14 ? h : null;
   } else if (G.mode === 'explore') {
-    Explore.hoverTile = { x: Math.floor(p.x / ET), y: Math.floor(p.y / ET) };
+    Explore.hover(p.x, p.y);
   }
 });
-cv.addEventListener('mouseleave', () => { Combat.hover = null; Explore.hoverTile = null; });
+cv.addEventListener('mouseleave', () => { Combat.hover = null; Explore.hoverW = null; });
 cv.addEventListener('contextmenu', (e) => e.preventDefault());
 cv.addEventListener('mousedown', (e) => {
   const p = toCanvas(e);

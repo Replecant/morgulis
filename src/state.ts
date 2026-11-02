@@ -11,6 +11,7 @@ export const G = {
   squad: [] as UnitBase[],
   supplies: newSupplies(),
   stash: [] as string[],   // общий обоз отряда (id предметов)
+  location: '',            // название места, где стоит игрок
   time: 0,
   mouse: { x: 0, y: 0 },
   keys: new Set<string>(),
@@ -18,7 +19,7 @@ export const G = {
 
 
 export interface Supplies { bandages: number; medicine: number; rations: number }
-export function newSupplies(): Supplies { return { bandages: 4, medicine: 1, rations: 1 }; }
+export function newSupplies(): Supplies { return { bandages: 3, medicine: 0, rations: 2 }; }
 
 export function resetGame(pc: Character = newCharacter()) {
   G.flags = {};
@@ -28,10 +29,11 @@ export function resetGame(pc: Character = newCharacter()) {
   G.squad = makeSquad(pc);
 }
 
-export function objectiveText(): string {
-  const f = G.flags;
-  if (f.won) return 'Эшфорд освобождён. Конец пролога.';
-  if (f.battle1Won) return 'Войдите в красильню Хартвелла и найдите «Пастыря».';
-  if (f.heardPastor) return 'Осмотрите красильню Хартвелла на северо-востоке. Жители могут знать больше.';
-  return 'Найдите старосту Эшфорда.';
+/** Журнал: активные и выполненные задания региона. */
+export function journal(): { text: string; done: boolean }[] {
+  const f = G.flags, out: { text: string; done: boolean }[] = [];
+  if (f.valveTaken) out.push({ text: f.valveDone ? 'Клапан для Иды Кроу' : f.hasValve ? 'Отнести клапан Иде Кроу (Эшфорд)' : 'Найти клапан на старой насосной (юг Эшфорда)', done: !!f.valveDone });
+  if (f.beetleTaken) out.push({ text: f.beetleDone ? 'Жучиха Мэг вернулась в Ричморд' : 'Найти сбежавшую жучиху Мэг (к западу от Ричморда, у костей)', done: !!f.beetleDone });
+  if (f.heardScav) out.push({ text: f.scavDone ? 'Разрушенный пост свободен' : 'Мародёры у разрушенного поста (между трактом и путями)', done: !!f.scavDone });
+  return out;
 }
