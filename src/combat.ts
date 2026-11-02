@@ -7,7 +7,7 @@ import { G } from './state';
 import { WEAPONS, ENEMIES, ABILITIES, battleDef, BattleDef, UnitBase } from './data';
 import { bfs, pathTo, lineTiles, BfsMap, DIRS8, Pt, clamp, cheb, dist, lerp, pick, randInt, seeded, sleep, TAU } from './util';
 import { check, checkChance, CheckResult } from './rules';
-import { woundMods, effMaxHp, addWound, bandageAmount, medkitAmount, WOUNDS } from './wounds';
+import { woundMods, effMaxHp, addWound, addWoundId, bandageAmount, medkitAmount, WOUNDS } from './wounds';
 import { AMMO_NAME } from './items';
 import { equipStats } from './items';
 import { PixelView, applyLight, PLight, T, PS, prect, ppx, pline, pellipse, shade, seeded as pseed, outline } from './px';
@@ -849,6 +849,7 @@ export const Combat = {
       d -= absorbed;
       this.hooks.log(`${a.name} → ${t.name}: ${w.name}, ${crit ? 'КРИТ! ' : ''}${d} урона${absorbed ? ` (броня −${absorbed})` : ''} [${rollTxt}]`);
       await this.damage(t, d, crit);
+      if (w.poison && t.team === 'player' && !t.dead && this.isSquad(t) && addWoundId(t.base, 'gassed')) { this.float(t, 'Отравление', '#a8c890'); this.hooks.log(`${t.name}: пагубное дыхание — «Отравление газом».`); }
       if (crit) this.gainCourage(a, 'точный удар');
       if (t.dead && t.team === 'enemy') this.gainCourage(a, 'враг повержен');
       if (w.splash) {
@@ -1332,6 +1333,12 @@ export const Combat = {
           break;
         case 'f': spr('fence', x, y, { horizFence: true }); break;
         case 'w':
+          if (this.def.id === 'lake') { // озёрная вода у берега
+            prect(c, X, Y, T, T, '#1a2628');
+            for (let k = 0; k < 5; k++) prect(c, X + r() * 16, Y + r() * T, 3, 1, r() < 0.4 ? '#4a6a68' : '#26383a');
+            if (this.map[y + 1]?.[x] === '.' || this.map[y + 1]?.[x] === ',') { prect(c, X, Y + T - 3, T, 3, '#2e3a30'); for (let k = 0; k < 4; k++) prect(c, X + r() * 18, Y + T - 6, 1, 4, '#4a5e32'); } // камыш у кромки
+            break;
+          }
           if (factory) { pellipse(c, X + 10, Y + 11, 9, 7, '#2a2a26'); pellipse(c, X + 10, Y + 10, 7, 5, '#2e5a34'); ppx(c, X + 7, Y + 8, '#6aa060'); }
           else { pellipse(c, X + 10, Y + 11, 9, 6, '#121310'); prect(c, X + 5, Y + 9, 4, 1, '#4a5e44'); }
           break;

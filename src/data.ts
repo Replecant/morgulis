@@ -17,6 +17,7 @@ export interface Weapon {
   splash?: [number, number];
   magic?: boolean;
   ammoType?: 'ammo_pistol' | 'ammo_rifle' | 'ammo_shell'; // чем перезаряжается (нет — заряды только на бой)
+  poison?: boolean;    // попадание отравляет (лёгкое ранение «Отравление газом»)
   shot?: boolean;      // дробь: −1 урона за клетку дальше оптимальной
   pierce?: boolean;    // пробивает броню
 }
@@ -43,6 +44,8 @@ export const WEAPONS: Record<string, Weapon> = {
   buttstock: { name: 'Приклад', type: 'melee', atk: -1, dmg: [1, 3] },
   // оружие траншейных мертвецов
   cudgel:    { name: 'Дубина', type: 'melee', atk: 0, dmg: [1, 3] },
+  breath:    { name: 'Пагубное дыхание', type: 'ranged', range: 4, opt: 4, atk: 2, dmg: [2, 4], ignoreCover: true, splash: [1, 2], poison: true },
+  salbite:   { name: 'Укус', type: 'melee', atk: 2, dmg: [3, 6] },
   rustbayonet: { name: 'Ржавый штык', type: 'melee', atk: 0, dmg: [2, 4] },
   oldrifle:  { name: 'Гнилая винтовка', type: 'ranged', range: 9, opt: 5, atk: -1, dmg: [3, 5] },
   gasbreath: { name: 'Газовый выдох', type: 'ranged', range: 3, opt: 3, atk: 1, dmg: [2, 3], ignoreCover: true, splash: [1, 2] },
@@ -124,6 +127,8 @@ export const ENEMIES: Record<string, UnitBase> = {
   imp:         E('imp', 'Бес', 'imp', 5, 6, ['claws'], 'melee', 3, 13, { demonic: true }),
   scav_gun:    E('scav_gun', 'Мародёр с ружьём', 'militia_gun', 6, 4, ['musket'], 'ranged', 2, 10),
   scav_knife:  E('scav_knife', 'Мародёр с ножом', 'militia', 7, 4, ['knife'], 'melee', 2, 10),
+  // морской демон: громадный, скользкий (высокая Защита), ядовитое дыхание
+  salamander: E('salamander', 'Морской демон', 'salamander', 26, 3, ['breath', 'salbite'], 'ranged', 2, 13, { armor: 1, demonic: true }),
   // голодные бандиты: слабые, измождённые
   hungry:  E('hungry', 'Голодный бандит', 'hungry', 5, 4, ['knife'], 'melee', 0, 9),
   hungry2: E('hungry2', 'Голодный бандит', 'hungry2', 5, 4, ['cudgel'], 'melee', 0, 9),
@@ -156,6 +161,29 @@ export interface BattleDef {
  */
 export function battleDef(id: string, _flags: Record<string, boolean | undefined>): BattleDef {
   if (id.startsWith('trench')) return trenchBattle(id);
+  if (id === 'lake') { // берег озера: вода (непроходимо), камни, коряги
+    return { id, title: 'Берег озера', theme: 'road',
+      map: [
+        'wwwwwwwwwwwwwwwwwwwwwwww',
+        'wwwwwwwwwwwwwwwwwwwwwwww',
+        'wwwwwwwwwwwwwwwwwwwwwwww',
+        'www..wwwwwwww....wwwwwww',
+        '.......ww.......c...wwww',
+        '...,.......T..........ww',
+        '.c.......,......,.......',
+        '.......c.........T......',
+        '...T........,...........',
+        '.........c.........c....',
+        '..,..........T..........',
+        '.......,..........,.....',
+        '....c..........c........',
+        '........................',
+      ],
+      players: [[3, 9], [3, 11], [2, 8], [2, 10]],
+      enemies: [{ t: 'salamander', x: 17, y: 5 }],
+      lights: [[12, 3, 220, '#6a9a8a'], [3, 10, 110, '#e8c070']],
+    };
+  }
   if (id.startsWith('hungry')) { // голодные бандиты — на карте засады в пустоши
     const w = battleDef('waste', _flags), n = +(id.slice(6) || 2);
     const pos = [{ x: 19, y: 5 }, { x: 18, y: 9 }, { x: 21, y: 7 }];

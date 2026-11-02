@@ -17,7 +17,7 @@ export function charSprite(kind: string, frame = 0, dead = false, flash = false)
   const key = `${kind}|${frame}|${dead}|${flash}`;
   let cv = cache.get(key);
   if (cv) return cv;
-  let base = kind === 'imp' ? impSprite(frame) : buildChar(kind, frame);
+  let base = kind === 'imp' ? impSprite(frame) : kind === 'salamander' ? salamanderSprite(frame) : buildChar(kind, frame);
   if (flash) base = flashCopy(base);
   if (dead) base = rotate90(base);
   cache.set(key, base);
@@ -293,6 +293,42 @@ function impSprite(frame: number): HTMLCanvasElement {
   return cv;
 }
 
+/** Морской демон: громадная саламандра, ходит на двух задних лапах. Выше человека,
+ *  кожа лоснится слизью, гребень вдоль спины, жабры, набухший ядовитый зоб, хвост волочится. */
+function salamanderSprite(frame: number): HTMLCanvasElement {
+  const cv = document.createElement('canvas'); cv.width = 34; cv.height = 44;
+  const c = cv.getContext('2d')!;
+  const R = (x: number, y: number, w: number, h: number, col: string) => prect(c, x, y, w, h, col);
+  const P = (x: number, y: number, col: string) => ppx(c, x, y, col);
+  const sk = '#3e4a3a', skD = '#26302a', skL = '#5e6e52', belly = '#8a8a5a', slime = '#a8c890', crest = '#6a2e2e';
+  const walk = frame === 1 ? 1 : frame === 3 ? -1 : 0, bob = frame === 1 || frame === 3 ? -1 : 0;
+  const Y = (y: number) => y + bob;
+  // хвост — тяжёлый, волочится по земле позади
+  for (let k = 0; k < 10; k++) { const x = 9 - k, y = 34 + Math.round(k * 0.6 + Math.sin(k * 0.8 + frame) * 0.8); R(x, y, 2, Math.max(1, 3 - (k >> 2)), k % 3 ? sk : skD); }
+  // задние лапы — толстые бёдра, согнутые колени, перепончатые ступни
+  const legL = 13 - walk, legR = 19 + walk;
+  R(legL, Y(28), 4, 5, skD); R(legL - 1, 33, 3, 7, skD); R(legL - 3, 40, 6, 2, skD); P(legL - 3, 41, '#1a1e18'); P(legL + 2, 41, '#1a1e18');
+  R(legR, Y(28), 4, 5, sk); R(legR + 1, 33, 3, 7, sk); R(legR, 40, 6, 2, sk); P(legR, 41, '#1a1e18'); P(legR + 5, 41, '#1a1e18');
+  // туловище — сутулое, бочкообразное
+  R(11, Y(14), 12, 15, sk); R(10, Y(16), 1, 11, skD); R(23, Y(16), 1, 11, skD); R(11, Y(14), 12, 1, skL);
+  R(14, Y(17), 7, 11, belly); for (let y = 18; y < 28; y += 2) R(14, Y(y), 7, 1, '#7a7a4e');   // складки брюха
+  for (let y = 15; y < 28; y += 3) { P(12, Y(y), slime); P(22, Y(y + 1), slime); }             // слизь
+  // спинной гребень
+  for (let y = 12; y < 28; y += 3) R(9, Y(y), 2, 2, crest);
+  // передние лапы — короткие, с когтями, свисают вперёд
+  R(23, Y(17), 3, 7, skD); R(24, Y(24), 3, 2, skD); P(27, Y(25), '#c8c0a0'); P(26, Y(26), '#c8c0a0');
+  R(9, Y(18), 2, 6, skD); P(9, Y(24), '#c8c0a0');
+  // голова — широкая, плоская, выдвинута вперёд на короткой шее
+  R(16, Y(7), 14, 8, sk); R(16, Y(7), 14, 1, skL); R(29, Y(9), 2, 5, skD);
+  R(19, Y(13), 12, 4, belly); R(19, Y(16), 10, 1, '#6a6a40');                                  // набухший зоб
+  R(22, Y(12), 9, 1, '#2a1a14'); P(30, Y(11), '#1a1a14');                                     // пасть
+  R(24, Y(8), 2, 2, '#e8e070'); P(25, Y(9), '#3a2a10');                                       // глаз
+  for (const [x, y] of [[16, 5], [18, 4], [20, 5]]) R(x, Y(y), 1, 3, crest);                  // жабры-гребень на затылке
+  P(29, Y(17), slime); P(27, Y(18), slime); P(30, Y(15), '#7aa060');                          // капли слизи, яд у пасти
+  outline(cv, INK);
+  return cv;
+}
+
 function flashCopy(src: HTMLCanvasElement) {
   const cv = document.createElement('canvas'); cv.width = src.width; cv.height = src.height;
   const c = cv.getContext('2d')!; c.drawImage(src, 0, 0);
@@ -340,6 +376,12 @@ export function miniSprite(kind: string, frame = 0): HTMLCanvasElement {
   const key = `${kind}|mini|${frame}`;
   let cv = cache.get(key);
   if (cv) return cv;
+  if (kind === 'salamander') { // на карте — уменьшенная саламандра
+    const big = salamanderSprite(frame);
+    cv = document.createElement('canvas'); cv.width = 14; cv.height = 18;
+    const c = cv.getContext('2d')!; c.imageSmoothingEnabled = false; c.drawImage(big, 0, 0, big.width, big.height, 0, 0, 14, 18);
+    cache.set(key, cv); return cv;
+  }
   const st = STYLES[kind] ?? STYLES.militia;
   cv = document.createElement('canvas'); cv.width = 12; cv.height = 17;
   const c = cv.getContext('2d')!;
