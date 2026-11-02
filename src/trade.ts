@@ -13,30 +13,37 @@ import { withFrame } from './frames';
 interface Shop { name: string; greet: string; items: Record<string, number>; cons: ConsId[] }
 
 export const SHOPS: Record<string, Shop> = {
+  // ---------------- деревни: провиант и немного своего товара
   oldos: {
-    name: 'Олдос — склад разъезда', greet: 'Что поезд привёз, то и продаю. Патроны, пайки, кое-что из одежды.',
-    items: { revolver: 1, rifle: 1, knife: 2, clothes: 2, greatcoat: 1, cap: 2, pouches: 1, tools: 1, lockpicks: 1 },
-    cons: ['ammo_pistol', 'ammo_rifle', 'ammo_shell', 'ration', 'bandage', 'filter'],
+    name: 'Олдос — склад разъезда', greet: 'Пайки, бинты, кое-что из тряпья. Остальное — в форт, там и покупай.',
+    items: { knife: 1, clothes: 1, cap: 1 },
+    cons: ['ration', 'bandage'],
   },
   hob: {
-    name: 'Хоб — лавка при бойне', greet: 'Мясо, панцирь, кожа. Всё своё, ричмордское.',
-    items: { chitin: 2, leather: 1, gloves: 1, boots: 1, apron: 1, shotgun2: 1 },
-    cons: ['ration', 'ammo_shell'],
+    name: 'Хоб — лавка при бойне', greet: 'Мясо и панцирь. Всё своё, ричмордское.',
+    items: { chitin: 1, leather: 1 },
+    cons: ['ration'],
   },
   agnes: {
-    name: 'Агнес — грибная аптека', greet: 'Бинты, настойки, мази. Грибы лечат не хуже городских порошков — а иногда и лучше.',
-    items: { gasmask: 1, surgerykit: 1, wormwood: 2 },
-    cons: ['bandage', 'medkit', 'antiseptic', 'painkiller', 'filter', 'ration'],
+    name: 'Агнес — грибная аптека', greet: 'Бинты, грибная настойка, сушёные шляпки в дорогу. Городских порошков не держим.',
+    items: { wormwood: 1 },
+    cons: ['ration', 'bandage', 'painkiller'],
   },
   abe: {
     name: 'Слепой Эйб — старые вещи', greet: 'Руками трогай, глазами не верь. Тут всё настоящее.',
-    items: { grimoire: 1, ritualkit: 2, rabbitfoot: 1, locket: 1 },
+    items: { ritualkit: 2, rabbitfoot: 1, locket: 1 },
     cons: [],
+  },
+  // ---------------- форт
+  clinic: {
+    name: 'Клиника — аптечный шкаф', greet: 'Лекарства, инструменты, противогазы. За порошки из форта платят шиллингами, а не грибами.',
+    items: { gasmask: 1, surgerykit: 1 },
+    cons: ['bandage', 'medkit', 'antiseptic', 'painkiller', 'filter'],
   },
   market: {
     name: 'Торговец — рынок Среднего города', greet: 'Лучший товар в округе. Цены — тоже лучшие. Для меня.',
-    items: { autopistol: 1, rifle: 1, huntrifle: 1, pumpshot: 1, saber: 1, helmet: 2, quilted: 1, cuirass: 1, sapper: 1, greaves: 1, shootgloves: 1, bandolier: 1, grenadier: 1, flamer: 1, exprifle: 1 },
-    cons: ['ammo_pistol', 'ammo_rifle', 'ammo_shell', 'grenade', 'smoke', 'medkit', 'painkiller'],
+    items: { revolver: 1, autopistol: 1, rifle: 1, huntrifle: 1, shotgun2: 1, pumpshot: 1, saber: 1, greatcoat: 1, gloves: 1, boots: 1, apron: 1, pouches: 1, tools: 1, lockpicks: 1, grimoire: 1, helmet: 2, quilted: 1, cuirass: 1, sapper: 1, greaves: 1, shootgloves: 1, bandolier: 1, grenadier: 1, flamer: 1, exprifle: 1 },
+    cons: ['ammo_pistol', 'ammo_rifle', 'ammo_shell', 'grenade', 'smoke', 'ration'],
   },
 };
 

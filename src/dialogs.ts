@@ -287,6 +287,7 @@ export const DIALOGS: Record<string, DTree> = {
   prosthetist: { start: 'a', nodes: {
     a: { s: 'prosth', t: 'Протезист вытирает руки о фартук. — Железо, дерево, пружины, поршни. Ставлю всё, что держится на ремнях.', c: [
       { t: 'Подобрать протез', act: 'prosthshop:clinic' },
+      { t: '[Торговать] Лекарства и инструменты.', act: 'trade:clinic' },
       { t: 'Расскажи о протезах.', go: 'about' },
       { t: 'Ухожу.', go: 'bye' },
     ] },
