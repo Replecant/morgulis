@@ -55,6 +55,7 @@ export interface Unit {
   ai?: UnitBase['ai']; leader: boolean; demonic: boolean;
   dead: boolean; fled: boolean; terror: boolean; flip: boolean; flash: number; seed: number;
   cd: { summon: number; whisper: number };
+  ally?: boolean;     // союзник в стычке: на стороне отряда, но ходит сам (ИИ)
   goal?: number;      // ИИ стрелка: клетка-цель (укрытие), к которой он идёт — y * CW + x
 }
 
@@ -149,6 +150,14 @@ export const Combat = {
       const h = this.units.find((u) => u.leader);
       if (h) { h.atkM++; h.atkR++; h.dmgM++; this.hooks.log(`Руны на оружии ${h.name} тлеют: +1 к атакам и урону вблизи.`); }
       G.flags.runeWeapon = false;
+    }
+    for (const a of def.allies ?? []) { // союзники стычки — рядом с отрядом, на ближайших свободных клетках
+      const spot = this.free(a.x, a.y) ? { x: a.x, y: a.y } : this.freeNear(a, 3);
+      if (!spot) continue;
+      const u = mkUnit(ENEMIES[a.t], 'player', spot.x, spot.y);
+      u.ally = true;
+      if (a.ammo) Object.assign(u.ammo, a.ammo);
+      this.units.push(u);
     }
     for (const e of def.enemies) {
       const base = ENEMIES[e.t];
@@ -245,7 +254,7 @@ export const Combat = {
     this.busy = true; this.hooks.panel();
     await this.showBanner(`ХОД ОТРЯДА · раунд ${this.round}`, '#d4b673');
     this.busy = false;
-    const lead = this.alive('player').find((u) => u.leader && u.ap > 0) ?? this.alive('player').find((u) => u.ap > 0);
+    const lead = this.alive('player').find((u) => u.leader && u.ap > 0) ?? this.alive('player').find((u) => u.ap > 0 && !u.ally);
     if (lead) this.select(lead);
   },
 
@@ -256,7 +265,7 @@ export const Combat = {
     this.hooks.panel();
   },
   selectNext() {
-    const list = this.alive('player').filter((u) => u.ap > 0);
+    const list = this.alive('player').filter((u) => u.ap > 0 && !u.ally);
     if (!list.length) return;
     const i = this.sel ? list.indexOf(this.sel) : -1;
     this.select(list[(i + 1) % list.length]);
@@ -423,7 +432,7 @@ export const Combat = {
     if (sel && act.type === 'a') { this.useAbility(sel, act.key, tx, ty, u ?? this.downedAt(tx, ty)); return; }
     if (sel && act.type === 's') { this.castSpell(sel, act.key, tx, ty, u); return; }
     if (sel && act.type === 'c') { this.useCourage(sel, act.key, tx, ty, u ?? this.downedAt(tx, ty)); return; }
-    if (u && u.team === 'player') { if (u.ap > 0) this.select(u); else this.hooks.toast(`${u.name}: ОД закончились`); return; }
+    if (u && u.team === 'player') { if (u.ally) this.hooks.toast(`${u.name} — союзник, воюет сам`); else if (u.ap > 0) this.select(u); else this.hooks.toast(`${u.name}: ОД закончились`); return; }
     if (!sel || sel.ap <= 0) return;
     if (u && u.team === 'enemy') {
       const w = act.key;
@@ -691,7 +700,7 @@ export const Combat = {
     if (await this.checkEnd()) return;
     if (this.turn !== 'player') return;
     if (!this.sel || this.sel.dead || this.sel.ap <= 0) {
-      const nx = this.alive('player').find((u) => u.ap > 0);
+      const nx = this.alive('player').find((u) => u.ap > 0 && !u.ally);
       if (nx) this.select(nx);
       else { this.sel = null; this.reach = null; this.hooks.panel(); await sleep(300); this.endPlayerTurn(); }
     } else { this.computeReach(); this.hooks.panel(); }
@@ -702,6 +711,11 @@ export const Combat = {
     if (this.turn !== 'player' || this.busy || this.ended) return;
     this.turn = 'enemy'; this.sel = null; this.reach = null; this.busy = true;
     this.hooks.panel();
+    const allies = this.alive('player').filter((u) => u.ally);
+    if (allies.length) { // союзники стычки ходят после отряда
+      await this.showBanner('ХОД СОЮЗНИКОВ', '#a8c080');
+      for (const a of allies) { if (a.dead) continue; a.ap = 2; await this.aiAct(a); if (await this.checkEnd()) return; await sleep(120); }
+    }
     await this.showBanner('ХОД ПРОТИВНИКА', '#d0614c');
     for (const e of this.alive('enemy')) {
       if (e.dead) continue;
@@ -717,14 +731,14 @@ export const Combat = {
 
   nearestPlayer(p: Pt) {
     let best: Unit | null = null, bd = 1e9;
-    for (const u of this.alive('player')) { const d = dist(p, u); if (d < bd) { bd = d; best = u; } }
+    for (const u of this.foes()) { const d = dist(p, u); if (d < bd) { bd = d; best = u; } }
     return best;
   },
   bestAttack(u: Unit, pos: Pt) {
     let best: { t: Unit; w: string; c: number; score: number } | null = null;
     for (const w of u.weapons) {
       if (this.outOf(u, w)) continue;
-      for (const t of this.alive('player')) {
+      for (const t of this.foes()) {
         const c = this.attackInfo(u, pos, t, w)?.chance ?? 0;
         if (c <= 0) continue;
         const score = c + (t.hp <= WEAPONS[w].dmg[1] ? 15 : 0) + (t.leader ? 5 : 0);
@@ -737,7 +751,11 @@ export const Combat = {
   /** Кончились заряды (у врагов счёт бывает и у оружия без магазина — например, одно ружьё на бой). */
   outOf(u: Unit, w: string) { return (WEAPONS[w].ammo || u.ammo[w] !== undefined) && u.ammo[w] <= 0; },
 
+  /** Чей ход ИИ сейчас: враги ищут цели среди отряда и союзников, союзники — среди врагов. */
+  aiFor: null as Unit | null,
+  foes() { return this.alive(this.aiFor && this.aiFor.team === 'player' ? 'enemy' : 'player'); },
   async aiAct(u: Unit): Promise<void> {
+    this.aiFor = u;
     if (u.ai === 'caster') return this.aiCaster(u);
     if (u.ai === 'breath') return this.aiBreath(u);
     // стрелок без зарядов идёт врукопашную
@@ -771,7 +789,7 @@ export const Combat = {
     for (let guard = 0; u.ap > 0 && !u.dead && guard < 3; guard++) {
       // цель — та, по направлению к которой в полосу попадёт больше бойцов отряда
       let best: { t: Unit; n: number; d: number } | null = null;
-      for (const t of this.alive('player')) {
+      for (const t of this.foes()) {
         if (!this.attackInfo(u, u, t, bw)) continue;
         const n = this.breathCells(u, t, WEAPONS[bw].breath!).filter((c) => this.units.some((o) => !o.dead && o.team === 'player' && o.x === c.x && o.y === c.y)).length;
         const d = dist(u, t);
@@ -801,7 +819,7 @@ export const Combat = {
   meleePath(u: Unit) {
     const reach = bfs(CW, CH, u.x, u.y, (x, y) => this.free(x, y), null);
     let best: { x: number; y: number; d: number } | null = null;
-    for (const t of this.alive('player')) for (const [dx, dy] of DIRS8) {
+    for (const t of this.foes()) for (const [dx, dy] of DIRS8) {
       const n = reach.get((t.y + dy) * CW + t.x + dx);
       if (n && (!best || n.d < best.d)) best = n;
     }
@@ -815,13 +833,13 @@ export const Combat = {
 
   /** Лучшее укрытие клетки n от каждого врага, который её видит (среднее; 0 — открыто, 40 — полное). Кого не видно — тот не опасен. */
   coverVsAll(u: Unit, n: Pt) {
-    const foes = this.alive('player'); let sum = 0, cnt = 0;
+    const foes = this.foes(); let sum = 0, cnt = 0;
     for (const p of foes) { if (!this.los(p, n)) { sum += 40; cnt++; continue; } sum += this.coverOf(n, p); cnt++; }
     return cnt ? sum / cnt : 40;
   },
   /** Оценка клетки для стрелка: шанс попасть + укрытие − открытость под огнём − близость к врагу + держать дистанцию оружия. */
   tileScore(u: Unit, n: Pt, steps: number) {
-    const foes = this.alive('player'); if (!foes.length) return -1e9;
+    const foes = this.foes(); if (!foes.length) return -1e9;
     const at = this.bestAttack(u, n), np = this.nearestPlayer(n)!, nd = dist(n, np);
     let exposed = 0;
     for (const p of foes) if (this.los(p, n)) { const c = this.coverOf(n, p); exposed += c >= 40 ? 0 : c >= 25 ? 0.45 : 1; }
@@ -836,7 +854,7 @@ export const Combat = {
   },
   /** Оценка клетки как цели для стрелка: укрытие важнее всего, затем рабочая дистанция до отряда, выстрел оттуда и путь. */
   goalScore(u: Unit, n: Pt, turns: number) {
-    const foes = this.alive('player'); if (!foes.length) return -1e9;
+    const foes = this.foes(); if (!foes.length) return -1e9;
     const at = this.bestAttack(u, n), np = this.nearestPlayer(n)!, nd = dist(n, np);
     const wk = at?.w ?? u.weapons.find((k) => WEAPONS[k].type === 'ranged' && !this.outOf(u, k)) ?? u.weapons[0], w = WEAPONS[wk];
     const lowHp = u.hp <= u.maxHp * 0.35;
@@ -858,7 +876,7 @@ export const Combat = {
     for (const n of reach.values()) {
       if (!n.d || gd(n) >= d0) continue; // только вперёд, к цели
       let exposed = 0;
-      for (const p of this.alive('player')) if (this.los(p, n)) { const c = this.coverOf(n, p); exposed += c >= 40 ? 0 : c >= 25 ? 0.4 : 1; }
+      for (const p of this.foes()) if (this.los(p, n)) { const c = this.coverOf(n, p); exposed += c >= 40 ? 0 : c >= 25 ? 0.4 : 1; }
       const sc = this.coverVsAll(u, n) * 0.8 - exposed * 6 - gd(n) * 2.5;
       if (sc > bs) { bs = sc; best = n; }
     }
@@ -900,7 +918,7 @@ export const Combat = {
       const spot = this.freeNear(u, 2);
       if (spot) { await this.summon(u, spot); u.ap--; u.cd.summon = 3; }
     }
-    if (u.ap > 0 && this.alive('player').some((p) => cheb(p, u) === 1)) {
+    if (u.ap > 0 && this.foes().some((p) => cheb(p, u) === 1)) {
       const reach = bfs(CW, CH, u.x, u.y, (x, y) => this.free(x, y), this.mv(u));
       let best: Pt | null = null, bs = -1e9;
       for (const n of reach.values()) {
@@ -921,7 +939,7 @@ export const Combat = {
       here = this.bestAttack(u, u);
     }
     if (!here || u.ap <= 0) { u.ap = 0; return; }
-    const targets = this.alive('player').filter((p) => !p.terror && dist(u, p) <= 8 && this.los(u, p));
+    const targets = this.foes().filter((p) => !p.terror && dist(u, p) <= 8 && this.los(u, p));
     if (u.cd.whisper <= 0 && targets.length && Math.random() < 0.45) {
       await this.whisper(u, targets.find((p) => p.leader) ?? pick(targets));
       u.cd.whisper = 3;
@@ -1228,7 +1246,7 @@ export const Combat = {
 
   async checkEnd() {
     if (this.ended) return true;
-    const real = (team: Unit['team']) => this.units.filter((u) => !u.dead && (team === 'player' ? u.team === 'player' && !u.summon && !u.st.commanded : u.team === 'enemy' || !!u.st.commanded));
+    const real = (team: Unit['team']) => this.units.filter((u) => !u.dead && (team === 'player' ? u.team === 'player' && !u.summon && !u.st.commanded && !u.ally : u.team === 'enemy' || !!u.st.commanded));
     if (!real('player').length) { // весь отряд лежит — бой проигран
       this.ended = true; this.busy = true;
       await sleep(700);

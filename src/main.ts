@@ -10,7 +10,7 @@ import { World, clockText, LOCS } from './worldmap';
 import { Combat, CT } from './combat';
 import { Dialog, refreshHud, exploreHint, toast, combatShow, combatLog, combatPanel, screen, hideScreen, openSquad, closeSquad, squadOpen } from './ui';
 import { setPcStyle, applyEquipLooks } from './gfx';
-import { makeAlex } from './data';
+import { makeAlex, CLASH } from './data';
 import { Inventory } from './inventory';
 import { Sheet } from './sheet';
 import { Music } from './music';
@@ -38,6 +38,24 @@ const ctx = cv.getContext('2d')!;
 
 /** Куда вернуться после боя. */
 let returnMode: 'world' | 'explore' | 'crawl' = 'world';
+// стычка фракций: за кого вступил отряд и что он за это получит
+let clashSide: 'a' | 'b' = 'a';
+function clashWon() {
+  const c = World.clashHit;
+  if (!c) return;
+  const ally = clashSide === 'a' ? c.a : c.b, foe = clashSide === 'a' ? c.b : c.a, n = foe.units.length;
+  World.endClash(c, clashSide);
+  if (ally.kind === 'patrol') { // патруль платит за головы
+    const pay = 5 * n;
+    World.clashReward = { text: `Сержант вытирает лицо рукавом и долго смотрит на вас. — Подсобили. ${ally.name} такого не забывает. Держите — за головы положено. (Получено: ${pay} шиллингов.)`, give: () => { G.money += pay; } };
+  } else if (ally.kind === 'band') { // бандиты делятся и на время отстают
+    (ally.ref as { calm: number }).calm = G.clock + 48;
+    World.clashReward = { text: `Главарь сплёвывает и ухмыляется. — А ты ничего. Свой. — Бандиты обшаривают тела и бросают вам пару свёртков. Пару дней они вас не тронут. (Получено: ${2 * n} шиллинга, 1 паёк.)`, give: () => { G.money += 2 * n; G.supplies.ration += 1; } };
+  } else { // помогли голодным — те делят то, что нашли у разбитых
+    World.clashReward = { text: `Оборванцы, ещё не веря, обшаривают убитых. Старший суёт вам в руки то, что нашлось у бандитов, и пятится. — Век не забудем… (Получено: ${4 * n} шиллингов, ${3 * n} винтовочных патронов.)`, give: () => { G.money += 4 * n; G.supplies.ammo_rifle += 3 * n; } };
+  }
+  Dialog.start('after_clash');
+}
 
 // ---------------------------------------------------------------- переходы между режимами
 // Александр: реакции на крупные форты и край мира (показываются, когда окно разговора свободно)
@@ -96,6 +114,7 @@ Combat.hooks = {
     G.mode = returnMode;
     hint();
     if (id === 'ruins') { G.flags.scavDone = true; Dialog.start('after_scav'); }
+    if (id === 'clash') clashWon();
     if (id.startsWith('band_')) {
       const kinds = id.slice(5).split('+');
       World.bandLoot = kinds.length; World.bandKinds = kinds; World.bandFac = kinds.some((k) => k.startsWith('deserter')) ? 'deserter' : 'bandit'; World.killBand();
@@ -156,6 +175,7 @@ Crawl.onRoom = (r) => { if (!r.done && r.kind === 'dead') Dialog.start('crawl_de
 Crawl.onInteract = (r) => Dialog.start(r.kind === 'ladder' ? 'crawl_ladder' : r.kind === 'empty' ? 'crawl_empty' : r.done ? 'crawl_done' : ({ cache: 'crawl_cache', corpse: 'crawl_corpse', dugout: 'crawl_dugout', dead: 'crawl_dead', gas: 'crawl_gas' } as const)[r.kind]);
 Explore.onLocation = () => refreshHud();
 Explore.onExit = (scene) => toWorld(scene);
+World.onClash = () => Dialog.start('clash');
 World.onArrive = (l) => { if (l.id === 'deadend') alexSee('deadend'); Dialog.start(l.talk); };
 World.onEncounter = () => Dialog.start(World.bandHit?.fac === 'deserter' ? 'enc_deserters' : 'enc_band');
 // ---------------------------------------------------------------- отладка (F2)
@@ -213,6 +233,16 @@ Dialog.onAction = (act) => {
   else if (act === 'battle_scav') startBattle('ruins');
   else if (act === 'recruit_alex') { if (!G.squad.some((s) => s.id === 'alex')) { G.squad.push(makeAlex()); applyEquipLooks(G.squad); if (G.mode === 'explore') Explore.enter(Explore.scene, Explore.player); toast('Александр в отряде'); refreshHud(); } }
   else if (act === 'alex_to_coven' || act === 'alex_sold') alexRemove();
+  else if (act === 'clash_a' || act === 'clash_b') { // вступить в стычку на стороне a или b
+    const c = World.clashHit;
+    if (c) {
+      const ally = act === 'clash_a' ? c.a : c.b, foe = act === 'clash_a' ? c.b : c.a;
+      CLASH.allies = ally.units.slice(); CLASH.enemies = foe.units.slice(); CLASH.forest = ally.kind === 'loyal' || foe.kind === 'loyal';
+      CLASH.title = `Стычка: вы с союзниками (${ally.name}) против — ${foe.name}`;
+      clashSide = act === 'clash_a' ? 'a' : 'b';
+      startBattle('clash');
+    }
+  }
   else if (act === 'crawl_enter') { Save.auto(); Crawl.enter(); G.mode = 'crawl'; G.keys.clear(); hint(); refreshHud(); toast('Вы спускаетесь в траншеи. Наверх — по лестнице у входа.'); }
   else if (act === 'crawl_leave') { G.mode = 'world'; World.updateLocation(); G.keys.clear(); hint(); refreshHud(); }
   else if (act === 'crawl_fight') startBattle(Crawl.room?.dead ?? 'trench1');

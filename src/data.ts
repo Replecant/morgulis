@@ -163,6 +163,11 @@ export const ENEMIES: Record<string, UnitBase> = {
   deserter_sapper: E('deserter_sapper', 'Дезертир-сапёр', 'deserter_sapper', 13, 4, ['spade'], 'melee', 3, 11, { armor: 1 }),
   deserter_mg:     E('deserter_mg', 'Дезертир с пулемётом', 'deserter_mg', 11, 3, ['mg', 'knife'], 'ranged', 2, 11),
   deserter_sgt:    E('deserter_sgt', 'Беглый сержант', 'deserter_sgt', 15, 4, ['revolver', 'bayonet'], 'ranged', 4, 12, { armor: 1 }),
+  // солдаты патрулей — союзники в стычках фракций
+  baron_soldier: E('baron_soldier', 'Солдат Олдриджа', 'guard', 10, 4, ['rifle', 'bayonet'], 'ranged', 3, 12),
+  bsoldier:      E('bsoldier', 'Солдат Леди Харрингтон', 'bguard', 10, 4, ['rifle', 'bayonet'], 'ranged', 3, 12),
+  wf_soldier:    E('wf_soldier', 'Солдат Винферда', 'wfguard', 10, 4, ['rifle', 'bayonet'], 'ranged', 3, 12),
+  brother_fighter: E('brother_fighter', 'Брат свободы', 'brother', 9, 4, ['carbine', 'bayonet'], 'ranged', 2, 11),
   bandit_boss: E('bandit_boss', 'Главарь шайки', 'bandit_boss', 15, 4, ['revolver', 'saber'], 'ranged', 4, 12, { armor: 1 }),
   // морской демон: громадный, скользкий (высокая Защита), ядовитое дыхание
   salamander: E('salamander', 'Морской демон', 'salamander', 26, 3, ['breath', 'salbite'], 'breath', 2, 13, { armor: 1, demonic: true }),
@@ -194,6 +199,8 @@ export interface BattleDef {
   players: [number, number][];
   /** ammo — сколько зарядов на бой (иначе — без счёта), extra — добавочное оружие, move — поправка хода */
   enemies: { t: string; x: number; y: number; name?: string; ammo?: Record<string, number>; extra?: string[]; move?: number; note?: string }[];
+  /** союзники: воюют на стороне отряда сами, под управлением ИИ (стычки фракций) */
+  allies?: { t: string; x: number; y: number; ammo?: Record<string, number> }[];
   lights: [number, number, number, string][]; // x, y, радиус(px), цвет
 }
 
@@ -206,7 +213,15 @@ export interface BattleDef {
  *  o  ритуальный круг (проходимо)
  *  x  колючая проволока (непроходимо, обзор не закрывает)
  */
+/** Стычка фракций, в которую вступил отряд: кто с нами и кто против (заполняет main.ts перед боем). */
+export const CLASH = { allies: [] as string[], enemies: [] as string[], title: 'Стычка', forest: false };
+
 export function battleDef(id: string, _flags: Record<string, boolean | undefined>): BattleDef {
+  if (id === 'clash') { // стычка: отряд вступает за одну из сторон, союзники воюют рядом
+    const w = battleDef(CLASH.forest ? 'loyal2' : 'waste', _flags);
+    const epos = [{ x: 19, y: 5 }, { x: 17, y: 9 }, { x: 21, y: 7 }, { x: 20, y: 11 }], apos = [{ x: 5, y: 4 }, { x: 6, y: 7 }, { x: 5, y: 10 }, { x: 6, y: 12 }];
+    return { ...w, id, title: CLASH.title, enemies: CLASH.enemies.slice(0, 4).map((t, i) => ({ t, ...epos[i] })), allies: CLASH.allies.slice(0, 4).map((t, i) => ({ t, ...apos[i] })) };
+  }
   if (id.startsWith('trench')) return trenchBattle(id);
   if (id === 'lake') { // берег озера: вода (непроходимо), камни, коряги
     return { id, title: 'Берег озера', theme: 'road',

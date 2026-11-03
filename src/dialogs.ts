@@ -1230,6 +1230,25 @@ const WORLD_DIALOGS: Record<string, DTree> = {
     escaped: { s: 'nar', t: 'Вы ныряете в овраг и уходите по сухому руслу, пока бандиты обшаривают холмы.', act: 'band_lose' },
     fight: { s: 'scav', t: '— Ну, как знаешь. — Щёлкают затворы.', act: 'battle_band' },
   } },
+  // стычка между отрядами на карте: отряд может вступить за одну из сторон
+  clash: { start: 'a', nodes: {
+    a: { s: 'nar', t: () => {
+      const c = World.clashHit; if (!c) return 'Впереди было слышно стрельбу, но всё уже стихло.';
+      const what = c.b.kind === 'hungry' && c.a.kind === 'band' ? 'Бандиты гонят оборванцев, как зверьё, — те отбиваются чем попало.'
+        : c.a.kind === 'patrol' ? `${c.a.name} наткнулся на ${c.b.kind === 'hungry' ? 'голодных бандитов' : c.b.kind === 'loyal' ? 'лоялистов' : c.b.name.toLowerCase()} — бьют залпами из-за кочек, те огрызаются.` : '';
+      return `Впереди трещат выстрелы. ${c.a.name} и ${c.b.name.toLowerCase()} сцепились насмерть. ${what} Вас пока не заметили.`;
+    }, c: () => {
+      const c = World.clashHit; if (!c) return [{ t: 'Идти дальше', go: 'bye' }];
+      const out: { t: string; act?: string; go?: string }[] = [{ t: `Вступить в бой на стороне: ${c.a.name}`, act: 'clash_a' }];
+      if (c.a.kind !== 'patrol') out.push({ t: `Вступить в бой на стороне: ${c.b.name}`, act: 'clash_b' }); // против патрулей господ — не вступаемся
+      out.push({ t: 'Обойти стороной', go: 'bye' });
+      return out;
+    } },
+    bye: { s: 'nar', t: 'Вы обходите перестрелку стороной. Пусть разбираются сами.', do: () => { World.clashHit = null; } },
+  } },
+  after_clash: { start: 'a', nodes: {
+    a: { s: 'nar', t: () => World.clashReward.text, do: () => World.clashReward.give() },
+  } },
   // дезертиры в землях Леди Харрингтон
   enc_deserters: { start: 'a', nodes: {
     a: { s: 'deserter', t: () => {

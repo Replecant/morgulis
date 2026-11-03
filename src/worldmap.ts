@@ -10,7 +10,7 @@ import { miniSprite } from './sprites';
 import { lampLevel } from './state';
 import { loadSpeedK } from './load';
 import { itemOf } from './items';
-import type { UnitBase } from './data';
+import { ENEMIES, type UnitBase } from './data';
 import { addWoundId } from './wounds';
 import { Debug } from './debug';
 import { Weather } from './weather';
@@ -179,6 +179,17 @@ const nearLake = (q: Pt) => demonOk(q, 1.4);
 const inBaronLand = (q: Pt) => q.x > 200 && q.x < 1650 && q.y > 120 && q.y < SOUTH_Y - 120;
 const inNorth = (q: Pt) => q.y < NORTH_Y;
 // лоялисты старого режима: редкие группы прячутся в лесу, подальше от дорог
+// ------------------------------------------------------------ стычки между отрядами
+// Патрули бьют тех, кого их господин считает разбойниками; бандиты гоняют голодных. Отряд может вступить за одну из сторон.
+export interface ClashSide { kind: 'patrol' | 'band' | 'hungry' | 'loyal'; name: string; units: string[]; ref: object }
+export interface Clash { x: number; y: number; a: ClashSide; b: ClashSide; until: number; offered: boolean; seed: number }
+const PATROL_UNITS: Record<PatrolOwner, string[]> = {
+  baron: ['baron_soldier', 'baron_soldier', 'baron_soldier'], baroness: ['bsoldier', 'bsoldier', 'bsoldier'],
+  winford: ['wf_soldier', 'wf_soldier', 'wf_soldier'], wfcar: ['wf_soldier', 'wf_soldier', 'wf_soldier', 'wf_soldier'], revo: ['brother_fighter', 'brother_fighter', 'brother_fighter'],
+};
+export const PATROL_NAME: Record<PatrolOwner, string> = { baron: 'Патруль Олдриджа', baroness: 'Патруль Леди Харрингтон', winford: 'Патруль Винферда', wfcar: 'Бронемашина Винферда', revo: 'Братья свободы' };
+/** Сила стороны для исхода стычки без отряда: ОЗ × (атака + 4). */
+const strength = (units: string[]) => units.reduce((s, k) => s + (ENEMIES[k]?.maxHp ?? 8) * ((ENEMIES[k]?.atkR ?? 2) + 4), 0);
 interface Loyal { id: number; kinds: string[]; x: number; y: number; tx: number; ty: number; alive: boolean; respawn: number; calm: number; seen: boolean }
 // отряды демонов: бродят по лесу вокруг ковена — бес, рогатый демон, адская гончая в разных сочетаниях
 interface DemonSquad { id: number; kinds: string[]; x: number; y: number; tx: number; ty: number; alive: boolean; respawn: number; calm: number; seen: boolean }
@@ -320,6 +331,12 @@ export const World = {
   clouds: [] as Cloud[],
   inGas: false, gasDose: 0, filterUse: 0,
   pendingPatrol: null as Patrol | null,
+  clashes: [] as Clash[],
+  clashHit: null as Clash | null,
+  onClash: () => {},
+  clashReward: { text: '', give: () => {} },
+  /** Кто в стычке — тот стоит и не преследует отряд. */
+  inClash(ref: object) { return this.clashes.some((c) => c.a.ref === ref || c.b.ref === ref); },
   dead: [] as DeadGroup[],
   hungry: [] as Hungry[],
   demons: [] as LakeDemon[],
@@ -342,7 +359,7 @@ export const World = {
     // первый выходит из Эшфорда к форту, второй — из форта к Ричморду: идут навстречу и расходятся
     this.clouds = [[2500, 400], [2800, 1300], [2650, 2050], [3000, 700], [2400, -600], [2900, -200], [300, 1520], [-700, 1660], [1100, 2120], [-1500, 2000], [600, 2210], [-300, 1750], [200, 300], [760, 1080], [1250, 560], [-300, 420], [-650, 900], [1560, 1120], [900, 180], [-1250, 220], [-2050, 950], [-1500, 1150], [-2300, 380]].map(([x, y], i) => ({
       x, y, r: 70 + ((i * 37) % 50), vx: 9 + (i % 3) * 3, vy: ((i % 2) * 2 - 1) * 2, seed: i * 1.9 }));
-    this.inGas = false; this.gasDose = 0; this.filterUse = 0;
+    this.inGas = false; this.gasDose = 0; this.filterUse = 0; this.clashes = []; this.clashHit = null;
     this.demons = [0.6, 3.6].map((a, i) => { const q = lakeRing(a, 1.1); return { id: i, x: q.x, y: q.y, tx: q.x, ty: q.y, alive: true, respawn: 0, calm: 0, seen: false, a }; });
     this.hungry = HUNGRY_START.map(([x, y], i) => ({ id: i, kinds: i % 2 ? ['hungry2', 'hungry', 'hungry'] : ['hungry', 'hungry2'], x, y, tx: x, ty: y, alive: true, respawn: 0, calm: 0, seen: false }));
     this.dead = DEAD_START.map(([id, kinds, x, y]) => ({ id, kinds, x, y, tx: x, ty: y, alive: true, respawn: 0, calm: 0, seen: false }));
@@ -463,9 +480,52 @@ export const World = {
       this.updateDemons(dt);
       this.updateLoyal(dt);
       this.updateDsq(dt);
+      this.updateClashes(dt);
     }
   },
 
+  /** Сторона стычки по отряду на карте. */
+  sideOf(ref: Patrol | Band | Hungry | Loyal): ClashSide {
+    if ('owner' in ref) return { kind: 'patrol', name: PATROL_NAME[ref.owner], units: PATROL_UNITS[ref.owner], ref };
+    if ('fac' in ref) return { kind: 'band', name: ref.fac === 'deserter' ? 'Дезертиры' : 'Бандиты', units: ref.kinds, ref };
+    if (this.hungry.includes(ref as Hungry)) return { kind: 'hungry', name: 'Голодные бандиты', units: (ref as Hungry).kinds, ref };
+    return { kind: 'loyal', name: 'Лоялисты', units: (ref as Loyal).kinds, ref };
+  },
+  startClash(a: ClashSide, b: ClashSide) {
+    const pa = 'owner' in a.ref ? this.patrolPos(a.ref as Patrol) : (a.ref as Pt), pb = b.ref as Pt;
+    this.clashes.push({ x: (pa.x + pb.x) / 2, y: (pa.y + pb.y) / 2, a, b, until: G.clock + 1.5 + Math.random() * 1.5, offered: false, seed: Math.random() * 100 });
+  },
+  /** Стычка закончилась: проигравшие разбиты (патруль не гибнет — отходит зализывать раны). */
+  endClash(c: Clash, winner: 'a' | 'b') {
+    const lose = winner === 'a' ? c.b : c.a;
+    const r = lose.ref as { alive?: boolean; respawn?: number; wait?: number };
+    if (lose.kind === 'patrol') r.wait = 10;
+    else { r.alive = false; r.respawn = G.clock + (lose.kind === 'hungry' ? 48 : 60); }
+    this.clashes = this.clashes.filter((x) => x !== c);
+    if (this.clashHit === c) this.clashHit = null;
+  },
+  /** Патрули замечают у дороги тех, кого их господин считает врагами; стычки без отряда решаются сами; подошедший отряд может вступить. */
+  updateClashes(_dt: number) {
+    const p = this.party;
+    for (const pt of this.patrols) {
+      if (this.inClash(pt)) { pt.wait = Math.max(pt.wait, 0.5); continue; }
+      if (pt.wait > 3) continue; // потрёпанный патруль отходит
+      const q = this.patrolPos(pt);
+      const foes: (Band | Hungry | Loyal)[] = pt.owner === 'baron' ? [...this.bands.filter((b) => b.fac === 'bandit'), ...this.hungry]
+        : pt.owner === 'revo' ? this.loyal : this.bands.filter((b) => b.fac === 'deserter');
+      const t = foes.find((g) => g.alive && !this.inClash(g) && dist(g, q) < 230);
+      if (t) this.startClash(this.sideOf(pt), this.sideOf(t));
+    }
+    for (const c of [...this.clashes]) {
+      if (c === this.clashHit || G.clock < c.until) continue;
+      const sa = strength(c.a.units), sb = strength(c.b.units);
+      this.endClash(c, Math.random() < sa / (sa + sb) ? 'a' : 'b');
+    }
+    if (!Debug.invisible && !this.clashHit) {
+      const c = this.clashes.find((x) => !x.offered && dist(x, p) < 80);
+      if (c) { c.offered = true; p.moving = false; this.pending = null; G.keys.clear(); this.clashHit = c; this.onClash(); }
+    }
+  },
   /** Шайки бандитов: держатся глуши, далеко от трактов; лишь изредка (налёт) выходят к дороге. Замечают отряд в глуши и преследуют — но на тракт за ним почти не идут. */
   updateBand(dt: number) {
     const p = this.party;
@@ -478,6 +538,7 @@ export const World = {
       b.raid = false; b.tx = b.x; b.ty = b.y;
     };
     for (const b of this.bands) {
+      if (b.alive && this.inClash(b)) continue; // в перестрелке
       if (!b.alive) {
         if (G.clock >= b.respawn) {
           for (let k = 0; k < 200; k++) {
@@ -499,7 +560,10 @@ export const World = {
         if (G.clock < b.calm || patrolNear) b.raid = false;
         pick(b, b, 230);
       }
-      const sp = (chase ? 70 : 34) * HOURS_PER_SEC * dt, dd = dist(b, { x: b.tx, y: b.ty });
+      // бандиты гоняют голодных: заметив их, идут наперехват
+      const prey = !chase && b.fac === 'bandit' ? this.hungry.find((g) => g.alive && !this.inClash(g) && dist(g, b) < 260) : undefined;
+      if (prey) { b.tx = prey.x; b.ty = prey.y; if (dist(b, prey) < 26) { this.startClash(this.sideOf(b), this.sideOf(prey)); continue; } }
+      const sp = (chase || prey ? 70 : 34) * HOURS_PER_SEC * dt, dd = dist(b, { x: b.tx, y: b.ty });
       if (dd > 0.5) { b.x += ((b.tx - b.x) / dd) * Math.min(sp, dd); b.y += ((b.ty - b.y) / dd) * Math.min(sp, dd); }
       if (chase && dist(b, p) < 20) { p.moving = false; this.pending = null; G.keys.clear(); this.bandHit = b; this.onEncounter(); return; }
     }
@@ -508,6 +572,7 @@ export const World = {
   updateHungry(dt: number) {
     const p = this.party, hours = dt * HOURS_PER_SEC;
     for (const g of this.hungry) {
+      if (g.alive && this.inClash(g)) continue;
       if (!g.alive) {
         if (G.clock >= g.respawn) {
           const s0 = HUNGRY_START[g.id];
@@ -558,6 +623,7 @@ export const World = {
     const p = this.party, hours = dt * HOURS_PER_SEC;
     const ok = (q: Pt) => inNorth(q) && q.y > WY0 + 140 && q.x > 120 && q.x < OLD_E - 140 && !nearRoad(q, 70) && !LOCS.some((l) => l.kind !== 'poi' && dist(l, q) < 170);
     for (const g of this.loyal) {
+      if (g.alive && this.inClash(g)) continue;
       if (!g.alive) {
         if (G.clock >= g.respawn) { const s0 = LOYAL_START[g.id]; if (dist({ x: s0[0], y: s0[1] }, p) > 450) { g.alive = true; g.x = g.tx = s0[0]; g.y = g.ty = s0[1]; } }
         continue;
@@ -800,6 +866,11 @@ export const World = {
       if (flip) { lc.save(); lc.translate(dx * 2 + 12, 0); lc.scale(-1, 1); lc.drawImage(sp, dx, dy); lc.restore(); }
       else lc.drawImage(sp, dx, dy);
     };
+    // стычки: вспышки выстрелов между сторонами
+    for (const c of this.clashes) {
+      const sx = X(c.x), sy = Y(c.y), on = Math.floor(t * 9 + c.seed);
+      for (let k = 0; k < 4; k++) { const a = c.seed + k * 1.7 + on * 0.9; if ((on + k) % 3 === 0) { ppx(lc, sx + Math.cos(a) * 9, sy - 6 + Math.sin(a) * 4, '#ffd070'); ppx(lc, sx + Math.cos(a) * 9 + 1, sy - 6 + Math.sin(a) * 4, '#ff9040'); } }
+    }
     // банда
     for (const b of this.bands) {
       if (!b.alive || !b.seen) continue;
@@ -959,6 +1030,13 @@ export const World = {
       c.fillStyle = pt.owner === 'baroness' ? '#d8a0a0' : pt.owner === 'revo' ? '#e07a68' : pt.owner === 'winford' || pt.owner === 'wfcar' ? '#a8c0e0' : '#d8c080'; c.fillText(lbl, sx, ly);
       c.textAlign = 'left';
     });
+    for (const cl of this.clashes) { // подпись стычки
+      const sx = cl.x - cx, sy = cl.y - cy;
+      if (sx < -80 || sx > VW + 80 || sy < -40 || sy > VH + 60 || dist(cl, p) > 420) continue;
+      const lbl = `Стычка: ${cl.a.name} — ${cl.b.name}`;
+      c.font = 'italic 12px "Old Standard TT", serif'; c.textAlign = 'center';
+      c.fillStyle = 'rgba(0,0,0,0.85)'; c.fillText(lbl, sx + 1, sy - 55); c.fillStyle = '#f0a060'; c.fillText(lbl, sx, sy - 56); c.textAlign = 'left';
+    }
     const near = this.nearLoc();
     const nearPt = !near && !p.moving ? this.patrolNear(p, 45) : null;
     if ((near || nearPt) && !p.moving) {
