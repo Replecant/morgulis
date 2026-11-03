@@ -5,7 +5,8 @@
 //  · Мирные темы — на карте, в деревнях и городах — в случайном
 //    порядке (один трек подряд не повторяется); в бою стихают
 //    и потом продолжаются с того же места.
-//  · Боевая тема играет в бою (по кругу), каждый бой — с начала.
+//  · Боевые темы — в бою: каждый бой начинается с начала случайного
+//    трека (не того, что был в прошлом бою), дальше — по очереди.
 //  Переходы плавные. Выключить/включить — в меню паузы (Esc), выбор запоминается.
 // ============================================================
 import theme1 from './assets/theme-1.mp3';
@@ -13,6 +14,8 @@ import theme2 from './assets/theme-2.mp3';
 import theme3 from './assets/theme-3.mp3';
 import menuTheme from './assets/menu-theme.mp3';
 import battle1 from './assets/battle-1.mp3';
+import battle2 from './assets/battle-2.mp3';
+import battle3 from './assets/battle-3.mp3';
 
 const FADE = 1.2; // время затухания (с)
 let VOL = 0.55;   // громкость музыки 0..1 (настраивается в меню паузы)
@@ -45,7 +48,10 @@ class Lane {
   update(dt: number, want: boolean, restart = false) {
     const a = this.a;
     if (want && a.paused) {
-      if (restart && a.volume === 0) { if (this.cur !== 0) { this.cur = this.list.length - 1; this.next(); } else a.currentTime = 0; }
+      if (restart && a.volume === 0) {
+        if (this.shuffle && this.list.length > 1) this.next(); // новый бой — другой случайный трек с начала
+        else if (this.cur !== 0) { this.cur = this.list.length - 1; this.next(); } else a.currentTime = 0;
+      }
       this.a.play().catch(() => {});
     }
     this.playing = want;
@@ -59,7 +65,7 @@ class Lane {
 
 const peace = new Lane([theme1, theme2, theme3], true);
 const menu = new Lane([menuTheme]);
-const battle = new Lane([battle1]);
+const battle = new Lane([battle1, battle2, battle3], true);
 
 let muted = false;
 try {
