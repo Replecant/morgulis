@@ -883,7 +883,7 @@ export const Explore = {
     NPC('p314_cmd', 'Комендант поста', 'imp_cmd', 1145, 18, 'p314_cmd');
     NPC('p314_radio', 'Радист', 'imp_radio', 1150, 27, 'p314_radio');
     NPC('p314_qm', 'Каптенармус', 'imp_qm', 1132, 26, 'p314_qm');
-    NPC('p314_cook', 'Повариха', 'imp_wife', 1136, 32, 'p314_cook');
+    NPC('p314_cook', 'Дежурная по кухне', 'imp_sold_w2', 1136, 32, 'p314_cook');
     NPC('p314_chap', 'Капеллан', 'imp_chaplain', 1160, 17, 'p314_chap');
     NPC('wise_fen', 'Шептунья', 'wise_fen', 4, 26, 'wise_fen');
     NPC('wise_moss', 'Знахарь', 'wise_moss', 289, 48, 'wise_moss');
