@@ -110,7 +110,7 @@ body { font-family: 'Old Standard TT', Georgia, serif; color: var(--text); }
 }
 #screen:empty { display: none; }
 /* смерть: надгробие со скелетом-солдатом и подпись */
-#screen.death { background: #000; animation: deathIn 1.2s ease-out; }
+#screen.death { background: #0d120b; animation: deathIn 1.2s ease-out; } /* в цвет фона картинки — без видимой рамки-прямоугольника */
 #screen.death .scr { max-width: 900px; padding: 0; }
 .death-img { display: block; width: 660px; height: 440px; margin: 0 auto; image-rendering: pixelated; } /* пляска смерти — 3:2, картинка автора */
 .death-cap { font-family: 'Playfair Display SC', 'Old Standard TT', serif; font-size: 22px; letter-spacing: 2px; color: #d8cfa8; margin-top: 6px; text-shadow: 0 0 18px rgba(159, 211, 106, 0.35); }
