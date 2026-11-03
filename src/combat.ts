@@ -13,7 +13,7 @@ import { woundMods, effMaxHp, addWound, addWoundId, bandageAmount, medkitAmount,
 import { AMMO_NAME } from './items';
 import { equipStats } from './items';
 import { PixelView, applyLight, PLight, T, PS, prect, ppx, pline, pellipse, shade, seeded as pseed, outline } from './px';
-import { drawSprite } from './sprites';
+import { drawSprite, combatKind } from './sprites';
 import { paintTile, objSprite } from './pxworld';
 import { hasProsth } from './prosthetics';
 import { Weather } from './weather';
@@ -1155,7 +1155,7 @@ export const Combat = {
     for (const u of vis) {
       const frame = u.walking ? 1 + (Math.floor(t * 8) % 2) * 2 : 0;
       const bob = !u.walking && !u.dead && Math.sin(t * 1.8 + u.seed) > 0.75 ? 1 : 0;
-      drawSprite(lc, u.kind, u.px / PS, u.py / PS + 9, { flip: u.flip, dead: u.dead, flash: u.flash > 0, frame, bob });
+      drawSprite(lc, combatKind(u.kind), u.px / PS, u.py / PS + 9, { flip: u.flip, dead: u.dead, flash: u.flash > 0, frame, bob }); // в бою — оружие на изготовку
     }
     for (const f of this.fx) {
       const a = Math.max(0, f.life / f.max);

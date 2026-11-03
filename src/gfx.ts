@@ -39,7 +39,7 @@ export const STYLES: Record<string, Style> = {
   bandit_gun: { coat: '#2e2a26', legs: '#1e1c18', belt: '#3a2a1a', webbing: '#4a3a26', hat: 'flatcap', hatC: '#1a1816', skin: '#b8987c', mask: true, weapon: 'rifle' },
   bandit_shot: { coat: '#3a2e24', legs: '#221e18', belt: '#3a2a1a', hat: 'brodie', hatC: '#2e2a22', skin: '#b08a6a', beard: '#2a2018', weapon: 'sawnoff' },
   bandit_axe: { coat: '#35302a', legs: '#201e1a', belt: '#4a3420', apron: '#2a2420', hair: '#2a2018', skin: '#a88a70', mask: true, weapon: 'hammer', scale: 1.1 },
-  bandit_boss: { coat: '#2a1e1e', legs: '#18161a', belt: '#4a2e1a', trim: '#8a6a3a', hat: 'tophat', hatC: '#141214', skin: '#c4a488', beard: '#3a2a20', weapon: 'saber' },
+  bandit_boss: { coat: '#2a1e1e', legs: '#18161a', belt: '#4a2e1a', trim: '#8a6a3a', hat: 'tophat', hatC: '#141214', skin: '#c4a488', beard: '#3a2a20', weapon: 'pistol' },
   militia_gun: { coat: '#4a4232', legs: '#2a261f', hair: '#3a2a1a', weapon: 'musket', skin: '#bfa88c', belt: '#2a1d12' },
   fanatic: { coat: '#3e3b30', legs: '#25231d', hat: 'flatcap', hatC: '#1e1d18', weapon: 'fork', sash: true },
   fanatic_gun: { coat: '#38362c', legs: '#25231d', hair: '#222', weapon: 'musket', sash: true },

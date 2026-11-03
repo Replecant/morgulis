@@ -46,10 +46,18 @@ export function drawSprite(c: Ctx, kind: string, x: number, y: number, o: Sprite
 }
 
 // ============================================================ сборка персонажа
-function buildChar(kind: string, frame: number): HTMLCanvasElement {
+/** Оружие, которое в бою держат «на изготовку» — так его легче различить. */
+const AIM = new Set(['rifle', 'musket', 'shotgun', 'sawnoff', 'pistol', 'knife']);
+/** Вид фигурки для боя: стрелки и бойцы с ножом — в стойке с оружием на изготовку (ключ с суффиксом «#aim»). */
+export function combatKind(kind: string) { const st = STYLES[kind]; return st && st.weapon && AIM.has(st.weapon) && st.limbs?.armR !== 'lost' ? kind + '#aim' : kind; }
+
+function buildChar(kind0: string, frame: number): HTMLCanvasElement {
+  const aim = kind0.endsWith('#aim'), kind = aim ? kind0.slice(0, -4) : kind0;
   const st = STYLES[kind] ?? STYLES.militia;
-  const cv = document.createElement('canvas'); cv.width = SW; cv.height = SH;
+  // в боевой стойке холст шире на 16 (по 8 с боков), чтобы длинный ствол выходил далеко за силуэт; фигура остаётся по центру
+  const cv = document.createElement('canvas'); cv.width = SW + (aim ? 16 : 0); cv.height = SH;
   const c = cv.getContext('2d')!;
+  if (aim) c.translate(8, 0);
   const R = (x: number, y: number, w: number, h: number, col: string) => prect(c, x, y, w, h, col);
   const P = (x: number, y: number, col: string) => ppx(c, x, y, col);
 
@@ -239,12 +247,58 @@ function buildChar(kind: string, frame: number): HTMLCanvasElement {
     if (armR === 'flesh') { R(ax, ay + 8, 2, 2, '#b89a8a'); P(ax, ay + 8, '#5a2a2a'); return; }   // чужая кожа, шов
     R(ax, ay + 8, 2, 2, STEEL); P(ax + 1, ay + 9, STEEL_L);                                         // стальная кисть
   };
-  if (armR === 'lost') { R(ax, ay, 2, 3, coat); R(ax + 1, ay, 1, 3, coatD); P(ax, ay + 3, coatD); } // подколотый рукав
+  const aimed = aim && !!st.weapon && AIM.has(st.weapon);
+  if (aimed) { /* рука — в боевой стойке ниже */ }
+  else if (armR === 'lost') { R(ax, ay, 2, 3, coat); R(ax + 1, ay, 1, 3, coatD); P(ax, ay + 3, coatD); } // подколотый рукав
   else if (armR === 'piston') { R(ax, ay, 2, 3, coat); R(ax, ay + 3, 2, 5, '#6e726c'); P(ax + 1, ay + 4, BRASS); P(ax + 1, ay + 6, '#4a4e4a'); }
   else if (armR === 'galvanic') { R(ax, ay, 2, 3, coat); R(ax, ay + 3, 2, 5, COPPER); for (const k of [3, 5, 7]) P(ax, ay + k, '#7a4220'); P(ax + 1, ay + 4, SPARK); }
   else { R(ax, ay, 2, 8, coat); R(ax + 1, ay, 1, 8, coatD); if (armR === 'flesh') P(ax, ay + 7, '#5a2a2a'); }
   if (st.sash) { R(ax, ay + 1, 2, 2, '#7fb04a'); }
   const hx = ax + 1, hy2 = ay + 9; // кисть
+  if (aim && st.weapon && AIM.has(st.weapon)) { // боевая стойка: оружие на изготовку — длина и силуэт видны издалека
+    const hand2 = (x: number, y: number) => R(x, y, 2, 2, armR ? STEEL : skin);
+    const sleeve = (x: number, y: number, w: number) => { R(x, y, w, 2, coat); R(x, y + 1, w, 1, coatD); };
+    // светлые, контрастные к тёмным шинелям цвета: ствол — светлая сталь с тёмной нижней кромкой, дерево — рыжее
+    const EDGE = SW + 7, steelD = '#4a4e4a', dark = '#2e302e', wood = '#8a5e32', woodD = '#5a3a1e';
+    switch (st.weapon) {
+      case 'rifle': // приклад у плеча, длинный ствол далеко вперёд, штык
+        sleeve(ax - 1, ay + 3, 4); hand2(ax + 3, ay + 3);
+        R(ax - 3, ay + 2, 9, 2, wood); R(ax - 3, ay + 3, 9, 1, woodD);
+        R(ax + 6, ay + 1, EDGE - ax - 9, 1, STEEL_L); R(ax + 6, ay + 2, EDGE - ax - 9, 1, steelD);
+        R(EDGE - 3, ay + 1, 3, 1, '#f0f4ea'); P(EDGE - 1, ay + 2, STEEL_L);
+        hand2(ax + 6, ay + 3);
+        break;
+      case 'musket': // длинное ружьё: всё в рыжем дереве, светлое дуло, без штыка
+        sleeve(ax - 1, ay + 3, 4); hand2(ax + 3, ay + 3);
+        R(ax - 3, ay + 2, EDGE - ax, 2, wood); R(ax - 3, ay + 3, EDGE - ax, 1, woodD);
+        R(ax + 8, ay + 1, EDGE - ax - 9, 1, STEEL); P(EDGE - 2, ay + 1, '#f0f4ea'); P(EDGE - 2, ay + 2, STEEL_L);
+        hand2(ax + 8, ay + 3);
+        break;
+      case 'shotgun': // дробовик: средней длины, толстые сдвоенные стволы
+        sleeve(ax - 1, ay + 3, 4); hand2(ax + 3, ay + 3);
+        R(ax - 3, ay + 2, 7, 3, wood); R(ax - 3, ay + 4, 7, 1, woodD);
+        R(ax + 4, ay + 1, 9, 3, dark); R(ax + 4, ay + 1, 9, 1, STEEL_L); R(ax + 4, ay + 2, 9, 1, STEEL); R(ax + 12, ay + 1, 1, 3, '#f0f4ea');
+        hand2(ax + 7, ay + 4);
+        break;
+      case 'sawnoff': // обрез у бедра: короткие толстые стволы, рукоять
+        R(ax, ay, 2, 7, coat); R(ax + 1, ay, 1, 7, coatD); hand2(ax, ay + 7);
+        R(ax + 2, ay + 6, 6, 3, dark); R(ax + 2, ay + 6, 6, 1, STEEL_L); R(ax + 2, ay + 7, 6, 1, STEEL); R(ax + 7, ay + 6, 1, 3, '#f0f4ea');
+        R(ax - 1, ay + 8, 3, 3, wood);
+        break;
+      case 'pistol': // рука вытянута вперёд на уровне плеча, пистолет на конце
+        sleeve(ax, ay + 1, 5); hand2(ax + 5, ay + 1);
+        R(ax + 6, ay, 4, 2, dark); R(ax + 6, ay, 4, 1, STEEL_L); P(ax + 10, ay, '#f0f4ea'); R(ax + 5, ay + 3, 2, 2, wood);
+        R(tx0 - 2, sy(tTop + 6), 2, 3, '#2a1d12');
+        break;
+      case 'knife': // рука вперёд-вниз, широкий светлый клинок вперёд-вверх
+        pline(c, ax, ay + 1, ax + 3, ay + 5, coat, 2); hand2(ax + 3, ay + 5);
+        R(ax + 4, ay + 4, 1, 3, BRASS);
+        pline(c, ax + 5, ay + 5, ax + 9, ay + 2, STEEL_L, 2); pline(c, ax + 5, ay + 4, ax + 9, ay + 1, '#f0f4ea'); P(ax + 10, ay + 1, '#f0f4ea');
+        break;
+    }
+    outline(cv, INK);
+    return cv;
+  }
   switch (armR === 'lost' && !['rifle', 'musket', 'bag'].includes(st.weapon ?? '') ? undefined : st.weapon) {
     case 'saber':
       pline(c, hx + 1, hy2 + 1, hx + 4, hy2 + 8, STEEL); pline(c, hx + 2, hy2 + 1, hx + 4, hy2 + 6, STEEL_L);
