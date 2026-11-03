@@ -53,7 +53,7 @@ export const WEAPONS: Record<string, Weapon> = {
   // оружие траншейных мертвецов
   cudgel:    { name: 'Дубина', type: 'melee', atk: 0, dmg: [1, 3] },
   breath:    { name: 'Зловонное дыхание', type: 'ranged', closePen: 0, range: 4, opt: 4, atk: 2, dmg: [2, 4], ignoreCover: true, breath: 4, ammo: 1 }, // раз за бой
-  salbite:   { name: 'Укус', type: 'melee', atk: 2, dmg: [3, 6] },
+  salbite:   { name: 'Укус', type: 'melee', atk: 1, dmg: [3, 6] },
   rustbayonet: { name: 'Ржавый штык', type: 'melee', atk: 0, dmg: [2, 4] },
   oldrifle:  { name: 'Гнилая винтовка', type: 'ranged', range: 9, opt: 5, atk: -1, dmg: [3, 5] },
   gasbreath: { name: 'Газовый выдох', type: 'ranged', closePen: 0, range: 3, opt: 3, atk: 1, dmg: [2, 3], ignoreCover: true, splash: [1, 2], poison: true, gas: true },
@@ -62,10 +62,10 @@ export const WEAPONS: Record<string, Weapon> = {
   spade:     { name: 'Сапёрная лопатка', type: 'melee', atk: 0, dmg: [3, 6] },
   rdagger:   { name: 'Ритуальный кинжал', type: 'melee', atk: 1, dmg: [2, 4], antiDemon: 3 },
   hammer:    { name: 'Двуручный молот', type: 'melee', atk: -1, dmg: [4, 8] },
-  claws:     { name: 'Когти', type: 'melee', atk: 1, dmg: [2, 3] },
+  claws:     { name: 'Когти', type: 'melee', atk: 0, dmg: [2, 3] },
   hexfire:   { name: 'Ведьмин огонь', type: 'ranged', range: 7, opt: 7, atk: 1, dmg: [2, 4], ignoreCover: true, magic: true },
-  houndbite: { name: 'Клыки', type: 'melee', atk: 2, dmg: [3, 6] },
-  demonclaw: { name: 'Когти демона', type: 'melee', atk: 2, dmg: [4, 7] },
+  houndbite: { name: 'Клыки', type: 'melee', atk: 1, dmg: [3, 6] },
+  demonclaw: { name: 'Когти демона', type: 'melee', atk: 1, dmg: [4, 7] },
   flame:     { name: 'Зелёное пламя', type: 'ranged', range: 8, opt: 8, atk: 1, dmg: [3, 5], ignoreCover: true, splash: [1, 2], magic: true },
 };
 

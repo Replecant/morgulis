@@ -148,7 +148,7 @@ export const PROF_EQUIP: Record<ProfId, Equip> = {
   saboteur:   { main: 'autopistol', side: 'knife', head: 'cap', body: 'clothes' },
   occultist:  { main: 'autopistol~w', side: 'rdagger', head: 'tophat', body: 'clothes' },
   technician: { main: 'autopistol', head: 'cap', body: 'clothes' },
-  medic:      { main: 'revolver', head: 'cap', body: 'clothes' },
+  medic:      { main: 'revolver', side: 'knife', head: 'cap', body: 'clothes' },
 };
 /** Стартовые припасы, спецснаряжение и деньги по профессии. */
 export const PROF_START: Record<ProfId, { money: number; tools: string[]; cons: Partial<Record<ConsId, number>> }> = {
