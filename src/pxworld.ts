@@ -483,17 +483,25 @@ export function objSprite(o: ObjLike, neighbors?: { horizFence: boolean }) {
       P(cx, top - 1, '#3e5a32');
       break;
     }
-    case 'theatre': { // театр: фасад с колоннами, фронтон, афиши, зелёный купол, фонари у входа
-      const wy = H - 40, stone = '#8a8070';
+    case 'theatre': { // театр: фасад с колоннами, над ним фронтон, за фронтоном — зелёный купол со шпилем; афиши, фонари у входа
+      const wy = H - 40, stone = '#8a8070', cx = Math.round(W / 2);
       R(1, H, W, 3, 'rgba(0,0,0,0.5)');
+      // купол — позади фронтона, выглядывает над ним
+      R(cx - 9, wy - 30, 18, 12, '#7a7064');                                                   // барабан купола
+      for (let k = 0; k < 4; k++) R(cx - 7 + k * 5, wy - 28, 2, 8, '#5a5248');                  // окна барабана
+      pellipse(c, cx, wy - 31, 12, 8, '#3e5e5c'); pellipse(c, cx - 4, wy - 34, 5, 3, '#5e807c'); // купол
+      R(cx - 1, wy - 46, 2, 8, '#c8a050'); P(cx, wy - 47, '#e8c870');                           // шпиль
+      // фронтон — треугольник, широкий внизу
+      const ph = 14;
+      for (let j = 0; j < ph; j++) { const half = Math.round((W / 2 + 2) * (1 - j / ph)); R(cx - half, wy - 6 - j, half * 2, 1, j % 4 ? '#9a9080' : '#7a7064'); }
+      R(cx - 4, wy - 13, 8, 4, '#c8a050');                                                     // герб на фронтоне
+      for (let k = 0; k < 6; k++) R(-2 + k, wy - 1 - k, W + 4 - k * 2, 1, k === 2 ? '#a89c88' : shade(stone, -0.2)); // карниз
+      // фасад
       R(0, wy, W, 40, stone); for (let y = wy + 3; y < H; y += 4) R(0, y, W, 1, shade(stone, -0.12));
-      for (let k = 0; k < 6; k++) R(-2 + k, wy - 1 - k, W + 4 - k * 2, 1, k === 2 ? '#a89c88' : shade(stone, -0.2));       // карниз
-      for (let x = 0; x < W / 2; x++) R(W / 2 - x, wy - 7 - Math.floor(x / 3), x * 2, 1, x % 5 ? '#9a9080' : '#7a7064');    // фронтон
-      pellipse(c, W / 2, wy - 26, 16, 10, '#4a6a68'); pellipse(c, W / 2 - 4, wy - 29, 6, 3, '#6a8a86'); R(W / 2 - 1, wy - 40, 2, 6, '#c8a050'); // купол со шпилем
       for (let x = 10; x < W - 6; x += 16) { R(x, wy + 4, 5, 36, '#c8bca0'); R(x + 4, wy + 4, 1, 36, '#a89c84'); R(x - 1, wy + 3, 7, 2, '#d8ccb0'); }
-      R(W / 2 - 8, H - 18, 16, 18, '#2a1a14'); R(W / 2 - 8, H - 18, 16, 2, '#c8a050');
+      R(cx - 8, H - 18, 16, 18, '#2a1a14'); R(cx - 8, H - 18, 16, 2, '#c8a050');
       for (const x of [22, W - 30]) { R(x, wy + 10, 9, 13, '#e0d4b0'); R(x + 1, wy + 11, 7, 4, '#8a2a24'); for (let y = wy + 16; y < wy + 22; y += 2) R(x + 1, y, 7, 1, '#4a4038'); }
-      for (const x of [W / 2 - 14, W / 2 + 13]) { R(x, H - 22, 1, 22, '#2a2a28'); R(x - 1, H - 25, 3, 3, '#f0d080'); lights.push({ x, y: H - 24, r: 40, color: '#f0d080', a: 0.8 }); }
+      for (const x of [cx - 14, cx + 13]) { R(x, H - 22, 1, 22, '#2a2a28'); R(x - 1, H - 25, 3, 3, '#f0d080'); lights.push({ x, y: H - 24, r: 40, color: '#f0d080', a: 0.8 }); }
       break;
     }
     case 'school': { // школа: кирпич, высокие окна в ряд, колоколенка
