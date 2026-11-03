@@ -3,6 +3,7 @@
 //  2 очка действия (ОД): ход = 1 ОД, атака завершает ход юнита.
 //  Укрытия: половинное (−25%) и полное (−40%) к шансу попадания.
 // ============================================================
+import { tr } from './i18n';
 import { G } from './state';
 import { WEAPONS, ENEMIES, ABILITIES, battleDef, BattleDef, UnitBase } from './data';
 import { bfs, pathTo, lineTiles, BfsMap, DIRS8, Pt, clamp, cheb, dist, lerp, pick, randInt, seeded, sleep, TAU } from './util';
@@ -293,14 +294,14 @@ export const Combat = {
       const freeReload = u.quick && !u.quickUsed;
       out.push({
         kind: 'a', key: 'reload', label: `${ABILITIES.reload.name} (${types.map((t) => `${AMMO_NAME[t]} ${G.supplies[t as keyof typeof G.supplies]}`).join(', ')})`,
-        desc: `${ABILITIES.reload.desc}${freeReload ? ' Патронташ: сейчас без траты ОД.' : ''}`,
+        desc: `${tr(ABILITIES.reload.desc)}${freeReload ? ' ' + tr('Патронташ: сейчас без траты ОД.') : ''}`,
         disabled: (u.ap < 1 && !freeReload) || !this.reloadable(u).length, active: false,
       });
     }
     if (this.isSquad(u)) { // расходники отряда — только у бойцов отряда
       const S = G.supplies, cap = u.thrown >= u.grenadeCap;
       const cons: [string, number, boolean][] = [['grenade', S.grenade, cap], ['smoke', S.smoke, cap], ['bandage', S.bandage, u.ap < 1], ['medkit', S.medkit, u.ap < 1], ['painkiller', S.painkiller, u.ap < 1]];
-      for (const [k, n, block] of cons) if (n > 0) out.push({ kind: 'a', key: k, label: `${ABILITIES[k].name} (${n})`, desc: ABILITIES[k].desc + (k === 'grenade' || k === 'smoke' ? ` Брошено за бой: ${u.thrown}/${u.grenadeCap} (зависит от патронташа).` : ''), disabled: block, active: this.action.type === 'a' && this.action.key === k });
+      for (const [k, n, block] of cons) if (n > 0) out.push({ kind: 'a', key: k, label: `${ABILITIES[k].name} (${n})`, desc: tr(ABILITIES[k].desc) + (k === 'grenade' || k === 'smoke' ? ' ' + tr(`Брошено за бой: ${u.thrown}/${u.grenadeCap} (зависит от патронташа).`) : ''), disabled: block, active: this.action.type === 'a' && this.action.key === k });
     }
     for (const k of Object.keys(u.abil)) {
       const n = u.abil[k];
@@ -309,7 +310,7 @@ export const Combat = {
     if (u.leader && G.known.length) out.push({ kind: 'm', key: 'magic', label: `✶ Оккультизм (напр. ${u.base.strain ?? 0}/${STRAIN_MAX})`, desc: 'Заклинания изученных школ. Каждое тратит основное действие и повышает оккультное напряжение.', disabled: u.ap < 1, active: false });
     if (this.isSquad(u)) for (const k of COURAGE_ORDER) {
       const block = this.courageBlock(u, k);
-      out.push({ kind: 'c', key: k, label: `${COURAGE[k].short} ${'✦'.repeat(COURAGE[k].cost)}`, desc: `${COURAGE[k].name}. ${COURAGE[k].desc}` + (block ? ` (${block})` : ''), disabled: !!block, active: this.action.type === 'c' && this.action.key === k });
+      out.push({ kind: 'c', key: k, label: `${COURAGE[k].short} ${'✦'.repeat(COURAGE[k].cost)}`, desc: `${tr(COURAGE[k].name)}. ${tr(COURAGE[k].desc)}` + (block ? ` (${tr(block)})` : ''), disabled: !!block, active: this.action.type === 'c' && this.action.key === k });
     }
     return out;
   },
@@ -434,7 +435,7 @@ export const Combat = {
       const sp = SPELLS[id];
       const over = strain + sp.strain > STRAIN_MAX;
       out.push({ kind: 's', key: id, label: `${SCHOOLS[sp.school].emblem} ${sp.name} (+${sp.strain})`,
-        desc: `${SCHOOLS[sp.school].name}. ${sp.desc} Напряжение +${sp.strain}.${over ? ' Напряжение на пределе — нужен привал.' : ''}`,
+        desc: `${tr(SCHOOLS[sp.school].name)}. ${tr(sp.desc)} ${tr(`Напряжение +${sp.strain}.`)}${over ? ' ' + tr('Напряжение на пределе — нужен привал.') : ''}`,
         disabled: u.ap < 1 || over, active: this.action.type === 's' && this.action.key === id });
     }
     return out;

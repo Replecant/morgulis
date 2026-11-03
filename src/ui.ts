@@ -9,6 +9,7 @@ import { Combat } from './combat';
 import { $ } from './util';
 import { clockText } from './worldmap';
 import { skillBonus, check, checkChance, SKILLS, DC_NAMES } from './rules';
+import { tr } from './i18n';
 import { effMaxHp, woundsOf, bestHealer, bandageAmount, medkitAmount, bandage, useMedkit, surgery, rest } from './wounds';
 import { COURAGE_MAX } from './combat';
 
@@ -40,7 +41,7 @@ export const Dialog = {
     const sp = SPEAKERS[n.s];
     $('dname').textContent = sp.name;
     $('dtext').className = n.s === 'nar' ? 'nar' : '';
-    this.full = prefix + fmt(typeof n.t === 'function' ? n.t(G) : n.t);
+    this.full = tr(prefix) + fmt(tr(typeof n.t === 'function' ? n.t(G) : n.t)); // перевод — до подстановок и печати по буквам
     n.do?.(G); // эффект — после того, как текст уже выбран
     this.shown = 0;
     $('dtext').textContent = '';
@@ -76,7 +77,7 @@ export const Dialog = {
         const b = document.createElement('button');
         b.className = 'choice';
         b.innerHTML = `<span class="n">${i + 1}.</span>`;
-        b.append(fmt(c.t));
+        b.append(fmt(tr(c.t)));
         if (c.check && G.pc) {
           const bonus = skillBonus(G.pc, c.check.skill) + gearBonus(c.check.skill);
           b.append(Object.assign(document.createElement('span'), { className: 'chk', textContent: ` (${SKILLS[c.check.skill].name}, КС ${c.check.dc}${DC_NAMES[c.check.dc] ? ' — ' + DC_NAMES[c.check.dc] : ''} · шанс ${checkChance(bonus, c.check.dc)}%)` }));

@@ -12,6 +12,7 @@ import { paintTile, paintRail, objSprite, drawPumpjack, drawCampfire } from './p
 import { FOLK, FolkDef } from './folk';
 import { Debug } from './debug';
 import { Weather } from './weather';
+import { tr } from './i18n';
 
 /** Клетка на экране (низкое разрешение ×2). */
 export const ET = T * PS;
@@ -863,7 +864,7 @@ export const Explore = {
   /** Реплика жителя пузырём над головой. talk — обратился игрок: житель останавливается и поворачивается. */
   say(f: Folk, talk = false) {
     f.barkI = (f.barkI + 1) % f.def.barks.length;
-    f.bark = { text: f.def.barks[f.barkI], t: 0 };
+    f.bark = { text: tr(f.def.barks[f.barkI]), t: 0 }; // перевод до разбивки на строки
     f.nextBark = 18 + Math.random() * 20;
     if (talk) { f.hold = 3.5; f.flip = this.player.x < f.x; }
   },

@@ -1,6 +1,7 @@
 // ============================================================
 //  Создание персонажа — «Личное дело» в виде книги
 // ============================================================
+import { tr } from './i18n';
 import { Book, h, Spread } from './book';
 import {
   Character, newCharacter, ATTRS, ATTR_ORDER, ATTR_MIN, ATTR_MAX_START, ATTR_POINTS, pointsLeft,
@@ -46,7 +47,7 @@ function statRow(label: string, val: string | number, hint = '') {
 
 export function openCreation(host: HTMLElement, onDone: (c: Character) => void, onCancel: () => void) {
   const c = newCharacter();
-  c.first = pick(NAMES.m); c.last = pick(NAMES.last);
+  c.first = tr(pick(NAMES.m)); c.last = tr(pick(NAMES.last)); // имена — на языке игры
   let lastRoll: HTMLElement | null = null;
   let book: Book;
   const refresh = () => book.render();
@@ -63,10 +64,10 @@ export function openCreation(host: HTMLElement, onDone: (c: Character) => void, 
           h('input', { value: c.first, maxlength: 18, oninput: (e: Event) => { c.first = (e.target as HTMLInputElement).value.trim(); } })),
         h('label', { class: 'field' }, h('span', {}, 'Фамилия'),
           h('input', { value: c.last, maxlength: 18, oninput: (e: Event) => { c.last = (e.target as HTMLInputElement).value.trim(); } })),
-        h('button', { class: 'bbtn small', onclick: () => { c.first = pick(NAMES[c.gender]); c.last = pick(NAMES.last); refresh(); } }, '⚄ Случайное имя'),
+        h('button', { class: 'bbtn small', onclick: () => { c.first = tr(pick(NAMES[c.gender])); c.last = tr(pick(NAMES.last)); refresh(); } }, '⚄ Случайное имя'),
         h('div', { class: 'row' }, h('span', { class: 'lbl' }, 'Пол'),
           chips<'m' | 'f'>([['m', 'Мужчина'], ['f', 'Женщина']], c.gender, (v) => {
-            if (v !== c.gender && NAMES[c.gender].includes(c.first)) c.first = pick(NAMES[v]);
+            if (v !== c.gender && NAMES[c.gender].map(tr).includes(c.first)) c.first = tr(pick(NAMES[v]));
             c.gender = v; refresh();
           })),
         h('div', { class: 'row' }, h('span', { class: 'lbl' }, 'Возраст'),
@@ -162,7 +163,7 @@ export function openCreation(host: HTMLElement, onDone: (c: Character) => void, 
         ),
         h('h3', {}, 'Как бросают кость'),
         h('p', { class: 'formula' }, 'd20 + черта + мастерство (если навык обучен) ≥ КС'),
-        h('div', { class: 'dcs' }, ...Object.values(DC).map((d) => h('span', {}, `${DC_NAMES[d]} ${d}`))),
+        h('div', { class: 'dcs' }, ...Object.values(DC).map((d) => h('span', {}, DC_NAMES[d], ' ', String(d)))),
         h('button', { class: 'bbtn small', onclick: () => {
           const b = skillBonus(c, tested), r = check(b, DC.normal);
           lastRoll = h('div', { class: 'roll ' + (r.success ? 'ok' : 'bad') },

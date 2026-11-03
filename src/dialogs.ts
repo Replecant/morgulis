@@ -7,6 +7,7 @@ import { G } from './state';
 import type { SkillKey } from './rules';
 import { addWound, folkHeal } from './wounds';
 import { World } from './worldmap';
+import { LANG, tr } from './i18n';
 
 
 type Flags = typeof G;
@@ -90,6 +91,10 @@ const F = (g: Flags) => g.flags;
 /** Подставляет имя и грамматический род героя: {чужак}, {нашёл}, {фамилия}… */
 export function fmt(s: string): string {
   const c = G.pc, f = c?.gender === 'f';
+  if (LANG === 'en') { // в английском почти без рода: только обращения и имя
+    const en: Record<string, string> = { 'чужак': 'stranger', 'Чужак': 'Stranger', 'новенький': 'newcomer', 'Новенький': 'Newcomer', 'здешний': 'local', 'имя': c?.first ? tr(c.first) : '', 'фамилия': c?.last ? tr(c.last) : '' };
+    return s.replace(/\{([^}]+)\}/g, (m, k: string) => en[k] ?? '');
+  }
   const map: Record<string, string> = {
     'чужак': f ? 'чужачка' : 'чужак', 'Чужак': f ? 'Чужачка' : 'Чужак',
     'Новенький': f ? 'Новенькая' : 'Новенький', 'здешний': f ? 'здешняя' : 'здешний',
@@ -445,7 +450,7 @@ const WORLD_DIALOGS: Record<string, DTree> = {
   enc_dsq: { start: 'a', nodes: {
     a: { s: 'nar', t: () => {
       const k = World.dsqHit?.kinds;
-      return 'Туман между елями шевелится — и из него выходят они. ' + (k ? k.map((x) => ({ imp: 'Бес скалится и подпрыгивает на кривых лапах.', demon: 'Рогатый демон в чёрном, выше человека, смотрит горящими глазами.', hound: 'Гончая — поджарая, багрово-чёрная, с шипами по хребту — роет мох и рычит.' } as Record<string, string>)[x]).filter((v, i, arr) => arr.indexOf(v) === i).join(' ') : 'Бесы, гончие, рогатые тени.') + ' Это слуги ковена, и они вышли на охоту.';
+      return tr('Туман между елями шевелится — и из него выходят они.') + ' ' + (k ? k.map((x) => tr(({ imp: 'Бес скалится и подпрыгивает на кривых лапах.', demon: 'Рогатый демон в чёрном, выше человека, смотрит горящими глазами.', hound: 'Гончая — поджарая, багрово-чёрная, с шипами по хребту — роет мох и рычит.' } as Record<string, string>)[x])).filter((v, i, arr) => arr.indexOf(v) === i).join(' ') : tr('Бесы, гончие, рогатые тени.')) + ' ' + tr('Это слуги ковена, и они вышли на охоту.');
     }, c: [
       { t: 'Принять бой', act: 'battle_dsq' },
       { t: '[Атлетика] Бежать', check: { skill: 'athletics', dc: 18, ok: 'ran', fail: 'caught' } },
@@ -905,7 +910,7 @@ const WORLD_DIALOGS: Record<string, DTree> = {
     news: { s: 'patrol', go: 'a', t: (g) => [
       '— С чего бы мне тебе докладывать? — Сержант сплёвывает. — Ладно.',
       'В пустоши ещё шайка бродит. К тракту не суются, пока мы рядом, — а сойдёшь с дороги, пеняй на себя.',
-    ].join(' ') },
+    ].map((x) => tr(x)).join(' ') },
     fort: { s: 'patrol', go: 'a', t: '— В Нижний город пускают всех. А наверх — по пропуску. Пропуск дают тем, кто барону полезен. Ты — пока нет. — Сержант усмехается.' },
     ration: { s: 'patrol', go: 'a', t: 'Сержант долго смотрит на вас, потом бросает сухарь в тряпице. — На. Чтоб не помер у меня на дороге — отчётность портить. (Получен 1 паёк.)', do: (g) => { F(g).patrolRation = true; g.supplies.ration += 1; } },
     noration: { s: 'patrol', go: 'a', t: '— Проваливай. Пайки — для тех, кто служит, а не для бродяг.', do: (g) => (F(g).patrolRation = true) },

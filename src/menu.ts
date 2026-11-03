@@ -7,6 +7,7 @@ import { PixelView, pixelize } from './px';
 import { FRAMES, frameReady } from './frames';
 import { ATTRS, ATTR_ORDER, PROFESSIONS, PROF_ORDER, DC, DC_NAMES, LEVEL_XP, mastery, ProfId } from './rules';
 import { seeded, TAU } from './util';
+import { LANG, setLang, type Lang } from './i18n';
 
 const W = 960, H = 640;
 const STAR = { x: 480, y: 177 }; // за розеткой готической арки меню
@@ -179,6 +180,8 @@ export function showMainMenu(host: HTMLElement, hd: MenuHandlers) {
         item('Правила', hd.onRules),
         item('Об игре', hd.onAbout)),
     ),
+    h('div', { class: 'mlang' },
+      ...(['ru', 'en'] as Lang[]).map((l) => h('button', { class: 'mlbtn' + (LANG === l ? ' on' : ''), onclick: () => { if (LANG !== l) setLang(l); } }, l === 'ru' ? 'Русский' : 'English'))),
     h('div', { class: 'mver' }, 'прототип · v0.2'),
   );
   host.replaceChildren(h('div', { class: 'menu' }, arch));
@@ -206,7 +209,7 @@ export function openRules(host: HTMLElement, onClose: () => void) {
         h('p', { class: 'drop' }, 'Ролевая система Моргулиса — облегчённая d20 с духом старой школы: мало правил, быстрые проверки, опасный мир.'),
         h('p', { class: 'formula' }, 'd20 + черта + мастерство ≥ КС'),
         P('Мастерство добавляется, только если навык обучен. Натуральная 20 — всегда успех, натуральная 1 — всегда провал.'),
-        h('div', { class: 'dcs' }, ...Object.values(DC).map((d) => h('span', {}, `${DC_NAMES[d]} ${d}`))),
+        h('div', { class: 'dcs' }, ...Object.values(DC).map((d) => h('span', {}, DC_NAMES[d], ' ', String(d)))),
       ),
       right: () => h('div', {},
         h('h3', {}, 'Черты'),

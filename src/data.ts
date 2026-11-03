@@ -4,6 +4,7 @@
 
 import { PROF_EQUIP, SQUAD_EQUIP, Equip } from './items';
 import { Character, PROFESSIONS, maxHp, defense, meleeAttack, rangedAttack, meleeDamage, horrorSave, skillBonus } from './rules';
+import { tr } from './i18n';
 
 export interface Weapon {
   name: string;
@@ -104,7 +105,7 @@ export function makeLeader(c: Character): UnitBase {
   const p = PROFESSIONS[c.prof];
   const hp = maxHp(c);
   return {
-    id: 'pc', name: `${c.first.slice(0, 1)}. ${c.last}`, kind: 'pc', hp, maxHp: hp, move: 4,
+    id: 'pc', name: `${tr(c.first).slice(0, 1)}. ${c.last}`, /* инициал — от имени на языке игры */ kind: 'pc', hp, maxHp: hp, move: 4,
     weapons: p.weapons.slice(), atkM: meleeAttack(c), atkR: rangedAttack(c), def: defense(c),
     armor: 0, dmgM: meleeDamage(c), horror: horrorSave(c), med: skillBonus(c, 'medicine'), wounds: [],
     equip: { ...PROF_EQUIP[c.prof] }, // броня теперь даётся предметами

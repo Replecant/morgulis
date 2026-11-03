@@ -6,6 +6,7 @@
 
 // ------------------------------------------------------------ характеристики
 // ВНИМАНИЕ: названия — рабочие, их легко переименовать здесь.
+import { tr } from './i18n';
 export type AttrKey = 'str' | 'dex' | 'int' | 'wil';
 export const ATTRS: Record<AttrKey, { name: string; short: string; desc: string }> = {
   str: { name: 'Сила', short: 'СИЛ', desc: 'Мышцы и выносливость. Ближний бой, переноска тяжестей, здоровье.' },
@@ -213,7 +214,7 @@ export function quickCharacter(prof: ProfId): Character {
   const c = newCharacter();
   const rnd = <T>(a: T[]) => a[Math.floor(Math.random() * a.length)];
   c.gender = Math.random() < 0.5 ? 'm' : 'f';
-  c.first = rnd(NAMES[c.gender]); c.last = rnd(NAMES.last);
+  c.first = tr(rnd(NAMES[c.gender])); c.last = tr(rnd(NAMES.last));
   c.age = 22 + Math.floor(Math.random() * 25);
   c.hair = rnd(HAIR); c.skin = rnd(SKIN);
   c.prof = prof;

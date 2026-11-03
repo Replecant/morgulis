@@ -3,6 +3,7 @@
 //  Режимы: глобальная карта (world) ⇄ локальная сцена (explore) → бой (combat)
 // ============================================================
 import './style.css';
+import { installI18n } from './i18n';
 import { G, resetGame } from './state';
 import { Explore } from './explore';
 import { World, clockText, LOCS } from './worldmap';
@@ -27,6 +28,7 @@ import { openCreation } from './creation';
 import { Character, newCharacter, quickCharacter, PROF_ORDER, ProfId } from './rules';
 import { rest } from './wounds';
 import { $ } from './util';
+installI18n(); // английский: перевод текста в DOM и на холсте
 
 const cv = $('cv') as HTMLCanvasElement;
 const ctx = cv.getContext('2d')!;

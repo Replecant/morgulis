@@ -600,3 +600,11 @@ body { font-family: 'Old Standard TT', Georgia, serif; color: var(--text); }
 /* окно карты региона (M): рамка автора, внутри — вся карта */
 #mapwin { position: absolute; inset: 0; background: #0d130c 0 0 / 100% 100% no-repeat; z-index: 22; }
 #mapcv { position: absolute; left: 20.1%; top: 25.9%; width: 60.0%; height: 53.4%; cursor: default; }
+
+/* выбор языка в главном меню */
+.mlang { position: absolute; right: 14px; bottom: 6px; display: flex; gap: 4px; }
+.mlbtn { background: rgba(12, 16, 10, 0.8); border: 1px solid #4a4030; color: #9a9070; font-family: 'Old Standard TT', serif; font-size: 12px; padding: 2px 8px; cursor: pointer; }
+.mlbtn.on { color: var(--brass); border-color: var(--brass); }
+.mlbtn:hover { color: #e8dcb0; }
+
+.dcs span::first-letter { text-transform: uppercase; }

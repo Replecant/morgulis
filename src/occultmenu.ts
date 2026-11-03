@@ -2,6 +2,7 @@
 //  Меню оккультизма (клавиша O): четыре школы, изучение
 //  заклинаний за «знаки», напряжение и ритуалы вне боя.
 // ============================================================
+import { tr } from './i18n';
 import { G } from './state';
 import { h } from './book';
 import { $, keepScroll } from './util';
@@ -103,7 +104,7 @@ export const OccultMenu = {
       h('div', { class: 'oc-row rit' + (can ? '' : ' off') },
         h('div', { class: 'oc-rh2' }, h('b', {}, `Ритуал: ${r.name}`), h('span', { class: 'oc-ss' }, `+${r.strain} · ${r.hours} ч`),
           h('button', { class: 'btn', disabled: !can, onclick: () => this.ritual(r) }, 'Провести')),
-        h('div', { class: 'oc-desc' }, r.desc + (can ? '' : ' Нужно постичь хотя бы одно заклинание этой школы.'))));
+        h('div', { class: 'oc-desc' }, tr(r.desc) + (can ? '' : ' ' + tr('Нужно постичь хотя бы одно заклинание этой школы.')))));
     keepScroll($('occult'), '.oc-list', () => $('occult').replaceChildren(h('div', { class: 'oc-box' },
       h('div', { class: 'oc-top' },
         h('h2', {}, 'Оккультизм'),
@@ -112,7 +113,7 @@ export const OccultMenu = {
         h('span', { title: 'Каждое заклинание и ритуал повышают напряжение. С 4 и выше после колдовства — проверка Воли (КС 8 + напряжение), провал — отдача. Сбрасывается на привале (Q).' }, 'Напряжение ', pips, h('b', {}, ` ${s}/${STRAIN_MAX}`)),
         h('span', { title: 'Сколько заклинаний ещё можно постичь: 2 + уровень, +1 с гримуаром.' }, 'Знаки: ', h('b', {}, `${occ ? freeSigns() : 0}`), ` из ${signs()}`)),
       tabs,
-      h('div', { class: 'oc-role' }, `${S.emblem} ${S.name}. ${S.role}`),
+      h('div', { class: 'oc-role' }, `${S.emblem} ${tr(S.name)}. ${tr(S.role)}`),
       h('div', { class: 'oc-list' }, ...spells, ...rituals),
       info)));
   },
