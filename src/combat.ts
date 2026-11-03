@@ -3,6 +3,7 @@
 //  2 очка действия (ОД): ход = 1 ОД, атака завершает ход юнита.
 //  Укрытия: половинное (−25%) и полное (−40%) к шансу попадания.
 // ============================================================
+import { Sfx } from './sfx';
 import { tr } from './i18n';
 import { G } from './state';
 import { WEAPONS, ENEMIES, ABILITIES, battleDef, BattleDef, UnitBase } from './data';
@@ -838,6 +839,7 @@ export const Combat = {
     const ch = opts.adv ? this.advChance(info.chance) : info.chance, hit = roll.success;
     const rollTxt = `d20: ${roll.roll}${advTxt}${info.bonus >= 0 ? '+' : ''}${info.bonus} против ${info.dc}`;
     if (w.ammo || a.ammo[wkey] !== undefined) a.ammo[wkey]--;
+    if (w.type === 'ranged') Sfx.shot(wkey);
     if (a.emptyNote && a.ammo[wkey] === 0) { this.hooks.log(a.emptyNote); a.emptyNote = undefined; }
     if (w.type === 'melee') await this.lunge(a, t);
     else if (w.magic) { await this.projectile(a, t, '#9fef6a', 320); this.burst(t.px, t.py - 12, '#9fef6a', 26, 90); }

@@ -35,7 +35,7 @@ export const Pause = {
       h('div', { class: 'prow' }, h('span', {}, 'Громкость музыки'), pct),
       slider,
       h('label', { class: 'pcheck' }, on, ' Музыка включена ', h('i', {}, '(клавиша M)')),
-      h('div', { class: 'prow', style: 'margin-top:10px' }, h('span', {}, 'Громкость звуков (гром)'), spct),
+      h('div', { class: 'prow', style: 'margin-top:10px' }, h('span', {}, 'Громкость звуков (гром, выстрелы)'), spct),
       sslider,
       h('label', { class: 'pcheck' }, son, ' Звуки включены'),
       h('div', { class: 'pbtns' },
