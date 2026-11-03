@@ -251,8 +251,29 @@ function buildChar(kind: string, frame: number): HTMLCanvasElement {
       R(hx - 1, hy2 - 1, 3, 1, BRASS); hand();
       R(tx0 - 2, sy(tTop + 6), 2, 4, '#2a1d12');                    // кобура
       break;
-    case 'knife': hand(); pline(c, hx + 1, hy2 + 1, hx + 3, hy2 + 4, STEEL_L); break;
-    case 'pistol': R(hx - 1, hy2 - 2, 5, 2, '#1e1e1c'); P(hx + 3, hy2 - 2, STEEL); hand(); break;
+    case 'knife': // широкий клинок вперёд-вниз, латунная гарда, блик по лезвию
+      R(hx - 1, hy2 + 1, 4, 1, BRASS);
+      pline(c, hx + 1, hy2 + 2, hx + 5, hy2 + 6, STEEL); pline(c, hx + 2, hy2 + 2, hx + 6, hy2 + 6, STEEL_L); P(hx + 6, hy2 + 7, STEEL_L);
+      hand();
+      break;
+    case 'pistol': // рука вперёд: ствол горизонтально перед телом, рукоять, блик
+      R(hx + 1, hy2 - 1, 6, 2, '#2a2a28'); R(hx + 1, hy2 - 1, 6, 1, '#5a5a56'); P(hx + 7, hy2 - 1, STEEL_L); P(hx + 3, hy2, '#7a6a50');
+      R(hx, hy2 + 1, 2, 3, '#5a3a22'); hand();
+      R(tx0 - 2, sy(tTop + 6), 2, 3, '#2a1d12');                    // кобура на боку
+      break;
+    case 'sawnoff': { // обрез: короткие сдвоенные стволы от бедра вперёд, приклад-пистолетная рукоять
+      pline(c, hx - 1, hy2 + 3, hx + 7, hy2 - 1, '#2e2e2a', 2); pline(c, hx, hy2 + 2, hx + 7, hy2 - 2, '#6a6a64');
+      P(hx + 8, hy2 - 2, STEEL_L); P(hx + 8, hy2 - 1, '#1a1a18');
+      R(hx - 3, hy2 + 3, 3, 3, '#5a3a22'); P(hx - 3, hy2 + 5, '#3a2416');
+      hand();
+      break;
+    }
+    case 'shotgun': { // дробовик: длинный, толстые тёмные стволы, тёмное дерево, без штыка
+      pline(c, 9, sy(tBot), 18, sy(tTop - 3), '#4a2e1a', 2);
+      pline(c, 15, sy(tTop + 1), 21, sy(tTop - 7), '#2e2e2a', 2); pline(c, 16, sy(tTop + 1), 21, sy(tTop - 6), '#6a6a64');
+      hand(); R(9, sy(tTop + 6), 2, 2, skin);
+      break;
+    }
     case 'rifle': case 'musket': {
       const wood = st.weapon === 'musket' ? '#6a4626' : WOOD;
       pline(c, 9, sy(tBot), 19, sy(tTop - 5), wood); pline(c, 10, sy(tBot), 20, sy(tTop - 5), WOOD_D);
@@ -551,6 +572,10 @@ export function miniSprite(kind: string, frame = 0): HTMLCanvasElement {
     case 'saber': R(9, 7, 1, 5, STEEL_L); R(8, 10, 1, 1, BRASS); break;
     case 'hammer': case 'wrench': case 'shovel': R(9, 6, 1, 5, WOOD); R(8, 6, 3, 2, STEEL); break;
     case 'bag': R(8, 9, 3, 3, '#6a5a3a'); break;
+    case 'knife': R(9, 9, 1, 3, STEEL_L); R(8, 9, 1, 1, BRASS); break;
+    case 'pistol': R(9, 8, 3, 1, '#3a3a36'); ppx(c, 11, 8, STEEL_L); break;
+    case 'sawnoff': R(8, 9, 4, 1, '#3a3a36'); ppx(c, 11, 8, STEEL_L); break;
+    case 'shotgun': R(9, 3, 1, 9, '#4a2e1a'); R(9, 1, 1, 3, '#3a3a36'); break;
   }
   c.setTransform(1, 0, 0, 1, 0, 0);
   outline(cv, INK);

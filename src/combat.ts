@@ -738,10 +738,14 @@ export const Combat = {
         if (!path || path.length < 2) break;
         await this.moveAlong(u, path); u.ap--;
       } else {
-        const opt = this.rangedTile(u);
-        if (here && (!opt || opt.c <= here.c + 10 || u.ap < 2)) { await this.attack(u, here.t, here.w); break; }
-        if (!opt || opt.path.length < 2) { if (here) await this.attack(u, here.t, here.w); break; }
-        await this.moveAlong(u, opt.path); u.ap--;
+        // стрелок: оценивает клетки — откуда можно стрелять, насколько укрыт от всех врагов, не слишком ли близко к ним
+        const opt = this.rangedTile(u), stay = this.tileScore(u, u, 0);
+        const moveBetter = opt && opt.path.length > 1 && opt.score > stay + 6;
+        if (here && (u.ap < 2 || !moveBetter)) { await this.attack(u, here.t, here.w); break; }
+        if (!moveBetter) break; // и стрелять не из чего, и лучшего места нет — затаиться
+        const toCover = opt!.cover > this.coverVsAll(u, u) + 5;
+        if (toCover) this.float(u, 'В укрытие', '#c8c0a0');
+        await this.moveAlong(u, opt!.path); u.ap--;
       }
     }
     u.ap = 0;
@@ -762,19 +766,35 @@ export const Combat = {
     return pathTo(reach, CW, best.x, best.y).slice(0, this.mv(u) + 1);
   },
 
+  /** Лучшее укрытие клетки n от каждого врага, который её видит (среднее; 0 — открыто, 40 — полное). Кого не видно — тот не опасен. */
+  coverVsAll(u: Unit, n: Pt) {
+    const foes = this.alive('player'); let sum = 0, cnt = 0;
+    for (const p of foes) { if (!this.los(p, n)) { sum += 40; cnt++; continue; } sum += this.coverOf(n, p); cnt++; }
+    return cnt ? sum / cnt : 40;
+  },
+  /** Оценка клетки для стрелка: шанс попасть + укрытие − открытость под огнём − близость к врагу + держать дистанцию оружия. */
+  tileScore(u: Unit, n: Pt, steps: number) {
+    const foes = this.alive('player'); if (!foes.length) return -1e9;
+    const at = this.bestAttack(u, n), np = this.nearestPlayer(n)!, nd = dist(n, np);
+    let exposed = 0;
+    for (const p of foes) if (this.los(p, n)) { const c = this.coverOf(n, p); exposed += c >= 40 ? 0 : c >= 25 ? 0.45 : 1; }
+    const w = at ? WEAPONS[at.w] : WEAPONS[u.weapons.find((k) => WEAPONS[k].type === 'ranged') ?? u.weapons[0]];
+    const want = w.type === 'ranged' ? Math.max(2, (w.opt ?? 4) - 1) : 1, lowHp = u.hp <= u.maxHp * 0.35;
+    let score = (at ? at.c : -40) - exposed * 16 + this.coverVsAll(u, n) * 0.35 - steps * 1.2;
+    score -= Math.abs(nd - want) * (lowHp ? 0 : 1.5);
+    if (nd < 2 && (w.closePen ?? 3) > 0) score -= 22;           // в упор длинным стволом — плохо, отойти
+    if (lowHp) score += Math.min(nd, 10) * 2.5 - exposed * 10;   // ранен — держаться подальше и в укрытии
+    if (!at) score -= nd * 6;                                     // стрелять не из чего — сблизиться (короткоствольные — тем более)
+    return score;
+  },
   rangedTile(u: Unit) {
     const reach = bfs(CW, CH, u.x, u.y, (x, y) => this.free(x, y), this.mv(u));
-    let best: { score: number; c: number; n: Pt } | null = null;
+    let best: { score: number; c: number; n: Pt; cover: number } | null = null;
     for (const n of reach.values()) {
-      const np = this.nearestPlayer(n);
-      if (!np) continue;
-      const at = this.bestAttack(u, n);
-      const cover = this.coverOf(n, np), nd = dist(n, np);
-      let score = at ? at.c + cover * 0.6 - n.d * 1.5 : -nd * 4 + cover * 0.2 - 100;
-      if (at && nd < 2) score -= 15;
-      if (!best || score > best.score) best = { score, c: at ? at.c : 0, n };
+      const sc = this.tileScore(u, n, n.d);
+      if (!best || sc > best.score) best = { score: sc, c: this.bestAttack(u, n)?.c ?? 0, n, cover: this.coverVsAll(u, n) };
     }
-    return best ? { c: best.c, path: pathTo(reach, CW, best.n.x, best.n.y) } : null;
+    return best ? { score: best.score, c: best.c, cover: best.cover, path: pathTo(reach, CW, best.n.x, best.n.y) } : null;
   },
 
   /** Демонолог: призывает бесов, насылает ужас, жжёт зелёным пламенем, держит дистанцию. */

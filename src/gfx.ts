@@ -19,7 +19,7 @@ interface Style {
   horns?: string; eyes?: string; // рога (цвет) и горящие глаза — у демонов и ведьм ковена
   puttees?: string; webbing?: string; respirator?: boolean; tabs?: string; number?: boolean; // number — нашивка с номером (заключённые) // военная форма: обмотки, ремни с подсумками, противогаз, петлицы
   limbs?: Partial<Record<string, string>>; // утраченные части тела и протезы (prosthetics.ts) — видны на фигурке // траншейные мертвецы: гнилая кожа, светящиеся глаза; газовые баллоны за спиной
-  weapon?: 'saber' | 'rifle' | 'fork' | 'musket' | 'hammer' | 'staff' | 'pole' | 'bottle' | 'book' | 'wrench' | 'bag' | 'knife' | 'pistol' | 'goad' | 'shovel';
+  weapon?: 'saber' | 'rifle' | 'fork' | 'musket' | 'hammer' | 'staff' | 'pole' | 'bottle' | 'book' | 'wrench' | 'bag' | 'knife' | 'pistol' | 'goad' | 'shovel' | 'sawnoff' | 'shotgun';
   scale?: number;
 }
 
@@ -37,7 +37,7 @@ export const STYLES: Record<string, Style> = {
   militia: { coat: '#5a4a36', legs: '#2e2a22', hat: 'flatcap', hatC: '#2c2620', weapon: 'fork', skin: '#bfa88c' },
   // мародёры-бандиты: длинные тёмные плащи, шарфы на лицах, ремни, трофейное оружие
   bandit_gun: { coat: '#2e2a26', legs: '#1e1c18', belt: '#3a2a1a', webbing: '#4a3a26', hat: 'flatcap', hatC: '#1a1816', skin: '#b8987c', mask: true, weapon: 'rifle' },
-  bandit_shot: { coat: '#3a2e24', legs: '#221e18', belt: '#3a2a1a', hat: 'brodie', hatC: '#2e2a22', skin: '#b08a6a', beard: '#2a2018', weapon: 'musket' },
+  bandit_shot: { coat: '#3a2e24', legs: '#221e18', belt: '#3a2a1a', hat: 'brodie', hatC: '#2e2a22', skin: '#b08a6a', beard: '#2a2018', weapon: 'sawnoff' },
   bandit_axe: { coat: '#35302a', legs: '#201e1a', belt: '#4a3420', apron: '#2a2420', hair: '#2a2018', skin: '#a88a70', mask: true, weapon: 'hammer', scale: 1.1 },
   bandit_boss: { coat: '#2a1e1e', legs: '#18161a', belt: '#4a2e1a', trim: '#8a6a3a', hat: 'tophat', hatC: '#141214', skin: '#c4a488', beard: '#3a2a20', weapon: 'saber' },
   militia_gun: { coat: '#4a4232', legs: '#2a261f', hair: '#3a2a1a', weapon: 'musket', skin: '#bfa88c', belt: '#2a1d12' },
@@ -164,9 +164,9 @@ export function setPcStyle(c: Character) {
 }
 
 const WEAPON_LOOK: Record<string, Style['weapon']> = {
-  carbine: 'rifle', rifle: 'rifle', musket: 'musket', sawnoff: 'musket', saber: 'saber', knife: 'knife', bayonet: 'knife',
+  carbine: 'rifle', rifle: 'rifle', musket: 'musket', sawnoff: 'sawnoff', saber: 'saber', knife: 'knife', bayonet: 'knife',
   axe: 'hammer', hammer: 'hammer', wrench: 'wrench', revolver: 'pistol', autopistol: 'pistol',
-  huntrifle: 'rifle', exprifle: 'rifle', shotgun2: 'musket', pumpshot: 'musket', flamer: 'musket',
+  huntrifle: 'rifle', exprifle: 'rifle', shotgun2: 'shotgun', pumpshot: 'shotgun', flamer: 'shotgun',
 };
 /** Пересобрать внешний вид бойцов отряда по снаряжению: головной убор, кираса, оружие в руках. */
 export function applyEquipLooks(squad: UnitBase[]) {
