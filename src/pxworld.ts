@@ -77,7 +77,7 @@ const TOP: Record<string, number> = {
   house: 16, ruin: 16, farm: 16, station: 20, pumphouse: 28, slaughter: 16, barn: 14, hut: 16,
   tank: 18, watertower: 44, wagon: 14, lamp: 30, tree: 26, rock: 6, barrel: 6, fence: 10, feed: 8, chitin: 6,
   cellar: 10, adit: 26, shroombed: 6, bigshroom: 18, rack: 14, wall: 30, gate: 40, railgate: 36, tower: 56,
-  sign: 16, fountain: 34, sandbags: 8, wire: 8, cell: 16, orecart: 8, boat: 4, nets: 20, scrapheap: 16, banner: 46, poster: 24, statue: 44, horn: 40, keep: 76, barracks: 22, laundry: 22, handcart: 12, crates: 14, coalheap: 8, standpipe: 18, noticeboard: 22, sacks: 8, vent: 4, clinic: 30, shack: 18, factory: 64, tenement: 30, stall: 18, workshop: 26, totem: 44, cauldron: 10, sawdust: 10, gallows: 56, gibbet: 84, burnt: 26, pine: 46, logs: 8, stump: 2, rbanner: 46, rposter: 24, sawpit: 14, crater: 0, bones: 0, wallruin: 14, skeleton: 14, milestone: 14, lorry: 12,
+  sign: 16, fountain: 34, sandbags: 8, wire: 8, cell: 16, orecart: 8, boat: 4, nets: 20, scrapheap: 16, banner: 46, poster: 24, statue: 44, horn: 40, keep: 76, barracks: 22, laundry: 22, handcart: 12, crates: 14, coalheap: 8, standpipe: 18, noticeboard: 22, sacks: 8, vent: 4, clinic: 30, shack: 18, factory: 64, tenement: 30, stall: 18, workshop: 26, theatre: 70, school: 44, tent: 12, wbanner: 46, acar: 14, totem: 44, cauldron: 10, sawdust: 10, gallows: 56, gibbet: 84, burnt: 26, pine: 46, logs: 8, stump: 2, rbanner: 46, rposter: 24, sawpit: 14, crater: 0, bones: 0, wallruin: 14, skeleton: 14, milestone: 14, lorry: 12,
 };
 
 export interface ObjLike { kind: string; x: number; y: number; w: number; h: number; seed: number; ruinKind?: string; boarded?: boolean }
@@ -481,6 +481,54 @@ export function objSprite(o: ObjLike, neighbors?: { horizFence: boolean }) {
         if (k > 0.7 && hw > 2) { P(cx - hw - 1, y + 1, '#2a4024'); P(cx + hw + 1, y + 1, '#142016'); } // кончики лап свисают
       }
       P(cx, top - 1, '#3e5a32');
+      break;
+    }
+    case 'theatre': { // театр: фасад с колоннами, фронтон, афиши, зелёный купол, фонари у входа
+      const wy = H - 40, stone = '#8a8070';
+      R(1, H, W, 3, 'rgba(0,0,0,0.5)');
+      R(0, wy, W, 40, stone); for (let y = wy + 3; y < H; y += 4) R(0, y, W, 1, shade(stone, -0.12));
+      for (let k = 0; k < 6; k++) R(-2 + k, wy - 1 - k, W + 4 - k * 2, 1, k === 2 ? '#a89c88' : shade(stone, -0.2));       // карниз
+      for (let x = 0; x < W / 2; x++) R(W / 2 - x, wy - 7 - Math.floor(x / 3), x * 2, 1, x % 5 ? '#9a9080' : '#7a7064');    // фронтон
+      pellipse(c, W / 2, wy - 26, 16, 10, '#4a6a68'); pellipse(c, W / 2 - 4, wy - 29, 6, 3, '#6a8a86'); R(W / 2 - 1, wy - 40, 2, 6, '#c8a050'); // купол со шпилем
+      for (let x = 10; x < W - 6; x += 16) { R(x, wy + 4, 5, 36, '#c8bca0'); R(x + 4, wy + 4, 1, 36, '#a89c84'); R(x - 1, wy + 3, 7, 2, '#d8ccb0'); }
+      R(W / 2 - 8, H - 18, 16, 18, '#2a1a14'); R(W / 2 - 8, H - 18, 16, 2, '#c8a050');
+      for (const x of [22, W - 30]) { R(x, wy + 10, 9, 13, '#e0d4b0'); R(x + 1, wy + 11, 7, 4, '#8a2a24'); for (let y = wy + 16; y < wy + 22; y += 2) R(x + 1, y, 7, 1, '#4a4038'); }
+      for (const x of [W / 2 - 14, W / 2 + 13]) { R(x, H - 22, 1, 22, '#2a2a28'); R(x - 1, H - 25, 3, 3, '#f0d080'); lights.push({ x, y: H - 24, r: 40, color: '#f0d080', a: 0.8 }); }
+      break;
+    }
+    case 'school': { // школа: кирпич, высокие окна в ряд, колоколенка
+      const wallH = 26, wy = H - wallH, wall = '#7a5a46';
+      R(1, H, W, 2, 'rgba(0,0,0,0.5)'); R(0, wy, W, wallH, wall);
+      for (let y = wy + 2; y < H; y += 3) for (let x = ((y / 3) | 0) % 2 ? 0 : 3; x < W; x += 6) R(x, y, 5, 1, shade(wall, -0.15));
+      for (let x = 5; x < W - 6; x += 9) { const on = r() < 0.7; R(x, wy + 5, 5, 9, on ? AMBER : '#1a1c20'); R(x, wy + 9, 5, 1, '#2a1e12'); if (on) lights.push({ x: x + 2, y: wy + 9, r: 18, color: '#f0b050', a: 0.6 }); }
+      R(Math.round(W / 2) - 4, H - 12, 8, 12, '#2a1e14');
+      for (let y = -6; y < wy; y++) R(-1, y, W + 2, 1, (y + 6) % 3 === 0 ? '#4a5262' : '#3a4250');
+      const bx = Math.round(W / 2) - 4; R(bx, -18, 8, 12, '#6a4a3a'); R(bx - 1, -20, 10, 2, '#3a4250'); pellipse(c, bx + 4, -13, 2, 2, '#c8a050');
+      break;
+    }
+    case 'tent': { // палатка беженцев: латаная парусина на шесте
+      const col = ['#8a8270', '#6a6656', '#7a6a5a', '#5a5e56'][o.seed % 4];
+      R(1, H - 2, W - 2, 2, 'rgba(0,0,0,0.45)');
+      for (let k = 0; k < 14; k++) R(Math.round(W / 2 - 2 - k * (W / 2 - 3) / 14), H - 16 + k, Math.round((W / 2 - 3) * (k / 14) * 2 + 4), 1, k % 4 === 0 ? shade(col, -0.15) : col);
+      R(Math.round(W / 2) - 3, H - 9, 6, 9, '#1a1612'); R(Math.round(W / 2), H - 20, 1, 6, '#3a2c1e');
+      R(4 + (o.seed % 3) * 5, H - 12, 4, 3, shade(col, 0.2)); // заплата
+      break;
+    }
+    case 'wbanner': { // синее знамя Винферда с латунным знаком
+      R(9, -44, 2, H + 44, '#3a3428'); P(9, -46, BRASS); P(10, -46, BRASS);
+      R(11, -42, 9, 22, '#2e4a7a'); R(11, -42, 9, 2, '#3e5a8a'); R(11, -22, 3, 2, '#2e4a7a'); R(17, -22, 3, 2, '#2e4a7a');
+      R(14, -36, 3, 5, '#c8a050'); P(13, -34, '#c8a050'); P(17, -34, '#c8a050');
+      break;
+    }
+    case 'acar': { // исправная бронемашина Винферда, вдвое крупнее, чем на карте
+      c.save(); c.scale(2, 2);
+      const X = (v: number) => 4 + v, Rr = (a: number, b: number, w: number, h: number, col: string) => prect(c, 4 + a, -2 + b, w, h, col);
+      Rr(1, H / 2 - 9, 20, 6, '#2e3a4e'); Rr(1, H / 2 - 9, 20, 1, '#4a5a72'); Rr(17, H / 2 - 8, 4, 3, '#26303e'); Rr(7, H / 2 - 12, 7, 3, '#26303e'); Rr(7, H / 2 - 12, 7, 1, '#4a5a72'); Rr(14, H / 2 - 11, 5, 1, '#1a1e24');
+      for (const k of [3, 7, 11, 15, 19]) ppx(c, X(k), -2 + H / 2 - 7, '#c8a050');
+      Rr(4, H / 2 - 6, 3, 1, '#0c0c0a'); Rr(12, H / 2 - 6, 3, 1, '#0c0c0a'); Rr(21, H / 2 - 8, 1, 1, '#f0e0a0');
+      for (const wx of [5, 17]) { pellipse(c, X(wx), -2 + H / 2 - 2, 2, 2, '#141210'); ppx(c, X(wx), -2 + H / 2 - 2, '#8a8a80'); }
+      c.restore();
+      lights.push({ x: 2 * (4 + 21), y: 2 * (-2 + H / 2 - 8), r: 50, color: '#f0e0a0', a: 0.7 });
       break;
     }
     case 'totem': { // тотем ковена: шест, рогатый череп, тряпьё и нитки с костями

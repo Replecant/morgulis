@@ -124,7 +124,7 @@ World.onEncounter = () => Dialog.start('enc_band');
 Debug.load();
 Debug.weathers = WEATHER_ORDER.map((k) => ({ id: k, name: WEATHER_NAMES[k] }));
 Debug.onWeather = (k) => { if (k === 'auto') Weather.locked = false; else Weather.set(k as typeof WEATHER_ORDER[number], true); refreshHud(); };
-Debug.places = LOCS.map((l) => ({ id: l.id, name: l.name, group: l.y < 0 ? 'Север: земли Собрания' : l.x < -900 ? 'Земли баронессы' : l.x < 120 ? 'Поле сражений' : 'Земли барона' }));
+Debug.places = LOCS.map((l) => ({ id: l.id, name: l.name, group: l.y > 1280 ? 'Юг: земли Винферда' : l.y < 0 ? 'Север: земли Собрания' : l.x < -900 ? 'Земли баронессы' : l.x < 120 ? 'Поле сражений' : 'Земли барона' }));
 Debug.onTeleport = (id) => {
   if (G.mode === 'combat' || G.mode === 'title' || G.mode === 'create') { toast('Телепорт — только на карте или в сцене'); return; }
   const l = LOCS.find((x) => x.id === id)!;
@@ -136,7 +136,7 @@ Debug.onTeleport = (id) => {
   World.updateLocation(); World.discover(); refreshHud();
   toast(`Телепорт: ${l.name}`);
 };
-World.onPatrol = (owner) => Dialog.start(owner === 'baroness' ? 'enc_bpatrol' : owner === 'revo' ? 'enc_revo' : 'enc_patrol');
+World.onPatrol = (owner) => Dialog.start(owner === 'baroness' ? 'enc_bpatrol' : owner === 'revo' ? 'enc_revo' : owner === 'winford' ? 'enc_wfpatrol' : owner === 'wfcar' ? 'enc_wfcar' : 'enc_patrol');
 World.onLoyal = () => Dialog.start('enc_loyal');
 World.onDsq = () => Dialog.start('enc_dsq');
 World.onDiscover = (l) => toast(`Замечено: ${l.name}`);

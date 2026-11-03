@@ -55,6 +55,12 @@ export const SHOPS: Record<string, Shop> = {
     items: { rifle: 2, helmet: 2, greatcoat: 2, quilted: 1, bandolier: 1, boots: 1, gloves: 1 },
     cons: ['ammo_rifle', 'ammo_pistol', 'grenade', 'ration', 'bandage', 'medkit'],
   },
+  // ---------------- юг: земли Винферда
+  greywell: { name: 'Контора промысла — Грейвелл', greet: 'По накладной и с квитанцией. Иначе — никак.', items: { wrench: 1, gloves: 1 }, cons: ['ration', 'filter', 'bandage'] },
+  bramley: { name: 'Старший погонщик — Брэмли', greet: 'Мясо, панцирь — всё с номером.', items: { chitin: 2 }, cons: ['ration'] },
+  willowbrook: { name: 'Староста — Уиллоубрук', greet: 'Рыба вяленая, грибы сушёные, настойка от боли.', items: { wormwood: 1 }, cons: ['ration', 'painkiller'] },
+  ironcliff: { name: 'Штейгер — Айронклифф', greet: 'Каски, инструмент, патроны со склада. Всё казённое — с клеймом.', items: { helmet: 2, tools: 1, boots: 1 }, cons: ['ammo_rifle', 'ration'] },
+  wf_market: { name: 'Торговые ряды — форт Винферда', greet: 'Лучший выбор по эту сторону пустоши. Ценники, клейма, квитанции.', items: { rifle: 1, huntrifle: 1, revolver: 1, autopistol: 1, pumpshot: 1, greatcoat: 1, quilted: 1, leather: 1, boots: 2, gloves: 1, gasmask: 1, bandolier: 1, pouches: 1, cap: 1 }, cons: ['ammo_pistol', 'ammo_rifle', 'ammo_shell', 'grenade', 'smoke', 'ration', 'bandage', 'medkit', 'antiseptic', 'painkiller', 'filter'] },
   // ---------------- ковен
   coven: { name: 'Старшая ведьма — ковен', greet: 'Бери, что глянется. Платят у нас по-разному — сегодня шиллингами.', items: { ritualkit: 2, grimoire: 1, locket: 1, rabbitfoot: 1 }, cons: ['painkiller', 'tissue'] },
   // ---------------- знахари

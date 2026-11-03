@@ -13,7 +13,9 @@ import { Debug } from './debug';
 import { Weather } from './weather';
 
 const VW = 960, VH = 640;
-export const WW = 1920, WH = 1280;
+export const WW = 1920, WH = 2500;
+/** Южнее — земли барона Винферда (старые земли кончаются здесь). */
+export const SOUTH_Y = 1280;
 /** Западная граница мира: за Эшфордом — старый фронт (траншеи, проволока, мертвецы). */
 export const WX0 = -2500;
 /** Восточнее — старый фронт (поле сражений баронов), западнее — земли баронессы. */
@@ -57,6 +59,17 @@ export const LOCS: Loc[] = [
   { id: 'redpost', name: 'Застава Собрания', kind: 'poi', x: 1215, y: 20, talk: 'poi_redpost', desc: 'Шлагбаум и красный флаг на въезде в северные леса.' },
   { id: 'coven', name: 'Ковен ведьм', kind: 'village', hidden: true, x: -420, y: -560, talk: 'loc_coven', scene: 'coven', desc: 'Логово ведьм в глухом лесу, в вечном зловещем тумане.' },
   { id: 'einbpost', name: 'Застава у Эйнбоу', kind: 'poi', x: 572, y: -230, talk: 'poi_einbpost', desc: 'Пост братьев свободы на дороге к сожжённой деревне.' },
+  // ---------------- юг: земли барона Винферда — самые развитые и спокойные
+  { id: 'wfort', name: 'Форт Винферда', kind: 'fort', x: -250, y: 2050, talk: 'loc_wfort', scene: 'wf1', desc: 'Столица барона Винферда: торговые ряды, театр, наверху — знать.' },
+  { id: 'greywell', name: 'Грейвелл', kind: 'village', x: 700, y: 1700, talk: 'loc_greywell', scene: 'greywell', desc: 'Деревня нефтяников посреди нефтяных полей.' },
+  { id: 'deepfield', name: 'Дипфилд', kind: 'village', x: 1250, y: 1900, talk: 'loc_deepfield', scene: 'deepfield', desc: 'Вторая деревня нефтяников: качалки и перегонный цех.' },
+  { id: 'bramley', name: 'Брэмли', kind: 'village', x: -1500, y: 1560, talk: 'loc_bramley', scene: 'bramley', desc: 'Деревня, где пасут жуков.' },
+  { id: 'willowbrook', name: 'Уиллоубрук', kind: 'village', x: -960, y: 1820, talk: 'loc_willowbrook', scene: 'willowbrook', desc: 'Деревня у реки: рыбный и грибной промысел.' },
+  { id: 'ironcliff', name: 'Айронклифф', kind: 'village', x: 300, y: 2330, talk: 'loc_ironcliff', scene: 'ironcliff', desc: 'Деревня горняков у южных гор.' },
+  { id: 'limbridge', name: 'Лимбридж', kind: 'village', x: 60, y: 1890, talk: 'loc_limbridge', scene: 'limbridge', desc: 'Палатки и лачуги беженцев, ждущих права на расселение.' },
+  { id: 'railworks', name: 'Стройка железной дороги', kind: 'poi', x: 470, y: 1905, talk: 'poi_railworks', desc: 'Здесь прокладывают новую ветку к нефтяным деревням.' },
+  { id: 'wfcustoms', name: 'Пограничная контора', kind: 'poi', x: 1470, y: 1240, talk: 'poi_wfcustoms', desc: 'Будка, шлагбаум и стол с печатями на въезде в земли Винферда.' },
+  { id: 'wfcustoms2', name: 'Пограничная контора', kind: 'poi', x: -1730, y: 1250, talk: 'poi_wfcustoms', desc: 'Будка, шлагбаум и стол с печатями на въезде в земли Винферда.' },
   { id: 'flare', name: 'Газовый факел', kind: 'poi', x: 230, y: 640, talk: 'poi_flare', desc: 'Вечный огонь над старой скважиной.' },
 ];
 const ROADS: number[][][] = [
@@ -77,12 +90,18 @@ const ROADS: number[][][] = [
   [[1150, -400], [1380, -330], [1560, -300]],
   [[1150, -800], [900, -830], [620, -870], [380, -900]],
   [[1150, -800], [1330, -890], [1490, -960]],
+  // юг: земли Винферда — от тракта барона, от Хейлстоуна баронессы, между деревнями
+  [[1560, 850], [1520, 1100], [1440, 1290], [1200, 1480], [950, 1600], [700, 1700]],
+  [[700, 1700], [400, 1830], [60, 1890], [-250, 2050]],
+  [[-1920, 1060], [-1780, 1300], [-1500, 1560], [-1250, 1700], [-960, 1820], [-600, 1950], [-250, 2050]],
+  [[700, 1700], [980, 1800], [1250, 1900]],
+  [[-250, 2050], [0, 2200], [300, 2330]],
 ];
 /** Озеро и реки в землях баронессы (координаты мира). */
 const LAKE = { x: -1650, y: 420, rx: 250, ry: 140 };
 const RIVERS: number[][][] = [
   [[-1380, -1200], [-1420, -900], [-1400, -600], [-1450, -300], [-1480, 0], [-1520, 120], [-1580, 210], [-1600, 290]], // из северных лесов в озеро
-  [[-1430, 470], [-1380, 560], [-1340, 700], [-1290, 820], [-1210, 920], [-1180, 1080], [-1120, 1280]], // из озера на юго-восток
+  [[-1430, 470], [-1380, 560], [-1340, 700], [-1290, 820], [-1210, 920], [-1180, 1080], [-1120, 1280], [-1080, 1500], [-1010, 1700], [-940, 1850], [-970, 2100], [-1060, 2380], [-1110, 2500]], // из озера на юго-восток и дальше через земли Винферда
   [[-1880, 470], [-2000, 540], [-2120, 500], [-2300, 560], [-2500, 520]],                  // из озера на запад
 ];
 /** y железной дороги на долготе x (по ломаной RAIL). */
@@ -91,6 +110,11 @@ function railY(x: number) {
   return RAIL[RAIL.length - 1][1];
 }
 const RAIL: number[][] = [[-2080, 700], [-1800, 760], [-1450, 830], [-1150, 880], [-900, 870], [-500, 885], [0, 875], [200, 840], [330, 806], [430, 798], [540, 806], [700, 848], [850, 905], [1000, 950], [1300, 940], [1550, 910], [1730, 880]];
+/** Ветка к форту Винферда: от главной линии у Эшфорда на юг (двухпутная). */
+const WF_RAIL: number[][] = [[255, Math.round(railY(255))], [190, 1000], [90, 1300], [-20, 1600], [-120, 1850], [-205, 2010]];
+/** Новая ветка от форта к нефтяным деревням: готовый участок и насыпь, где ещё работают. */
+const WF_NEW_DONE: number[][] = [[-205, 2015], [80, 1975], [460, 1890]];
+const WF_NEW_BED: number[][] = [[460, 1890], [720, 1765], [1000, 1840], [1250, 1905]];
 /** Ломаная, сдвинутая вбок на d (по нормали; углы — по среднему из соседних нормалей). */
 function offsetPoly(poly: number[][], d: number) {
   return poly.map(([x, y], i) => {
@@ -107,9 +131,11 @@ const SIDING: number[][] = [[280, TRACK_GAP], [340, 24], [380, 24], [430, 24], [
 // патрули барона: первый ходит от Фенмора через Эшфорд по тракту до форта, второй — от форта к Ричморду
 // братья свободы: один ходит по северному тракту, второй — между Эйнбоу и Хоули, третий — от Вудхэма через форт к Тарвеллу
 const PATROL_PATHS: number[][][] = [[...ROADS[2].slice().reverse(), ...ROADS[0].slice(1)], [...ROADS[0].slice(2).reverse(), ...ROADS[1].slice(1)], [...ROADS[4].slice().reverse().slice(0, 4), [-1300, 1000]].reverse(),
-  ROADS[8].slice(2), [...ROADS[10], ...ROADS[11].slice(1)], [...ROADS[12].slice().reverse(), ...ROADS[13].slice(1)]];
-export type PatrolOwner = 'baron' | 'baroness' | 'revo';
-const PATROL_OWNER: PatrolOwner[] = ['baron', 'baron', 'baroness', 'revo', 'revo', 'revo'];
+  ROADS[8].slice(2), [...ROADS[10], ...ROADS[11].slice(1)], [...ROADS[12].slice().reverse(), ...ROADS[13].slice(1)],
+  // Винферд: пеший патруль от нефтяников через Лимбридж к форту и горнякам; бронемашины — по длинным трактам
+  [...ROADS[15], ...ROADS[18].slice(1)], [...ROADS[14].slice(1), ...ROADS[17].slice(1)], ROADS[16].slice(1)];
+export type PatrolOwner = 'baron' | 'baroness' | 'revo' | 'winford' | 'wfcar';
+const PATROL_OWNER: PatrolOwner[] = ['baron', 'baron', 'baroness', 'revo', 'revo', 'revo', 'winford', 'wfcar', 'wfcar'];
 const PATROL_SPEED = 36;   // пикселей карты в час
 interface Patrol { path: number[][]; len: number; s: number; dir: 1 | -1; wait: number; speed: number; owner: PatrolOwner }
 const polyLen = (pts: number[][]) => pts.reduce((a, pt, i) => (i ? a + Math.hypot(pt[0] - pts[i - 1][0], pt[1] - pts[i - 1][1]) : 0), 0);
@@ -136,7 +162,7 @@ const HUNGRY_START: [number, number][] = [[700, 650], [1350, 560], [950, 1100]];
 interface LakeDemon { id: number; x: number; y: number; tx: number; ty: number; alive: boolean; respawn: number; calm: number; seen: boolean; a: number }
 const lakeRing = (a: number, k: number) => ({ x: -1650 + Math.cos(a) * 250 * k, y: 420 + Math.sin(a) * 140 * k });
 const nearLake = (q: Pt) => { const d = Math.hypot((q.x + 1650) / 250, (q.y - 420) / 140); return d > 0.95 && d < 1.9; };
-const inBaronLand = (q: Pt) => q.x > 200 && q.x < 1650 && q.y > 120 && q.y < WH - 120;
+const inBaronLand = (q: Pt) => q.x > 200 && q.x < 1650 && q.y > 120 && q.y < SOUTH_Y - 120;
 const inNorth = (q: Pt) => q.y < NORTH_Y;
 // лоялисты старого режима: редкие группы прячутся в лесу, подальше от дорог
 interface Loyal { id: number; kinds: string[]; x: number; y: number; tx: number; ty: number; alive: boolean; respawn: number; calm: number; seen: boolean }
@@ -146,7 +172,7 @@ const COVEN_AT = { x: -420, y: -560 }, COVEN_R = 520;
 const DSQ_START: [number, number, string[]][] = [[-700, -430, ['hound', 'imp']], [-180, -720, ['demon', 'imp']], [-470, -230, ['hound', 'hound', 'imp']], [-640, -800, ['demon', 'hound']]];
 const nearCoven = (q: Pt, r = COVEN_R) => dist(q, COVEN_AT) < r;
 const LOYAL_START: [number, number][] = [[880, -620], [1420, -620], [300, -450]];
-const inFront = (q: Pt) => q.x > FRONT_W0 + 40 && q.x < FRONT_X - 20 && q.y > 80 && q.y < WH - 80;
+const inFront = (q: Pt) => q.x > FRONT_W0 + 40 && q.x < FRONT_X - 20 && q.y > 80 && q.y < SOUTH_Y - 80;
 // едкие облака: плывут над пустошью по ветру; без противогаза газ обжигает лёгкие
 interface Cloud { x: number; y: number; r: number; vx: number; vy: number; seed: number }
 const FIND_R = 170;         // с какого расстояния отряд замечает примечательное место
@@ -202,13 +228,13 @@ export const World = {
     this.band = { x: 1050, y: 1080, tx: 1050, ty: 1080, alive: true, respawn: 0, calm: 0, seen: false };
     this.lastDay = Math.floor(G.clock / 24);
     // первый выходит из Эшфорда к форту, второй — из форта к Ричморду: идут навстречу и расходятся
-    this.clouds = [[200, 300], [760, 1080], [1250, 560], [-300, 420], [-650, 900], [1560, 1120], [900, 180], [-1250, 220], [-2050, 950], [-1500, 1150], [-2300, 380]].map(([x, y], i) => ({
+    this.clouds = [[300, 1520], [-700, 1660], [1100, 2120], [-1500, 2000], [600, 2210], [-300, 1750], [200, 300], [760, 1080], [1250, 560], [-300, 420], [-650, 900], [1560, 1120], [900, 180], [-1250, 220], [-2050, 950], [-1500, 1150], [-2300, 380]].map(([x, y], i) => ({
       x, y, r: 70 + ((i * 37) % 50), vx: 9 + (i % 3) * 3, vy: ((i % 2) * 2 - 1) * 2, seed: i * 1.9 }));
     this.inGas = false; this.gasDose = 0; this.filterUse = 0;
     this.demons = [0.6, 3.6].map((a, i) => { const q = lakeRing(a, 1.25); return { id: i, x: q.x, y: q.y, tx: q.x, ty: q.y, alive: true, respawn: 0, calm: 0, seen: false, a }; });
     this.hungry = HUNGRY_START.map(([x, y], i) => ({ id: i, kinds: i % 2 ? ['hungry2', 'hungry', 'hungry'] : ['hungry', 'hungry2'], x, y, tx: x, ty: y, alive: true, respawn: 0, calm: 0, seen: false }));
     this.dead = DEAD_START.map(([id, kinds, x, y]) => ({ id, kinds, x, y, tx: x, ty: y, alive: true, respawn: 0, calm: 0, seen: false }));
-    this.patrols = PATROL_PATHS.map((path, i) => { const len = polyLen(path); return { path, len, s: i === 0 ? len * 0.2 : i >= 3 ? len * (0.15 + (i - 3) * 0.3) : 0, dir: 1 as const, wait: 0, speed: i ? PATROL_SPEED * 1.15 : PATROL_SPEED * 0.9, owner: PATROL_OWNER[i] }; });
+    this.patrols = PATROL_PATHS.map((path, i) => { const len = polyLen(path); return { path, len, s: i === 0 ? len * 0.2 : i >= 3 ? len * ((0.15 + (i - 3) * 0.3) % 1) : 0, dir: 1 as const, wait: 0, speed: PATROL_OWNER[i] === 'wfcar' ? PATROL_SPEED * 2 : i ? PATROL_SPEED * 1.15 : PATROL_SPEED * 0.9, owner: PATROL_OWNER[i] }; });
     this.dsq = DSQ_START.map(([x, y, kinds], i) => ({ id: i, kinds, x, y, tx: x, ty: y, alive: true, respawn: 0, calm: 0, seen: false }));
     this.loyal = LOYAL_START.map(([x, y], i) => ({ id: i, kinds: i === 1 ? ['loyal_off', 'loyalist', 'loyalist'] : ['loyalist', 'loyalist2'], x, y, tx: x, ty: y, alive: true, respawn: 0, calm: 0, seen: false }));
   },
@@ -244,7 +270,7 @@ export const World = {
   nearLoc() { return LOCS.find((l) => this.known(l) && dist(l, this.party) < (l.kind === 'fort' ? 90 : 40)) ?? null; },
   updateLocation() {
     const l = this.nearLoc();
-    G.location = l ? `У места: ${l.name}` : this.inCloud(this.party) ? 'Едкое облако' : inNorth(this.party) ? (onRoad(this.party) ? 'Северный тракт' : 'Северные леса') : this.party.x < FRONT_W0 ? 'Земли баронессы' : this.party.x < FRONT_X ? 'Старый фронт' : onRoad(this.party) ? 'Тракт' : 'Серая пустошь';
+    G.location = l ? `У места: ${l.name}` : this.inCloud(this.party) ? 'Едкое облако' : this.party.y > SOUTH_Y ? (onRoad(this.party) ? 'Тракт Винферда' : 'Земли Винферда') : inNorth(this.party) ? (onRoad(this.party) ? 'Северный тракт' : 'Северные леса') : this.party.x < FRONT_W0 ? 'Земли баронессы' : this.party.x < FRONT_X ? 'Старый фронт' : onRoad(this.party) ? 'Тракт' : 'Серая пустошь';
   },
 
   patrolNear(q: Pt, r: number) { return this.patrols.find((pt) => dist(this.patrolPos(pt), q) < r) ?? null; },
@@ -336,7 +362,7 @@ export const World = {
     if (patrolNear) {
       const pt = this.patrols.reduce((a, q) => (dist(this.patrolPos(q), b) < dist(this.patrolPos(a), b) ? q : a));
       const pp = this.patrolPos(pt), a = Math.atan2(b.y - pp.y, b.x - pp.x);
-      b.tx = clamp(b.x + Math.cos(a) * 260, 100, WW - 250); b.ty = clamp(b.y + Math.sin(a) * 260, 100, WH - 100);
+      b.tx = clamp(b.x + Math.cos(a) * 260, 100, WW - 250); b.ty = clamp(b.y + Math.sin(a) * 260, 100, SOUTH_Y - 100);
     }
     b.seen = d < 330;
     if (chase) { b.tx = p.x; b.ty = p.y; }
@@ -344,7 +370,7 @@ export const World = {
       // бродим (или уходим подальше, если откупились)
       const away = G.clock < b.calm;
       const a = away ? Math.atan2(b.y - p.y, b.x - p.x) + (Math.random() - 0.5) : Math.random() * TAU;
-      b.tx = clamp(b.x + Math.cos(a) * 250, 100, WW - 250); b.ty = clamp(b.y + Math.sin(a) * 250, 100, WH - 100);
+      b.tx = clamp(b.x + Math.cos(a) * 250, 100, WW - 250); b.ty = clamp(b.y + Math.sin(a) * 250, 100, SOUTH_Y - 100);
       if (LOCS.some((l) => l.kind !== 'poi' && dist(l, { x: b.tx, y: b.ty }) < 150)) { b.tx = b.x; b.ty = b.y; }
     }
     const sp = (chase ? 68 : 40) * HOURS_PER_SEC * dt;
@@ -464,7 +490,7 @@ export const World = {
     const g = this.hungryHit, p = this.party; if (!g) return;
     g.calm = G.clock + hours;
     const a = Math.atan2(g.y - p.y, g.x - p.x);
-    g.tx = clamp(g.x + Math.cos(a) * 220, 220, 1630); g.ty = clamp(g.y + Math.sin(a) * 220, 140, WH - 140);
+    g.tx = clamp(g.x + Math.cos(a) * 220, 220, 1630); g.ty = clamp(g.y + Math.sin(a) * 220, 140, SOUTH_Y - 140);
     this.hungryHit = null;
   },
 
@@ -529,7 +555,7 @@ export const World = {
     const g = this.deadHit, p = this.party; if (!g) return;
     g.calm = G.clock + hours;
     const a = Math.atan2(g.y - p.y, g.x - p.x);
-    g.tx = clamp(g.x + Math.cos(a) * 200, FRONT_W0 + 60, FRONT_X - 40); g.ty = clamp(g.y + Math.sin(a) * 200, 100, WH - 100);
+    g.tx = clamp(g.x + Math.cos(a) * 200, FRONT_W0 + 60, FRONT_X - 40); g.ty = clamp(g.y + Math.sin(a) * 200, 100, SOUTH_Y - 100);
   },
 
   /** После откупа или удачного бегства банда на время отстаёт. */
@@ -555,7 +581,7 @@ export const World = {
     // земли — крупными бледными буквами
     c.textAlign = 'center';
     c.font = `italic ${Math.round(ch * 0.034)}px "Old Standard TT", serif`;
-    for (const [name, wx, wy] of [['Земли барона', 1000, 1120], ['Старый фронт', -390, 1080], ['Земли баронессы', -1700, 1150], ['Северные леса — земли Собрания', 700, -1110]] as [string, number, number][])
+    for (const [name, wx, wy] of [['Земли барона', 1000, 1120], ['Старый фронт', -390, 1080], ['Земли баронессы', -1700, 1150], ['Северные леса — земли Собрания', 700, -1110], ['Земли барона Винферда', 400, 1420]] as [string, number, number][])
       text(name, X(wx), Y(wy), 'rgba(216,206,170,0.7)');
     // места: точка и название
     let hov: Loc | null = null;
@@ -671,9 +697,14 @@ export const World = {
     for (const pt of this.patrols) {
       const pos = this.patrolPos(pt), back = pt.dir === 1 ? -1 : 1, walk = pm0 && pt.wait <= 0;
       const fl = (pt.dir === 1 ? pos.dx : -pos.dx) < 0;
+      if (pt.owner === 'wfcar') { // бронемашина Винферда
+        pshadow(lc, X(pos.x), Y(pos.y) + 1, 11, 2);
+        armoredCar(lc, X(pos.x) - 11, Y(pos.y) - 11, fl, true);
+        continue;
+      }
       for (let k = 2; k >= 0; k--) {
         const q = polyAt(pt.path, clamp(pt.s + back * k * 9, 0, pt.len));
-        mini(pt.owner === 'baroness' ? 'bguard' : pt.owner === 'revo' ? (k === 0 ? 'brother_off' : k === 1 ? 'brother' : 'brother2') : 'guard', X(q.x), Y(q.y), fl, fr(walk, k * 1.3));
+        mini(pt.owner === 'winford' ? (k === 0 ? 'wfofficer' : 'wfguard') : pt.owner === 'baroness' ? 'bguard' : pt.owner === 'revo' ? (k === 0 ? 'brother_off' : k === 1 ? 'brother' : 'brother2') : 'guard', X(q.x), Y(q.y), fl, fr(walk, k * 1.3));
       }
     }
     // отряд
@@ -698,7 +729,7 @@ export const World = {
     }
     L(fl.x, fl.y - 30, 80, 0.7 + Math.sin(t * 9) * 0.08, '#ff9a40');
     L(p.x, p.y, 58, 0.55, '#d8c890');
-    for (const pt of this.patrols) { const q = this.patrolPos(pt); L(q.x, q.y - 8, 34, 0.5, '#f0d090'); } // фонарь патруля
+    for (const pt of this.patrols) { const q = this.patrolPos(pt); L(q.x, q.y - 8, pt.owner === 'wfcar' ? 46 : 34, 0.5, '#f0d090'); } // фонарь патруля, фары бронемашины
     for (const g of this.dead) if (g.alive && g.seen) L(g.x, g.y - 6, 22, 0.35, '#a8f070'); // гнилушечный отсвет глаз
     const wl = Weather.light([0.84, 1, 0.78], 0.3);
     applyLight(lc, LW, LH, lights, wl.ambient, wl.tint, wl.vig);
@@ -773,9 +804,9 @@ export const World = {
       if (sx < -60 || sx > VW + 60 || sy < -40 || sy > VH + 60) return;
       if (this.patrols.slice(0, i).some((o) => dist(this.patrolPos(o), q) < 60)) return; // два патруля рядом — одна подпись
       c.font = 'italic 12px "Old Standard TT", serif'; c.textAlign = 'center';
-      const lbl = pt.owner === 'baroness' ? 'Патруль баронессы' : pt.owner === 'revo' ? 'Братья свободы' : 'Патруль барона';
+      const lbl = pt.owner === 'baroness' ? 'Патруль баронессы' : pt.owner === 'revo' ? 'Братья свободы' : pt.owner === 'winford' ? 'Патруль Винферда' : pt.owner === 'wfcar' ? 'Бронемашина Винферда' : 'Патруль барона';
       c.fillStyle = 'rgba(0,0,0,0.85)'; c.fillText(lbl, sx + 1, sy - 39);
-      c.fillStyle = pt.owner === 'baroness' ? '#d8a0a0' : pt.owner === 'revo' ? '#e07a68' : '#d8c080'; c.fillText(lbl, sx, sy - 40);
+      c.fillStyle = pt.owner === 'baroness' ? '#d8a0a0' : pt.owner === 'revo' ? '#e07a68' : pt.owner === 'winford' || pt.owner === 'wfcar' ? '#a8c0e0' : '#d8c080'; c.fillText(lbl, sx, sy - (pt.owner === 'wfcar' ? 28 : 40));
       c.textAlign = 'left';
     });
     const near = this.nearLoc();
@@ -848,7 +879,7 @@ function renderBackground(): HTMLCanvasElement {
   c.fillStyle = '#2a2e26'; c.fillRect(WX0, WY0, WW - WX0, -WY0);
   { const g = c.createLinearGradient(0, -80, 0, 60); g.addColorStop(0, 'rgba(42,46,38,1)'); g.addColorStop(1, 'rgba(74,74,66,0)'); c.fillStyle = g; c.fillRect(WX0, -80, WW - WX0, 140); }
   for (let i = 0; i < 1300; i++) {
-    const x = WX0 + r() * (WW - WX0), y = r() * WH, rr = 30 + r() * 110;
+    const x = WX0 + r() * (WW - WX0), y = r() * SOUTH_Y, rr = 30 + r() * 110;
     const g = c.createRadialGradient(x, y, 0, x, y, rr);
     const v = r() < 0.5 ? '30,30,26' : '110,108,96';
     g.addColorStop(0, `rgba(${v},${0.06 + r() * 0.08})`); g.addColorStop(1, `rgba(${v},0)`);
@@ -871,15 +902,25 @@ function renderBackground(): HTMLCanvasElement {
   for (let i = 0; i < 18; i++) { c.fillStyle = 'rgba(16,15,12,0.55)'; c.beginPath(); c.ellipse(180 + r() * 360, 600 + r() * 240, 8 + r() * 18, 4 + r() * 8, r() * 3, 0, TAU); c.fill(); }
   // старый фронт: перепаханная грязь и застоявшийся газ
   for (let i = 0; i < 320; i++) {
-    const x = FRONT_W0 + 20 + r() * (FRONT_X - FRONT_W0), y = 60 + r() * (WH - 120), rr = 20 + r() * 60;
+    const x = FRONT_W0 + 20 + r() * (FRONT_X - FRONT_W0), y = 60 + r() * (SOUTH_Y - 120), rr = 20 + r() * 60;
     c.fillStyle = r() < 0.6 ? 'rgba(40,33,24,0.28)' : 'rgba(96,88,70,0.18)';
     c.beginPath(); c.ellipse(x, y, rr, rr * 0.6, r() * 3, 0, TAU); c.fill();
   }
   for (let i = 0; i < 14; i++) {
-    const x = FRONT_W0 + 80 + r() * (FRONT_X - FRONT_W0 - 120), y = 120 + r() * (WH - 240), rr = 60 + r() * 90;
+    const x = FRONT_W0 + 80 + r() * (FRONT_X - FRONT_W0 - 120), y = 120 + r() * (SOUTH_Y - 240), rr = 60 + r() * 90;
     const g = c.createRadialGradient(x, y, 0, x, y, rr);
     g.addColorStop(0, 'rgba(110,150,60,0.22)'); g.addColorStop(1, 'rgba(110,150,60,0)');
     c.fillStyle = g; c.fillRect(x - rr, y - rr, rr * 2, rr * 2);
+  }
+  { // юг — земли Винферда: та же серая пустошь, нефтяные пятна у нефтяников, тёмные предгорья
+    const rs = seeded(2717);
+    for (let i = 0; i < 700; i++) {
+      const x = WX0 + rs() * (WW - WX0), y = SOUTH_Y + rs() * (WH - SOUTH_Y), rr = 30 + rs() * 110;
+      const g = c.createRadialGradient(x, y, 0, x, y, rr), v = rs() < 0.5 ? '30,30,26' : '110,108,96';
+      g.addColorStop(0, `rgba(${v},${0.06 + rs() * 0.08})`); g.addColorStop(1, `rgba(${v},0)`); c.fillStyle = g; c.fillRect(x - rr, y - rr, rr * 2, rr * 2);
+    }
+    for (let i = 0; i < 70; i++) { c.fillStyle = 'rgba(16,15,12,0.55)'; c.beginPath(); c.ellipse(560 + rs() * 820, 1580 + rs() * 420, 8 + rs() * 22, 4 + rs() * 9, rs() * 3, 0, TAU); c.fill(); }
+    const g2 = c.createLinearGradient(0, 2180, 0, WH); g2.addColorStop(0, 'rgba(40,38,34,0)'); g2.addColorStop(1, 'rgba(40,38,34,0.7)'); c.fillStyle = g2; c.fillRect(WX0, 2180, WW - WX0, WH - 2180);
   }
   { // пятна подлеска, сырости и тени под кронами
     const rn = seeded(911);
@@ -908,7 +949,7 @@ function renderBackground(): HTMLCanvasElement {
   };
   // трещины
   for (let i = 0; i < 540; i++) {
-    let x = -OX + r() * BW, y = r() * (WH / 2);
+    let x = -OX + r() * BW, y = r() * (SOUTH_Y / 2);
     for (let k = 0; k < 3; k++) { const nx = x + (r() - 0.5) * 14, ny = y + (r() - 0.5) * 14; pline(c, x, y, nx, ny, '#34342e'); x = nx; y = ny; }
   }
   // сухое русло
@@ -935,6 +976,12 @@ function renderBackground(): HTMLCanvasElement {
     prect(s, 2, 5, 3, 1, '#1e1c17'); ppx(s, 3, 0, '#1e1c17'); prect(s, 1, 9, 5, 1, 'rgba(0,0,0,0.4)');
   }, false);
   for (let i = 0; i < 20; i++) derrick(Math.round((180 + r() * 360) / 2), Math.round((600 + r() * 240) / 2));
+  { // юг: обширные нефтяные поля Винферда, мёртвые деревья, горы на самом юге
+    const rs = seeded(3303);
+    for (let i = 0; i < 46; i++) { const x = 560 + rs() * 820, y = 1580 + rs() * 420; if (LOCS.some((l) => dist(l, { x, y }) < 70)) continue; derrick(Math.round(x / 2), Math.round(y / 2)); }
+    for (let i = 0; i < 60; i++) { const x = WX0 + 300 + rs() * (WW - WX0 - 400), y = SOUTH_Y + 80 + rs() * 850; if (LOCS.some((l) => dist(l, { x, y }) < 90) || (x > 520 && x < 1400 && y > 1560 && y < 2020)) continue; tree(Math.round(x / 2), Math.round(y / 2)); }
+    drawMountains(c, rs);
+  }
   // старый фронт: траншеи, проволока, воронки, остовы техники
   drawWarZone(c, r, thick);
   // земли баронессы: озеро и реки (дороги и рельсы ложатся поверх — мосты и броды)
@@ -952,6 +999,14 @@ function renderBackground(): HTMLCanvasElement {
   };
   thick(pts(RAIL), '#2a2620', 13); thick(pts(SIDING), '#2a2620', 6); // общая насыпь
   track(SIDING); track(offsetPoly(RAIL, -TRACK_GAP)); track(offsetPoly(RAIL, TRACK_GAP));
+  // ветка к форту Винферда — тоже двухпутная
+  thick(pts(WF_RAIL), '#2a2620', 13); track(offsetPoly(WF_RAIL, -TRACK_GAP)); track(offsetPoly(WF_RAIL, TRACK_GAP));
+  // новая ветка к нефтяникам: готовый участок — рельсы, дальше — голая насыпь, штабеля шпал, кое-где первые шпалы
+  thick(pts(WF_NEW_DONE), '#2a2620', 6); track(WF_NEW_DONE);
+  thick(pts(WF_NEW_BED), '#3a3428', 6); thick(pts(WF_NEW_BED), '#5a5040', 3);
+  { const bed = pts(WF_NEW_BED), rs = seeded(4417);
+    for (let i = 1; i < bed.length; i++) { const [x0, y0] = bed[i - 1], [x1, y1] = bed[i], len = Math.hypot(x1 - x0, y1 - y0);
+      for (let k = 0; k < len; k += 9) { const x = x0 + (x1 - x0) * (k / len), y = y0 + (y1 - y0) * (k / len); if (i === 1 && k < 40) pline(c, x - 1, y - 3, x + 1, y + 3, '#4a3a28'); else if (rs() < 0.25) prect(c, Math.round(x + 4), Math.round(y - 5), 3, 2, '#5a4430'); } } }
   // дороги
   for (const rd of ROADS) { const pr = pts(rd); thick(pr, '#26221a', 6); thick(pr, '#6a604a', 4); thick(pr, '#7e7458', 2, [2, 5]); }
   // атмосферные руины — без подписей и событий
@@ -1094,9 +1149,16 @@ function drawRuins(c: CanvasRenderingContext2D, r: () => number) {
 type Thick = (poly: number[][], col: string, w: number, dash?: [number, number]) => void;
 
 /** Ржавая бронемашина: клёпаный короб на колёсах со спицами, маленькая башенка с пулемётом. */
-function armoredCar(s: CanvasRenderingContext2D, x: number, y: number, flip = false) {
+function armoredCar(s: CanvasRenderingContext2D, x: number, y: number, flip = false, fresh = false) {
   const X = (v: number) => (flip ? x + 22 - v : x + v);
   const R = (a: number, b: number, w: number, h: number, col: string) => prect(s, flip ? x + 22 - a - w + 1 : x + a, y + b, w, h, col);
+  if (fresh) { // исправная машина Винферда: тёмно-синяя краска, фара
+    R(1, 4, 20, 6, '#2e3a4e'); R(1, 4, 20, 1, '#4a5a72'); R(17, 5, 4, 3, '#26303e'); R(7, 1, 7, 3, '#26303e'); R(7, 1, 7, 1, '#4a5a72'); R(14, 2, 4, 1, '#1a1e24');
+    for (const k of [3, 7, 11, 15, 19]) ppx(s, X(k), y + 6, '#c8a050');
+    R(4, 7, 3, 1, '#0c0c0a'); R(12, 7, 3, 1, '#0c0c0a'); R(21, 5, 1, 1, '#f0e0a0');
+    for (const wx of [5, 17]) { pellipse(s, X(wx), y + 11, 2, 2, '#141210'); ppx(s, X(wx), y + 11, '#8a8a80'); }
+    return;
+  }
   R(1, 4, 20, 6, '#5a3e28'); R(1, 4, 20, 1, '#7a5638');                    // корпус
   R(17, 5, 4, 3, '#4e3622'); R(21, 6, 1, 2, '#3a2a1a');                    // скошенный нос, решётка
   R(7, 1, 7, 3, '#4e3622'); R(7, 1, 7, 1, '#6e4e32'); R(14, 2, 4, 1, '#2e2418'); // башенка, ствол пулемёта
@@ -1167,8 +1229,25 @@ function drawForest(c: CanvasRenderingContext2D) {
   }
 }
 
+/** Горы на юге земель Винферда: гряда тёмных скал со светлыми гранями. */
+function drawMountains(c: CanvasRenderingContext2D, r: () => number) {
+  const peaks: [number, number, number][] = [];
+  for (let row = 0; row < 3; row++) for (let x = WX0 / 2 + 40 + row * 9; x < WW / 2 - 20; x += 12 + r() * 16) peaks.push([x, WH / 2 - 40 - row * 22 - r() * 20, 22 + r() * 22 - row * 4]);
+  peaks.sort((a, b) => a[1] - b[1]);
+  for (const [px, py, h] of peaks) {
+    if (Math.abs(px * 2 - 300) < 120 && (py - h) * 2 < 2420) continue; // проход к Айронклиффу
+    const w = h * 1.3;
+    for (let k = 0; k < h; k++) {
+      const half = Math.round((k / h) * w), y = Math.round(py - h + k);
+      prect(c, Math.round(px - half), y, half, 1, k % 3 ? '#6a665a' : '#76716a');
+      prect(c, Math.round(px), y, half, 1, k % 3 ? '#3e3a34' : '#46423a');
+    }
+    ppx(c, Math.round(px), Math.round(py - h), '#a8a296'); prect(c, Math.round(px - 1), Math.round(py - h + 1), 2, 1, '#8a857a');
+  }
+}
+
 function drawWarZone(c: CanvasRenderingContext2D, r: () => number, thick: Thick) {
-  const X0 = FRONT_W0 / 2 + 10, X1 = FRONT_X / 2, Y0 = 30, Y1 = BH - 30;
+  const X0 = FRONT_W0 / 2 + 10, X1 = FRONT_X / 2, Y0 = 30, Y1 = SOUTH_Y / 2 - 30;
   // густые воронки, часть залита мутной водой
   for (let i = 0; i < 200; i++) {
     const x = Math.round(X0 + r() * (X1 - X0)), y = Math.round(Y0 + r() * (Y1 - Y0)), sz = 2 + Math.round(r() * 5);
@@ -1427,6 +1506,98 @@ function drawLocIcon(c: CanvasRenderingContext2D, l: Loc, r: () => number) {
       });
       break;
     }
+    // ---------------- юг: земли Винферда
+    case 'wfort': { // три яруса: торговые ряды и мастерские → театр, школы, дома побогаче → замок барона и знать
+      stamp(c, x, y + 40, 116, 96, (s) => {
+        const ox = 58, oy = 58, R = 48;
+        const walls = pixelize(116, 96, (v) => {
+          v.fillStyle = '#4e4a44'; v.beginPath(); v.ellipse(ox, oy, R, R * 0.6, 0, 0, TAU); v.fill();
+          v.fillStyle = '#3a3630'; v.beginPath(); v.ellipse(ox, oy, R * 0.84, R * 0.5, 0, 0, TAU); v.fill();
+          v.fillStyle = '#5e5a52'; v.beginPath(); v.ellipse(ox, oy - 10, R * 0.56, R * 0.33, 0, 0, TAU); v.fill();
+          v.fillStyle = '#46423c'; v.beginPath(); v.ellipse(ox, oy - 11, R * 0.5, R * 0.28, 0, 0, TAU); v.fill();
+          v.fillStyle = '#6e6a62'; v.beginPath(); v.ellipse(ox, oy - 22, R * 0.26, R * 0.16, 0, 0, TAU); v.fill();
+          for (let i = 0; i < 8; i++) { const a = (i / 8) * TAU; v.fillStyle = '#5e5a52'; v.fillRect(ox + Math.cos(a) * R - 3, oy + Math.sin(a) * R * 0.6 - 4, 6, 7); }
+        });
+        s.drawImage(walls, 0, 0);
+        for (let row = 0; row < 3; row++) for (let k = 0; k < 9; k++) { // ярус 1: ровные ряды лавок и домов, много огней
+          const hx = 14 + k * 10 + (row % 2) * 4, hy = 66 + row * 6;
+          if (Math.hypot((hx - ox) / (R * 0.8), (hy - oy) / (R * 0.47)) > 1) continue;
+          prect(s, hx, hy, 8, 4, ['#6a5a44', '#5a4c3a', '#7a6650'][(row + k) % 3]); prect(s, hx, hy, 8, 1, '#3a3e48'); if ((row + k) % 2) ppx(s, hx + 3, hy + 2, '#f0c060');
+        }
+        prect(s, ox - 16, oy - 12, 14, 8, '#8a8070'); prect(s, ox - 16, oy - 12, 14, 1, '#a89c88'); for (let k = 0; k < 4; k++) prect(s, ox - 15 + k * 4, oy - 10, 1, 6, '#c8bca0'); // театр с колоннами
+        pellipse(s, ox - 9, oy - 13, 5, 3, '#4a6a68'); ppx(s, ox - 9, oy - 16, '#c8a050');                                                          // купол театра
+        prect(s, ox + 4, oy - 12, 12, 7, '#7a6a56'); prect(s, ox + 4, oy - 12, 12, 1, '#3a3e48'); ppx(s, ox + 7, oy - 9, '#f0c060'); ppx(s, ox + 12, oy - 9, '#f0c060'); // школа
+        prect(s, ox - 10, oy - 44, 20, 22, '#7a766c'); for (let k = 0; k < 20; k += 4) prect(s, ox - 10 + k, oy - 47, 2, 3, '#7a766c'); // замок
+        for (const tx of [-14, 10]) { prect(s, tx + ox, oy - 50, 5, 28, '#6e6a62'); prect(s, tx + ox - 1, oy - 54, 7, 4, '#2e3a4e'); }
+        prect(s, ox - 1, oy - 60, 2, 12, '#3a3428'); prect(s, ox + 1, oy - 60, 7, 4, '#2e4a7a'); ppx(s, ox + 4, oy - 59, '#c8a050');           // синий флаг Винферда
+        for (const [wx, wy] of [[-6, -38], [3, -38], [-6, -30], [3, -30]]) prect(s, ox + wx, oy + wy, 2, 3, '#f0d080');
+      });
+      break;
+    }
+    case 'greywell': case 'deepfield': { // нефтяники: вышки, резервуары, аккуратные дома
+      const big = l.id === 'deepfield';
+      stamp(c, x, y + 14, 60, 36, (s) => {
+        for (let i = 0; i < 10; i++) pellipse(s, 4 + r() * 52, 20 + r() * 14, 4, 2, '#16140f');
+        for (const [dx, dy] of big ? [[2, 0], [14, 2], [26, 0], [50, 3]] : [[4, 2], [46, 0]]) { for (let k = 0; k < 10; k++) { const w = Math.round(3 - k * 0.3); ppx(s, dx + 3 - w, dy + 10 - k, '#1e1c17'); ppx(s, dx + 3 + w, dy + 10 - k, '#1e1c17'); } prect(s, dx + 1, dy + 6, 5, 1, '#1e1c17'); }
+        for (const tx of big ? [38] : [16, 28]) { prect(s, tx, 14, 10, 9, '#5a5a54'); prect(s, tx, 14, 2, 9, '#7a7a72'); prect(s, tx, 13, 10, 2, '#6a6a62'); }
+        if (big) { prect(s, 18, 16, 14, 8, '#5a3226'); prect(s, 28, 6, 2, 10, '#4a2a1e'); ppx(s, 21, 19, '#e07028'); }
+        hut(s, 4, 24, '#3a3e48', '#7a6650', true); hut(s, 18, 25, '#3a3e48', '#7a6650', true); hut(s, 32, 24, '#3a3e48', '#7a6650', true); hut(s, 46, 25, '#3a3e48', '#6a5a44', true);
+      });
+      break;
+    }
+    case 'bramley': // жуки на выпасе: большие загоны, сараи
+      stamp(c, x, y + 18, 62, 38, (s) => {
+        const pen = (px: number, py: number, w: number) => {
+          prect(s, px, py, w, 11, '#3a3428'); prect(s, px + 1, py + 1, w - 2, 9, '#4e4636');
+          for (let k = 0; k < w; k += 3) { prect(s, px + k, py - 2, 1, 2, '#5a4a32'); ppx(s, px + k, py + 11, '#5a4a32'); }
+          for (let k = 0; k < w / 8; k++) { prect(s, px + 3 + k * 8, py + 3 + (k % 2) * 3, 5, 3, '#7a4a26'); ppx(s, px + 3 + k * 8, py + 3 + (k % 2) * 3, '#a06a3a'); }
+        };
+        pen(1, 3, 28); pen(33, 4, 28);
+        hut(s, 4, 22, '#4e3e30', '#7a6650', true); hut(s, 18, 24, '#4e3e30', '#6a5a44', true); prect(s, 32, 26, 16, 8, '#5a4a32'); prect(s, 32, 25, 16, 1, '#3a2c1e'); hut(s, 50, 22, '#4e3e30', '#7a6650', true);
+      });
+      break;
+    case 'willowbrook': // у реки: мостки, лодки, сушильни с рыбой, грибные погреба
+      stamp(c, x, y + 14, 56, 34, (s) => {
+        for (const [bx, by] of [[30, 8], [33, 12]]) { prect(s, bx, by, 7, 1, '#5a4630'); }
+        pellipse(s, 41, 9, 3, 1, '#3a2a1c'); pellipse(s, 42, 14, 3, 1, '#3a2a1c');
+        for (let i = 0; i < 6; i++) { prect(s, 4 + i * 4, 4, 1, 4, '#5a4a32'); ppx(s, 5 + i * 4, 5, '#8a9a9a'); }
+        for (let i = 0; i < 6; i++) { const mx = 4 + (i % 3) * 6, my = 26 + Math.floor(i / 3) * 4; prect(s, mx + 1, my + 1, 1, 2, '#c8c0a0'); prect(s, mx, my, 3, 1, '#9ad078'); }
+        hut(s, 4, 12, '#3a4648', '#6a5a44', true); hut(s, 17, 14, '#3a4648', '#6a5a44', true); hut(s, 22, 22, '#2e3a24', '#5a4c3a', true); hut(s, 44, 20, '#3a4648', '#6a5a44', true);
+      });
+      break;
+    case 'ironcliff': // горняки: копёр над шахтой, отвалы, бараки
+      stamp(c, x, y + 12, 56, 36, (s) => {
+        pellipse(s, 14, 26, 12, 5, '#3a3630'); pellipse(s, 42, 28, 10, 4, '#4a3e30');
+        prect(s, 24, 4, 2, 18, '#2a2620'); prect(s, 32, 4, 2, 18, '#2a2620'); prect(s, 24, 4, 10, 2, '#2a2620'); pellipse(s, 29, 4, 3, 3, '#4a4a44'); ppx(s, 29, 4, '#8a8a80'); // копёр
+        prect(s, 26, 18, 6, 4, '#0c0c0a');
+        hut(s, 2, 12, '#3a3a40', '#5a4c3a', true); hut(s, 40, 12, '#3a3a40', '#5a4c3a', true); hut(s, 44, 22, '#3a3a40', '#5a4c3a', false);
+        for (let i = 0; i < 4; i++) prect(s, 8 + i * 4, 30, 3, 2, '#7a4a2a');
+      });
+      break;
+    case 'limbridge': // беженцы: палатки, лачуги, костры — и контора по расселению
+      stamp(c, x, y + 12, 58, 32, (s) => {
+        for (let i = 0; i < 14; i++) { const tx = 2 + (i % 7) * 8 + (Math.floor(i / 7) % 2) * 3, ty = 8 + Math.floor(i / 7) * 10; for (let k = 0; k < 4; k++) prect(s, tx + k, ty + 4 - k, 7 - k * 2, 1, ['#8a8270', '#6a6656', '#7a6a5a'][i % 3]); ppx(s, tx + 3, ty + 4, '#1a1612'); }
+        prect(s, 40, 22, 14, 8, '#6a5e50'); prect(s, 40, 21, 14, 1, '#3a3e48'); ppx(s, 44, 25, '#f0c060'); ppx(s, 50, 25, '#f0c060'); prect(s, 46, 15, 1, 6, '#3a3428'); prect(s, 47, 15, 4, 3, '#2e4a7a');
+        for (const [fx, fy] of [[12, 26], [28, 28]]) { ppx(s, fx, fy, '#f0a040'); ppx(s, fx, fy - 1, '#f8d070'); }
+        for (let i = 0; i < 6; i++) ppx(s, 30 + i * 2, 30, '#c8b8a0'); // очередь к конторе
+      });
+      break;
+    case 'railworks': // стройка: насыпь, штабель шпал, тачки, будка десятника
+      stamp(c, x, y + 6, 34, 18, (s) => {
+        prect(s, 0, 10, 34, 4, '#5a5040'); prect(s, 0, 9, 34, 1, '#3a3428');
+        for (let k = 0; k < 4; k++) prect(s, 2 + k * 4, 9, 2, 5, '#4a3a28');
+        for (let k = 0; k < 3; k++) prect(s, 20, 3 + k * 2, 10, 2, k % 2 ? '#6a5236' : '#5a4430');
+        prect(s, 4, 2, 7, 6, '#4a4234'); prect(s, 4, 1, 7, 1, '#2e2a22'); ppx(s, 6, 4, '#e0a050');
+        prect(s, 14, 6, 1, 3, '#d8c8a0'); ppx(s, 14, 5, '#c8a888'); prect(s, 17, 7, 1, 2, '#d8c8a0');
+      });
+      break;
+    case 'wfcustoms': case 'wfcustoms2': // пограничная контора: будка, шлагбаум, синий флаг
+      stamp(c, x, y + 6, 26, 22, (s) => {
+        prect(s, 2, 12, 9, 7, '#5a5448'); prect(s, 2, 11, 9, 1, '#2e3a4e'); prect(s, 4, 14, 2, 2, '#e0a050');
+        prect(s, 11, 15, 1, 4, '#3a3428'); for (let k = 0; k < 13; k++) ppx(s, 12 + k, 15, k % 4 < 2 ? '#d8d0c0' : '#2e4a7a');
+        prect(s, 7, 0, 1, 11, '#3a3428'); prect(s, 8, 0, 6, 4, '#2e4a7a'); ppx(s, 10, 1, '#c8a050');
+      });
+      break;
     case 'coven': // ковен: кривые избы, каменный круг с зелёным огнём, мёртвые деревья, болотные окна
       stamp(c, x, y + 14, 60, 36, (s) => {
         pellipse(s, 30, 20, 27, 13, '#2a2e24');
