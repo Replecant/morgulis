@@ -4,7 +4,7 @@
 // ============================================================
 import './style.css';
 import { installI18n, tr } from './i18n';
-import { G, resetGame } from './state';
+import { G, resetGame, alexIn } from './state';
 import { Explore } from './explore';
 import { World, clockText, LOCS } from './worldmap';
 import { Combat, CT } from './combat';
@@ -39,7 +39,27 @@ const ctx = cv.getContext('2d')!;
 let returnMode: 'world' | 'explore' = 'world';
 
 // ---------------------------------------------------------------- переходы между режимами
+// Александр: реакции на крупные форты и край мира (показываются, когда окно разговора свободно)
+let alexPending = '';
+const ALEX_SCENE: Record<string, string> = { svoboda: 'svoboda', bfort: 'bfort', wf1: 'wfort', fort1: 'fort', fort2: 'fort' };
+function alexSee(key: string | undefined) {
+  if (!key || !alexIn() || G.flags['alexSaw_' + key]) return;
+  G.flags['alexSaw_' + key] = true; alexPending = 'alex_' + key;
+}
+/** Отданный ведьмам или проданный хирургу Александр «исчезает», когда отряд уходит из сцены. */
+function alexLeft(next: string) {
+  if (G.flags.alexCoven && next !== 'coven') G.flags.alexCovenGone = true;
+  if (G.flags.alexSold && next !== 'fort1') G.flags.alexSoldLeft = true;
+}
+function alexRemove() {
+  G.squad = G.squad.filter((b) => b.id !== 'alex');
+  applyEquipLooks(G.squad);
+  if (G.mode === 'explore') Explore.enter(Explore.scene, Explore.player);
+  refreshHud();
+}
+
 function toWorld(fromScene?: string) {
+  alexLeft('');
   G.mode = 'world';
   if (fromScene) World.placeAt(fromScene.startsWith('fort') ? 'fortgate' : fromScene);
   World.updateLocation();
@@ -49,6 +69,8 @@ function toWorld(fromScene?: string) {
   if (fromScene) Save.auto(); // автосохранение при выходе на карту
 }
 function toScene(id: string, at?: { x: number; y: number }) {
+  alexLeft(id);
+  alexSee(ALEX_SCENE[id]);
   G.mode = 'explore';
   G.flags['visited_' + id] = true;
   Explore.enter(id, at);
@@ -128,7 +150,7 @@ function startBattle(id: string) {
 Explore.onInteract = (d) => Dialog.start(d);
 Explore.onLocation = () => refreshHud();
 Explore.onExit = (scene) => toWorld(scene);
-World.onArrive = (l) => Dialog.start(l.talk);
+World.onArrive = (l) => { if (l.id === 'deadend') alexSee('deadend'); Dialog.start(l.talk); };
 World.onEncounter = () => Dialog.start(World.bandHit?.fac === 'deserter' ? 'enc_deserters' : 'enc_band');
 // ---------------------------------------------------------------- отладка (F2)
 Debug.load();
@@ -184,6 +206,8 @@ Dialog.onAction = (act) => {
   else if (act.startsWith('trade:')) { G.keys.clear(); Trade.show(act.slice(6), () => { refreshHud(); hint(); }); }
   else if (act === 'battle_scav') startBattle('ruins');
   else if (act === 'recruit_alex') { if (!G.squad.some((s) => s.id === 'alex')) { G.squad.push(makeAlex()); applyEquipLooks(G.squad); if (G.mode === 'explore') Explore.enter(Explore.scene, Explore.player); toast('Александр в отряде'); refreshHud(); } }
+  else if (act === 'alex_to_coven' || act === 'alex_sold') alexRemove();
+  else if (act === 'alex_grown') { G.flags.alexGrown = true; const b = G.squad.find((x) => x.id === 'alex'); if (b) { b.maxHp += 2; b.hp += 2; b.atkM += 1; b.atkR += 1; } refreshHud(); }
   else if (act === 'battle_band') startBattle('band_' + (World.bandHit?.kinds.join('+') ?? 'bandit_gun+bandit_axe'));
   else if (act === 'band_calm') World.calmBand(24);
   else if (act === 'band_lose') World.calmBand(8);
@@ -374,6 +398,7 @@ function frame(now: number) {
   G.time += dt;
   Dialog.update(dt);
   const free = !Dialog.active && !squadOpen() && !Inventory.open && !Trade.open && !Sheet.open && !Pause.open && !ProsthShop.open && !OccultMenu.open;
+  if (alexPending && free && (G.mode === 'explore' || G.mode === 'world')) { const d = alexPending; alexPending = ''; Dialog.start(d); }
   if (G.mode === 'explore' && free) Explore.update(dt);
   if (G.mode === 'world' && free) World.update(dt);
   if (G.mode === 'combat') { Combat.update(dt); Combat.draw(ctx, G.time); }

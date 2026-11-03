@@ -60,6 +60,12 @@ export const hasTool = (id: string) => G.stash.includes(id) || G.squad.some((b) 
 /** Есть чем чинить и разбирать механизмы: большой или компактный набор инструментов. */
 export const hasRepairKit = () => hasTool('tools') || hasTool('ctools');
 
+/** Александр в отряде. */
+export const alexIn = () => G.squad.some((b) => b.id === 'alex');
+/** Где Александр должен побывать: крупные форты и край мира. */
+export const ALEX_SIGHTS: [string, string][] = [['svoboda', 'форт Свобода'], ['bfort', 'форт Леди Харрингтон'], ['wfort', 'форт Винферда'], ['fort', 'форт Олдриджа'], ['deadend', 'край Траншейного Ада']];
+export const alexSawAll = () => ALEX_SIGHTS.every(([k]) => G.flags['alexSaw_' + k]);
+
 /** Фонарь отряда: 0 — нет, 1 — масляный, 2 — электрический. */
 export const lampLevel = () => (hasTool('elamp') ? 2 : hasTool('oillamp') ? 1 : 0);
 

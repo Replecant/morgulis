@@ -735,6 +735,7 @@ export const Explore = {
     NPC('trader', 'Торговец', 'sutler', 157, 47, 'trader');
     NPC('prosthetist', 'Протезист', 'medic_civ', 167, 56, 'prosthetist');
     NPC('surgeon', 'Подпольный хирург', 'surgeon_under', 142, 65, 'surgeon');
+    NPC('alex_changed', 'Александр', 'alex_changed', 139, 65, 'alex_changed', () => !!G.flags.alexSoldLeft);
     // земли Леди Харрингтон
     NPC('fish_elder', 'Старый Гарт, староста', 'fisher', 195, 38, 'fish_elder');
     NPC('fish_buyer', 'Скупщица', 'fisher_w', 218, 54, 'fish_buyer');
@@ -777,6 +778,7 @@ export const Explore = {
     NPC('coven_w2', 'Ведьма', 'crone3', 672, 31, 'coven_witch', coven);
     NPC('coven_d1', 'Рогатый', 'demon', 664, 28, 'coven_demon', coven);
     NPC('coven_d2', 'Рогатая', 'demon2', 669, 36, 'coven_demon', coven);
+    NPC('alex_coven', 'Александр', 'alex', 663, 35, 'alex_coven', () => !!G.flags.alexCoven && !G.flags.alexCovenGone);
     NPC('wise_fen', 'Шептунья', 'wise_fen', 4, 26, 'wise_fen');
     NPC('wise_moss', 'Знахарь', 'wise_moss', 289, 48, 'wise_moss');
     NPC('wise_wood', 'Лесная знахарка', 'wise_wood', 503, 43, 'wise_wood');
