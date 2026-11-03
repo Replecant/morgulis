@@ -3,6 +3,7 @@
 // ============================================================
 import { Weather } from './weather';
 import { G, journal, gearBonus, hasTool } from './state';
+import { overload, LOAD_NAME } from './load';
 import { DIALOGS, SPEAKERS, DNode, Choice, fmt } from './dialogs';
 import { drawFigure, applyEquipLooks } from './gfx';
 import { Combat } from './combat';
@@ -158,7 +159,7 @@ export function refreshHud() {
     const max = effMaxHp(s), w = woundsOf(s);
     const marks = w.map((x) => `<span class="wd ${x.heavy ? 'heavy' : ''}" title="${x.name}: ${x.desc}">✚</span>`).join('');
     return `<div class="sq">${s.name} ${marks}<div class="hp"><span style="width:${(s.hp / s.maxHp) * 100}%"></span><i style="width:${((s.maxHp - max) / s.maxHp) * 100}%"></i></div><div class="hpn">${s.hp}/${max}</div></div>`;
-  }).join('') + `<div class="sq res" title="Шиллинги · бинты · аптечки · пайки"><b class="coin">${G.money} ш.</b> · Бинты ${G.supplies.bandage} · Аптечки ${G.supplies.medkit} · Пайки ${G.supplies.ration}<div class="hpn">[Q] лечение · [I] снаряжение</div></div>`;
+  }).join('') + `<div class="sq res" title="Шиллинги · бинты · аптечки · пайки"><b class="coin">${G.money} ш.</b> · Бинты ${G.supplies.bandage} · Аптечки ${G.supplies.medkit} · Пайки ${G.supplies.ration}${overload() ? ` · <b class="over">⚖ ${LOAD_NAME[overload()].toLowerCase()}</b>` : ''}<div class="hpn">[Q] лечение · [I] снаряжение</div></div>`;
 }
 
 // ------------------------------------------------------------ Отряд: лечение

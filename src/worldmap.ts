@@ -8,6 +8,7 @@ import { seeded, TAU, clamp, dist, Pt } from './util';
 import { PixelView, LW, LH, PS, PLight, applyLight, prect, ppx, pline, pellipse, pshadow, outline, pixelize, shade } from './px';
 import { miniSprite } from './sprites';
 import { lampLevel } from './state';
+import { loadSpeedK } from './load';
 import { itemOf } from './items';
 import type { UnitBase } from './data';
 import { addWoundId } from './wounds';
@@ -393,7 +394,7 @@ export const World = {
     if (k.has('ArrowUp') || k.has('KeyW')) vy -= 1;
     if (k.has('ArrowDown') || k.has('KeyS')) vy += 1;
     let moved = 0;
-    const speed = SPEED * (onRoad(p) ? ROAD_BONUS : inHell(p) ? 0.5 : inNorth(p) && p.x < OLD_E ? 0.7 : 1) * HOURS_PER_SEC * Debug.speed * Weather.speedK();
+    const speed = SPEED * (onRoad(p) ? ROAD_BONUS : inHell(p) ? 0.5 : inNorth(p) && p.x < OLD_E ? 0.7 : 1) * HOURS_PER_SEC * Debug.speed * Weather.speedK() * loadSpeedK();
     if (vx || vy) {
       const n = Math.hypot(vx, vy), sx = (vx / n) * speed * dt, sy = (vy / n) * speed * dt;
       // в воду не шагнуть: пробуем целиком, потом скольжение вдоль берега по одной оси

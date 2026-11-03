@@ -95,6 +95,7 @@ export interface UnitBase {
   dmgM?: number;         // бонус урона в ближнем бою
   horror?: number;       // бонус к спасброску против ужаса
   med?: number;          // бонус Медицины (перевязка, операции)
+  str?: number;          // Сила спутника — сколько он унесёт (у героя берётся из характеристик)
   wounds?: string[];     // ранения (см. wounds.ts)
   limbs?: Partial<Record<'armR' | 'armL' | 'legR' | 'legL' | 'eyeR' | 'eyeL', string>>; // утраченные части тела и протезы (см. prosthetics.ts)
   strain?: number;       // оккультное напряжение 0–6 (оккультист)
@@ -126,7 +127,7 @@ export function makeLeader(c: Character): UnitBase {
 export function makeAlex(): UnitBase {
   return {
     id: 'alex', name: 'Александр', kind: 'alex', hp: 6, maxHp: 6, move: 5,
-    weapons: ['knife'], atkM: 0, atkR: 0, def: 12, armor: 0, dmgM: 0, horror: -1, med: 0, wounds: [],
+    weapons: ['knife'], atkM: 0, atkR: 0, def: 12, armor: 0, dmgM: 0, horror: -1, med: 0, str: -1, wounds: [],
     equip: { main: 'knife', head: 'cap', body: 'clothes' }, abil: {},
   };
 }

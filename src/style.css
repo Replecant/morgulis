@@ -627,3 +627,6 @@ body { font-family: 'Old Standard TT', Georgia, serif; color: var(--text); }
 .mlbtn:hover { color: #e8dcb0; }
 
 .dcs span::first-letter { text-transform: uppercase; }
+
+/* вес обоза: перегруз */
+.inv-h .cnt.over, .tload.over, .res .over { color: #e07a5a; }

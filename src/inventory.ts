@@ -4,8 +4,9 @@
 // ============================================================
 import { G, hasTool, gearBonus } from './state';
 import { check, skillBonus, DC } from './rules';
+import { load, capacity, carryOf, overload, LOAD_NAME, fmtKg } from './load';
 import { UnitBase } from './data';
-import { ItemKind, SLOTS, SLOT_ORDER, Slot, KIND_NAMES, canEquip, equipStats, itemStatLines, CONSUMABLES, CONS_ORDER, Consumable, itemOf, itemName, condOf, withCond, COND_NAME } from './items';
+import { ItemKind, SLOTS, SLOT_ORDER, Slot, KIND_NAMES, canEquip, equipStats, itemStatLines, CONSUMABLES, CONS_ORDER, Consumable, itemOf, itemName, condOf, withCond, COND_NAME, CONS_WT } from './items';
 import { woundMods, effMaxHp } from './wounds';
 import { drawFigure, applyEquipLooks } from './gfx';
 import { h } from './book';
@@ -287,7 +288,7 @@ export const Inventory = {
     const stats = h('div', { class: 'inv-stats' },
       ...([
         ['ОЗ', st.hp], ['Защита', st.def], ['Поглощение', st.armor], ['Атака вблизи', sg(st.atkM)],
-        ['Стрельба', sg(st.atkR)], ['Перемещение', st.move], ['Стойкость', sg(st.horror)], ['Оружие', st.weapon],
+        ['Стрельба', sg(st.atkR)], ['Перемещение', st.move], ['Стойкость', sg(st.horror)], ['Оружие', st.weapon], ['Поднимет', `${carryOf(b)} кг`],
       ] as [string, string | number][]).map(([k, v]) => h('div', { class: 'st' }, h('span', {}, k), h('b', {}, String(v)))),
       st.courage ? h('div', { class: 'st wide' }, h('span', {}, 'Кураж в начале боя'), h('b', {}, '✦'.repeat(st.courage))) : null,
     );
@@ -308,7 +309,7 @@ export const Inventory = {
     grid.ondrop = (e) => { e.preventDefault(); grid.classList.remove('drop-ok'); if (dragData?.from === 'slot') this.unequip(dragData.slot); };
 
     const right = h('div', { class: 'inv-right' },
-      h('div', { class: 'inv-h' }, 'Обоз отряда', h('span', { class: 'cnt' }, `${G.stash.length} предм.`)),
+      h('div', { class: 'inv-h' }, 'Обоз отряда', h('span', { class: 'cnt' + (overload() ? ' over' : ''), title: 'Вся ноша отряда (надетое, обоз, расходники) / сколько поднимут бойцы — по 20 кг и +5 за каждое очко Силы. Перегруз: на карте медленнее, в бою −1 к перемещению; больше полутора — втрое медленнее и −2.' }, `${G.stash.length} предм. · ⚖ ${fmtKg(load())} / ${capacity()} кг${overload() ? ' · ' + LOAD_NAME[overload()] : ''}`)),
       h('div', { class: 'chips inv-filters' }, ...FILTERS.map(([k, label]) =>
         h('button', { class: 'chip' + (this.filter === k ? ' on' : ''), onclick: () => { this.filter = k; this.render(); } }, label))),
       grid,
@@ -381,7 +382,8 @@ export const Inventory = {
       const c = CONSUMABLES[id];
       const cv = h('canvas', { width: 30, height: 30 });
       drawItemIcon(cv.getContext('2d')!, c.icon, 30);
-      const el = h('div', { class: 'sup-cell', title: `${c.name}: ${G.supplies[id]}` }, cv, h('span', {}, String(G.supplies[id])));
+      const el = h('div', { class: 'sup-cell', title: `${c.name}: ${G.supplies[id]} · ПКМ — выбросить ${c.pack > 1 ? 'пачку' : 'штуку'}` }, cv, h('span', {}, String(G.supplies[id])));
+      el.oncontextmenu = (e) => { e.preventDefault(); const n = Math.min(c.pack, G.supplies[id]); G.supplies[id] -= n; this.note = `Выброшено: ${c.name} ×${n}.`; this.hoverCons = null; this.render(); };
       el.onmouseenter = () => { this.hoverCons = c; this.updateDetail(); };
       el.onmouseleave = () => { this.hoverCons = null; this.updateDetail(); };
       return el;
@@ -407,10 +409,10 @@ export const Inventory = {
       const c = this.hoverCons, cv = h('canvas', { width: 40, height: 40, class: 'icv' });
       drawItemIcon(cv.getContext('2d')!, c.icon, 40);
       box.append(h('div', { class: 'dh' }, cv, h('div', {}, h('b', {}, c.name), h('div', { class: 'dk' }, `Расходник · в запасе ${G.supplies[c.id]}`))),
-        h('div', { class: 'ddesc' }, c.desc), h('div', { class: 'dstats' }, `Цена: ${c.price} ш.${c.pack > 1 ? ` за ${c.pack} шт.` : ''}`));
+        h('div', { class: 'ddesc' }, c.desc), h('div', { class: 'dstats' }, `Цена: ${c.price} ш.${c.pack > 1 ? ` за ${c.pack} шт.` : ''} · вес ${fmtKg(CONS_WT[c.id] * c.pack)} кг${c.pack > 1 ? ' за пачку' : ''}, всего ${fmtKg(CONS_WT[c.id] * G.supplies[c.id])} кг`));
       return;
     }
-    if (!it) { box.append(h('div', { class: 'none' }, 'Наведите на вещь, чтобы увидеть её свойства.')); return; }
+    if (!it) { box.append(h('div', { class: 'none' }, 'Наведите на вещь, чтобы увидеть её свойства.')); if (this.note) box.append(h('div', { class: 'dcmp' }, this.note)); return; }
     const b = G.squad[this.member];
     const slots = SLOT_ORDER.filter((s) => SLOTS[s].kind === it.kind);
     const worn = slots.map((s) => b.equip?.[s]).filter((x): x is string => !!x && x !== iid);
@@ -426,6 +428,7 @@ export const Inventory = {
         const idx = this.sel.idx;
         if (it.weapon && condOf(iid!) === 'worn' && hasTool('tools')) btns.append(h('button', { class: 'btn', title: 'Набор инструментов: изношенное — в идеальное. Час работы. Провал — следующая попытка через сутки.', onclick: () => this.fieldRepair(idx) }, `Починить [Механика ${DC.normal}]`));
         if (it.kind !== 'tool' && condOf(iid!) !== 'broken') btns.append(h('button', { class: 'btn', onclick: () => this.autoEquip(idx) }, 'Надеть'));
+        btns.append(h('button', { class: 'btn', title: 'Оставить вещь здесь — насовсем', onclick: () => { G.stash.splice(idx, 1); this.note = `Выброшено: ${itemName(iid!)}.`; this.sel = null; this.render(); } }, 'Выбросить'));
       } else {
         const slot = this.sel.slot;
         btns.append(h('button', { class: 'btn', onclick: () => this.unequip(slot) }, 'Снять в обоз'));

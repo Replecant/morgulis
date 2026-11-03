@@ -4,7 +4,8 @@
 //  расходники продаются пачками без ограничений.
 // ============================================================
 import { G } from './state';
-import { CONSUMABLES, CONS_ORDER, ConsId, sellPrice, KIND_NAMES, itemStatLines, itemOf, itemName, itemPrice, condOf, withCond, repairPrice } from './items';
+import { CONSUMABLES, CONS_ORDER, ConsId, sellPrice, KIND_NAMES, itemStatLines, itemOf, itemName, itemPrice, condOf, withCond, repairPrice, itemWt, CONS_WT } from './items';
+import { load, capacity, overload, LOAD_NAME, fmtKg } from './load';
 import { drawItemIcon, KIND_COLOR } from './inventory';
 import { h } from './book';
 import { $, keepScroll } from './util';
@@ -175,7 +176,7 @@ export const Trade = {
     const buy: HTMLElement[] = [];
     for (const id of shop.cons) {
       const c = CONSUMABLES[id];
-      buy.push(row(icon(c.icon), c.name + (c.pack > 1 ? ` ×${c.pack}` : ''), `у вас: ${G.supplies[id]}`, `${c.price} ш.`, 'Купить', G.money >= c.price ? () => this.buyCons(id) : null, [c.name, c.desc]));
+      buy.push(row(icon(c.icon), c.name + (c.pack > 1 ? ` ×${c.pack}` : ''), `у вас: ${G.supplies[id]}`, `${c.price} ш.`, 'Купить', G.money >= c.price ? () => this.buyCons(id) : null, [c.name, c.desc, `Вес: ${fmtKg(CONS_WT[id] * c.pack)} кг`]));
     }
     for (const [id, n] of Object.entries(st)) {
       if (!n) continue;
@@ -186,7 +187,7 @@ export const Trade = {
     G.stash.forEach((id, idx) => {
       const it = itemOf(id), p = sellPrice(itemPrice(id)), rp = shop.repair ? repairPrice(id) : 0;
       if (rp) sell.push(row(icon(it.icon, KIND_COLOR[it.kind]), `Починить: ${it.name}`, condOf(id) === 'broken' ? 'сломано' : 'изношено', `${rp} ш.`, 'Починить', G.money >= rp ? () => this.repairItem(idx) : null, [itemName(id), 'Мастер приведёт оружие в идеальное состояние.', `Починка: ${rp} ш.`]));
-      sell.push(row(icon(it.icon, KIND_COLOR[it.kind]), itemName(id), KIND_NAMES[it.kind], `${p} ш.`, 'Продать', () => this.sellItem(idx), [itemName(id), it.desc, `Продажа: ${p} ш.`]));
+      sell.push(row(icon(it.icon, KIND_COLOR[it.kind]), itemName(id), KIND_NAMES[it.kind], `${p} ш.`, 'Продать', () => this.sellItem(idx), [itemName(id), it.desc, `Вес: ${fmtKg(itemWt(id))} кг · продажа: ${p} ш.`]));
     });
     for (const id of CONS_ORDER) {
       const c = CONSUMABLES[id];
@@ -197,7 +198,7 @@ export const Trade = {
     if (!sell.length) sell.push(h('div', { class: 'tempty' }, 'Продавать нечего. Надетые вещи сначала снимите в окне снаряжения.'));
 
     keepScroll($('trade'), '.tlist', () => $('trade').replaceChildren(h('div', { class: 'trade-box' },
-      h('div', { class: 'ttop' }, h('h2', {}, shop.name), h('div', { class: 'tmoney' }, 'Ваши шиллинги: ', h('b', {}, String(G.money))),
+      h('div', { class: 'ttop' }, h('h2', {}, shop.name), h('div', { class: 'tmoney' }, 'Ваши шиллинги: ', h('b', {}, String(G.money)), h('span', { class: 'tload' + (overload() ? ' over' : '') }, ` · ⚖ ${fmtKg(load())} / ${capacity()} кг${overload() ? ' — ' + LOAD_NAME[overload()].toLowerCase() : ''}`)),
         h('button', { class: 'btn', onclick: () => this.close() }, 'Закрыть [Esc]')),
       h('div', { class: 'tcols' },
         h('div', { class: 'tcol' }, h('div', { class: 'th' }, 'Товар'), h('div', { class: 'tlist' }, ...buy)),

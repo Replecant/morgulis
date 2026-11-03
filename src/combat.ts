@@ -12,6 +12,7 @@ import { check, checkChance, CheckResult } from './rules';
 import { woundMods, effMaxHp, addWound, addWoundId, bandageAmount, medkitAmount, WOUNDS } from './wounds';
 import { AMMO_NAME } from './items';
 import { equipStats, itemOf, condOf, withCond } from './items';
+import { loadMovePen } from './load';
 import { PixelView, applyLight, PLight, T, PS, prect, ppx, pline, pellipse, shade, seeded as pseed, outline } from './px';
 import { drawSprite, combatKind } from './sprites';
 import { paintTile, objSprite } from './pxworld';
@@ -80,7 +81,7 @@ function mkUnit(b: UnitBase, team: Unit['team'], x: number, y: number): Unit {
   if (player && hasProsth(b, 'galvanic')) abil.galvanic = 1; // гальваническая рука
   const u: Unit = {
     uid: ++UID, team, base: b, name: b.name, kind: b.look ?? b.kind, x, y, px: x * CT + CT / 2, py: y * CT + CT / 2,
-    hp: b.hp, maxHp: player ? effMaxHp(b) : b.maxHp, move: Math.max(2, b.move + m.move + (e?.move ?? 0)), ap: 0,
+    hp: b.hp, maxHp: player ? effMaxHp(b) : b.maxHp, move: Math.max(2, b.move + m.move + (e?.move ?? 0) - (player && e ? loadMovePen() : 0)), ap: 0,
     weapons: e ? e.weapons : b.weapons.slice(), ammo: {}, abil,
     atkM: b.atkM + m.atkM + (e?.atkM ?? 0), atkR: b.atkR + m.atkR + (e?.atkR ?? 0), def: b.def + m.def + (e?.def ?? 0),
     armor: (b.armor ?? 0) + (e?.armor ?? 0), dmgM: b.dmgM ?? 0,
@@ -157,6 +158,7 @@ export const Combat = {
     this.view = this.view ?? new PixelView(W / PS, H / PS);
     this.renderBg();
     this.hooks.log(`— ${def.title} —`);
+    if (loadMovePen()) this.hooks.log(`Отряд перегружен: −${loadMovePen()} к перемещению каждому бойцу.`);
     this.startPlayerTurn();
   },
 

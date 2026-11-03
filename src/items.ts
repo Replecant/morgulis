@@ -162,6 +162,23 @@ export const SQUAD_EQUIP: Record<string, Equip> = {
 /** Что лежит в обозе в начале игры (кроме спецснаряжения профессии). */
 export const START_STASH: string[] = [];
 
+// ------------------------------------------------------------ вес (кг), см. load.ts
+/** Вес вещей, кг. */
+export const ITEM_WT: Record<string, number> = {
+  knife: 0.5, saber: 1.5, revolver: 1.2, autopistol: 1, carbine: 3.5, rifle: 4.5, huntrifle: 5, shotgun2: 3.5, sawnoff: 2.5,
+  pumpshot: 4, mg: 11, flamer: 18, exprifle: 5, musket: 5, hammer: 6, wrench: 2, axe: 3, trenchclub: 1.5, spade: 1.5, rdagger: 0.4,
+  cap: 0.2, helmet: 1.2, steelhelm: 2.5, gasmask: 1, smask: 1, goggles: 0.3,
+  clothes: 1, greatcoat: 3, leather: 4, quilted: 6, cuirass: 10, sapper: 18, chitin: 4, apron: 2,
+  gloves: 0.3, shootgloves: 0.2, boots: 1.5, greaves: 3,
+  rabbitfoot: 0.1, wormwood: 0.1, locket: 0.1,
+  tools: 6, lockpicks: 0.3, surgerykit: 3, grimoire: 1.5, ritualkit: 2, oillamp: 1.5, elamp: 2,
+};
+/** Вес одной штуки расходника, кг (патроны — за патрон). */
+export const CONS_WT: Record<ConsId, number> = {
+  bandage: 0.1, medkit: 1, antiseptic: 0.3, painkiller: 0.1, ammo_pistol: 0.02, ammo_rifle: 0.03, ammo_shell: 0.05, ammo_mg: 0.04,
+  grenade: 0.6, dynamite: 0.3, smoke: 0.5, filter: 0.3, tissue: 0.4, ration: 0.5,
+};
+
 // ------------------------------------------------------------ состояние оружия
 // Экземпляр в обозе или в слоте — строка id: «rifle» (идеальное), «rifle~w» (изношенное), «rifle~b» (сломанное).
 export type Cond = 'ok' | 'worn' | 'broken';
@@ -171,6 +188,7 @@ export const condOf = (id: string): Cond => (id.endsWith('~w') ? 'worn' : id.end
 export const withCond = (id: string, c: Cond) => baseId(id) + (c === 'worn' ? '~w' : c === 'broken' ? '~b' : '');
 /** Предмет по id экземпляра (с пометкой состояния или без). */
 export const itemOf = (id: string): Item => ITEMS[baseId(id)];
+export const itemWt = (id: string) => ITEM_WT[baseId(id)] ?? 1;
 /** Название с состоянием: «Армейская винтовка (изношенная)». */
 export const itemName = (id: string) => { const c = condOf(id); return itemOf(id).name + (c === 'worn' ? ' (изношено)' : c === 'broken' ? ' (сломано)' : ''); };
 /** Цена экземпляра с учётом износа. */
@@ -232,6 +250,6 @@ export function itemStatLines(id: string): string[] {
   if (it.splinter) out.push('Осколки, дробь и огонь: −1 урона');
   if (it.courage) out.push(`Кураж в начале боя +${it.courage}`);
   if (it.tool) out.push(it.tool);
-  out.push(`Цена: ${itemPrice(id)} ш.`);
+  out.push(`Вес: ${String(itemWt(id)).replace('.', ',')} кг · цена: ${itemPrice(id)} ш.`);
   return out;
 }
