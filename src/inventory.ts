@@ -2,7 +2,7 @@
 //  Окно снаряжения: «человечек» со слотами + общий обоз
 //  Перетаскивание мышью, клик-выбор, двойной клик — надеть/снять.
 // ============================================================
-import { G, hasTool, gearBonus } from './state';
+import { G, hasRepairKit, gearBonus } from './state';
 import { check, skillBonus, DC } from './rules';
 import { load, capacity, carryOf, overload, LOAD_NAME, fmtKg } from './load';
 import { UnitBase } from './data';
@@ -69,6 +69,11 @@ function drawItemIconVec(c: CanvasRenderingContext2D, icon: string, S = 52) {
     case 'paw': c.fillStyle = '#b0a080'; c.beginPath(); c.ellipse(26, 32, 7, 11, -0.3, 0, TAU); c.fill(); for (const [x, y] of [[20, 20], [26, 17], [32, 20]]) { c.beginPath(); c.arc(x, y, 3, 0, TAU); c.fill(); } L([30, 42, 36, 48], '#8a6a3a', 2); break;
     case 'herb': c.fillStyle = '#6a5a3a'; c.beginPath(); c.ellipse(26, 32, 11, 12, 0, 0, TAU); c.fill(); L([20, 22, 26, 18, 32, 22], '#3a2a1a', 2); L([26, 18, 26, 8], '#7a9a5a', 2); L([26, 12, 20, 6], '#7a9a5a', 2); L([26, 12, 32, 7], '#7a9a5a', 2); break;
     case 'locket': L([18, 6, 26, 18, 34, 6], '#b09040', 1.5); c.fillStyle = '#c0a050'; c.beginPath(); c.ellipse(26, 30, 10, 12, 0, 0, TAU); c.fill(); c.fillStyle = '#e8dcc0'; c.beginPath(); c.ellipse(26, 30, 6, 8, 0, 0, TAU); c.fill(); c.fillStyle = '#5a4a3a'; c.beginPath(); c.arc(26, 28, 2.5, 0, TAU); c.fill(); break;
+    case 'bayonet': L([16, 40, 40, 14], '#cfd0c8', 2.4); L([12, 44, 18, 38], '#3a3a36', 4); R(15, 36, 6, 2, '#888'); break;
+    case 'ctools': R(8, 20, 36, 14, '#5a3a22'); R(8, 20, 36, 3, '#6a4a2a'); for (let i = 0; i < 5; i++) L([13 + i * 6, 24, 13 + i * 6, 12 + (i % 2) * 3], steel, 2); R(8, 33, 36, 3, '#3a2414'); break;
+    case 'gauges': R(8, 22, 36, 16, '#3a2a1e'); c.fillStyle = '#d8d0b0'; c.beginPath(); c.arc(36, 18, 8, 0, TAU); c.fill(); L([36, 18, 40, 13], '#2a2622', 1.5); c.strokeStyle = '#8a6a30'; c.lineWidth = 2; c.beginPath(); c.arc(36, 18, 8, 0, TAU); c.stroke(); L([10, 12, 10, 30], steel, 2.5); L([10, 12, 22, 12], steel, 2.5); L([16, 12, 16, 20], steel, 2); break;
+    case 'flask': c.fillStyle = '#4a4e3a'; c.beginPath(); c.ellipse(26, 30, 13, 15, 0, 0, TAU); c.fill(); R(22, 8, 8, 8, '#7a7c78'); R(21, 6, 10, 3, '#3a3a36'); L([14, 22, 38, 22], '#3a2a1a', 2); c.fillStyle = '#5a5e48'; c.beginPath(); c.ellipse(22, 28, 4, 8, 0, 0, TAU); c.fill(); break;
+    case 'parts': c.strokeStyle = steel; c.lineWidth = 2.5; c.beginPath(); for (let i = 0; i < 4; i++) { c.moveTo(10, 14 + i * 4); c.lineTo(22, 16 + i * 4); } c.stroke(); c.fillStyle = '#8a8a84'; c.beginPath(); c.arc(34, 20, 7, 0, TAU); c.fill(); c.fillStyle = '#2a2622'; c.beginPath(); c.arc(34, 20, 2.5, 0, TAU); c.fill(); L([14, 38, 40, 38], '#b08a40', 3); R(12, 34, 5, 8, '#9a9c98'); break;
     case 'carbine': L([10, 38, 40, 18], wood, 5); L([30, 25, 44, 15], steel, 2.5); R(20, 28, 4, 4, dark); break;
     case 'sawnoff': L([12, 36, 26, 28], wood, 7); L([24, 28, 40, 20], steel, 3); L([24, 32, 40, 24], steel, 3); break;
     case 'mg': L([6, 36, 26, 30], wood, 6); R(20, 24, 22, 7, '#3a3c38'); L([40, 27, 50, 25], steel, 3); R(24, 31, 8, 7, '#4a4c40'); L([36, 31, 32, 44], '#555', 2); L([38, 31, 42, 44], '#555', 2); for (let i = 0; i < 4; i++) R(12 + i * 3, 33 + i * 2, 2, 4, '#c0a060'); break;
@@ -229,13 +234,14 @@ export const Inventory = {
   /** Починка изношенного оружия в походе: нужен набор инструментов, проверка Механики героя. */
   fieldRepair(idx: number) {
     const id = G.stash[idx];
-    if (!id || condOf(id) !== 'worn' || !hasTool('tools') || !G.pc) return;
+    if (!id || condOf(id) !== 'worn' || !hasRepairKit() || !G.pc) return;
+    if (G.supplies.parts <= 0) { this.note = 'Нет запасных деталей — чинить нечем.'; this.render(); return; }
     const lock = G.checkLock.repair ?? -1;
     if (lock > G.clock) { this.note = `Руки ещё не дошли: следующая попытка — через ${Math.ceil(lock - G.clock)} ч.`; this.render(); return; }
     const bonus = skillBonus(G.pc, 'mechanics') + gearBonus('mechanics'), r = check(bonus, DC.normal);
     const rt = `[Механика: d20 ${r.roll}${bonus >= 0 ? '+' : ''}${bonus} против ${DC.normal}]`;
     G.clock += 1;
-    if (r.success) { G.stash[idx] = withCond(id, 'ok'); this.note = `${itemOf(id).name}: разобрано, вычищено, собрано — снова в идеальном состоянии. ${rt}`; }
+    if (r.success) { G.stash[idx] = withCond(id, 'ok'); G.supplies.parts--; this.note = `${itemOf(id).name}: разобрано, вычищено, собрано — снова в идеальном состоянии. ${rt}`; }
     else { G.checkLock.repair = G.clock + 24; this.note = `${itemOf(id).name}: не выходит — нужна деталь или свежая голова. Следующая попытка через сутки. ${rt}`; }
     this.sel = r.success ? this.sel : null; this.render();
   },
@@ -426,7 +432,7 @@ export const Inventory = {
       const btns = h('div', { class: 'dbtns' });
       if (this.sel.from === 'stash') {
         const idx = this.sel.idx;
-        if (it.weapon && condOf(iid!) === 'worn' && hasTool('tools')) btns.append(h('button', { class: 'btn', title: 'Набор инструментов: изношенное — в идеальное. Час работы. Провал — следующая попытка через сутки.', onclick: () => this.fieldRepair(idx) }, `Починить [Механика ${DC.normal}]`));
+        if (it.weapon && condOf(iid!) === 'worn' && hasRepairKit()) btns.append(h('button', { class: 'btn', disabled: G.supplies.parts <= 0, title: G.supplies.parts > 0 ? `Инструменты: изношенное — в идеальное, уходит 1 запасная деталь (есть ${G.supplies.parts}). Час работы. Провал — следующая попытка через сутки.` : 'Нужны запасные детали', onclick: () => this.fieldRepair(idx) }, `Починить [Механика ${DC.normal}]`));
         if (it.kind !== 'tool' && condOf(iid!) !== 'broken') btns.append(h('button', { class: 'btn', onclick: () => this.autoEquip(idx) }, 'Надеть'));
         btns.append(h('button', { class: 'btn', title: 'Оставить вещь здесь — насовсем', onclick: () => { G.stash.splice(idx, 1); this.note = `Выброшено: ${itemName(iid!)}.`; this.sel = null; this.render(); } }, 'Выбросить'));
       } else {

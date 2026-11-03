@@ -56,6 +56,7 @@ const W = (id: string, weapon: string, icon: string, price: number, desc: string
 export const ITEMS: Record<string, Item> = {
   // ---------------- оружие
   knife:      W('knife', 'knife', 'knife', 8, 'Короткий боевой нож. Всегда под рукой.'),
+  bayonet:    W('bayonet', 'bayonet', 'bayonet', 6, 'Плоский игольчатый штык в ножнах. Можно примкнуть к винтовке — а можно бить и так.'),
   saber:      W('saber', 'saber', 'blade', 25, 'Офицерская сабля. Знак чина — и острая сталь.'),
   revolver:   W('revolver', 'revolver', 'pistol', 35, 'Шестизарядный револьвер армейского образца. Пистолетные патроны.'),
   autopistol: W('autopistol', 'autopistol', 'autopistol', 60, 'Самозарядный пистолет: магазин на 8 патронов, быстрая перезарядка обоймой.'),
@@ -107,13 +108,16 @@ export const ITEMS: Record<string, Item> = {
   lockpicks:  { id: 'lockpicks', name: 'Отмычки', kind: 'tool', icon: 'picks', price: 20, tool: 'Без них замки не вскрыть.', desc: 'Связка тонких крючков и натяжителей в кожаном футляре.' },
   surgerykit: { id: 'surgerykit', name: 'Хирургический набор', kind: 'tool', icon: 'surgkit', price: 40, tool: 'Без него нельзя оперировать.', desc: 'Скальпели, зажимы, пила и кетгут в саквояже.' },
   grimoire:   { id: 'grimoire', name: 'Оккультный гримуар', kind: 'tool', icon: 'grimoire', price: 60, tool: 'Оккультисту — на один знак больше.', desc: 'Рукописная книга в почерневшем переплёте. Половина страниц исписана чужими почерками.' },
+  ctools:     { id: 'ctools', name: 'Компактный набор инструментов', kind: 'tool', icon: 'ctools', price: 25, tool: 'Без него не разобрать механизм и не починить оружие в походе.', desc: 'Складные ключи, отвёртки и щупы в плоском кожаном свёртке. Помещается за пазухой.' },
+  gauges:     { id: 'gauges', name: 'Измерительные инструменты', kind: 'tool', icon: 'gauges', price: 20, desc: 'Штангенциркуль, манометр, щупы и отвес в кожаном футляре.' },
+  flask:      { id: 'flask', name: 'Фляга', kind: 'tool', icon: 'flask', price: 3, desc: 'Солдатская фляга в суконном чехле. Вода во флягах всегда отдаёт железом.' },
   oillamp:    { id: 'oillamp', name: 'Масляный фонарь', kind: 'tool', icon: 'oillamp', lamp: 1, price: 15, tool: 'Свет вокруг отряда шире; в туман, дождь и бурю легче держать путь и замечать места.', desc: 'Жестяной фонарь со стеклом и фитилём. Коптит, пахнет жучьим жиром, но светит.' },
   elamp:      { id: 'elamp', name: 'Электрический фонарь', kind: 'tool', icon: 'elamp', lamp: 2, price: 90, rare: true, tool: 'Яркий луч: свет вокруг отряда намного шире; непогода почти не сбивает с пути, места видны издалека.', desc: 'Латунный фонарь с гальванической батареей. Редкая вещь: работает ровно и долго, и не гаснет на ветру.' },
   ritualkit:  { id: 'ritualkit', name: 'Ритуальные принадлежности', kind: 'tool', icon: 'ritual', price: 30, tool: 'Нужны для обрядов, в том числе для оккультного протеза.', desc: 'Мел, свечи из жучьего жира, сушёные травы, медная чаша.' },
 };
 
 // ------------------------------------------------------------ расходники
-export type ConsId = 'bandage' | 'medkit' | 'antiseptic' | 'painkiller' | 'ammo_pistol' | 'ammo_rifle' | 'ammo_shell' | 'ammo_mg' | 'grenade' | 'dynamite' | 'smoke' | 'filter' | 'ration' | 'tissue';
+export type ConsId = 'bandage' | 'medkit' | 'antiseptic' | 'painkiller' | 'ammo_pistol' | 'ammo_rifle' | 'ammo_shell' | 'ammo_mg' | 'grenade' | 'dynamite' | 'parts' | 'smoke' | 'filter' | 'ration' | 'tissue';
 export interface Consumable { id: ConsId; name: string; icon: string; price: number; pack: number; desc: string; short: string }
 export const CONSUMABLES: Record<ConsId, Consumable> = {
   bandage:     { id: 'bandage', name: 'Бинты', short: 'Бинты', icon: 'bandage', price: 3, pack: 1, desc: 'Перевязка: +3 ОЗ и бонус Медицины. В бою — 1 ОД, поднимает тяжелораненого.' },
@@ -127,32 +131,33 @@ export const CONSUMABLES: Record<ConsId, Consumable> = {
   grenade:     { id: 'grenade', name: 'Ручная граната', short: 'Гранаты', icon: 'grenade', price: 20, pack: 1, desc: 'Бросок до 5 клеток. Взрыв 3×3, урон 3–5 — и своим тоже.' },
   dynamite:    { id: 'dynamite', name: 'Динамитная шашка', short: 'Динамит', icon: 'dynamite', price: 14, pack: 1, desc: 'Бросок до 4 клеток. Взрыв 3×3, урон 5–8 — и своим тоже; мешки, ящики и заборы в облаке разносит в щепки.' },
   smoke:       { id: 'smoke', name: 'Дымовая граната', short: 'Дым', icon: 'smoke', price: 12, pack: 1, desc: 'Облако 3×3 на два хода: закрывает обзор, стоящим в дыму +3 к Защите.' },
+  parts:       { id: 'parts', name: 'Запасные детали', short: 'Детали', icon: 'parts', price: 5, pack: 1, desc: 'Пружины, бойки, винты и шплинты. Одна уходит на каждую удачную починку оружия в походе.' },
   filter:      { id: 'filter', name: 'Сменный фильтр', short: 'Фильтры', icon: 'filter', price: 6, pack: 1, desc: 'Коробка фильтра для противогаза. В газовом облаке одного хватает часа на три.' },
   tissue:      { id: 'tissue', name: 'Тканевый раствор', short: 'Раствор', icon: 'bottle', price: 12, pack: 1, desc: 'Мутная склянка из подпольной мастерской. Плотяной руке нужен раз в 3 дня, иначе — отторжение.' },
   ration:      { id: 'ration', name: 'Паёк', short: 'Пайки', icon: 'ration', price: 4, pack: 1, desc: 'Сухари, солонина или вяленое жучье мясо. Отряд съедает паёк раз в сутки; привал тоже стоит пайка.' },
 };
-export const CONS_ORDER: ConsId[] = ['bandage', 'medkit', 'antiseptic', 'painkiller', 'ammo_pistol', 'ammo_rifle', 'ammo_shell', 'ammo_mg', 'grenade', 'dynamite', 'smoke', 'filter', 'ration', 'tissue'];
+export const CONS_ORDER: ConsId[] = ['bandage', 'medkit', 'antiseptic', 'painkiller', 'ammo_pistol', 'ammo_rifle', 'ammo_shell', 'ammo_mg', 'grenade', 'dynamite', 'smoke', 'parts', 'filter', 'ration', 'tissue'];
 export const AMMO_NAME: Record<string, string> = { ammo_pistol: 'пист.', ammo_rifle: 'винт.', ammo_shell: 'дроб.', ammo_mg: 'лент.' };
 
 export type Equip = Partial<Record<Slot, string>>;
 
 /** Стартовое снаряжение героя по профессии. */
 export const PROF_EQUIP: Record<ProfId, Equip> = {
-  soldier:    { main: 'rifle', side: 'knife', head: 'helmet', body: 'greatcoat' },
-  shooter:    { main: 'huntrifle', side: 'revolver', head: 'cap', body: 'clothes', hands: 'shootgloves' },
-  saboteur:   { main: 'autopistol', side: 'knife', head: 'cap', body: 'leather' },
-  occultist:  { main: 'revolver', side: 'knife', head: 'cap', body: 'clothes', charm: 'wormwood' },
-  technician: { main: 'shotgun2', side: 'wrench', head: 'cap', face: 'gasmask', body: 'apron', hands: 'gloves' },
-  medic:      { main: 'revolver', side: 'knife', head: 'cap', body: 'clothes' },
+  soldier:    { main: 'rifle', side: 'bayonet', body: 'greatcoat' },
+  shooter:    { main: 'huntrifle', side: 'knife', body: 'clothes' },
+  saboteur:   { main: 'autopistol', side: 'knife', body: 'clothes' },
+  occultist:  { main: 'autopistol~w', side: 'rdagger', body: 'clothes' },
+  technician: { main: 'autopistol', body: 'clothes' },
+  medic:      { main: 'revolver', body: 'clothes' },
 };
 /** Стартовые припасы, спецснаряжение и деньги по профессии. */
 export const PROF_START: Record<ProfId, { money: number; tools: string[]; cons: Partial<Record<ConsId, number>> }> = {
-  soldier:    { money: 15, tools: [], cons: { ammo_rifle: 20, grenade: 1, bandage: 2 } },
-  shooter:    { money: 20, tools: [], cons: { ammo_rifle: 20, ammo_pistol: 12, bandage: 2 } },
-  saboteur:   { money: 25, tools: ['lockpicks'], cons: { ammo_pistol: 24, grenade: 1, dynamite: 2, smoke: 1, bandage: 1 } },
-  occultist:  { money: 30, tools: ['grimoire', 'ritualkit'], cons: { ammo_pistol: 12, bandage: 2 } },
-  technician: { money: 20, tools: ['tools'], cons: { ammo_shell: 12, grenade: 1, filter: 2, bandage: 1 } },
-  medic:      { money: 20, tools: ['surgerykit'], cons: { ammo_pistol: 12, bandage: 4, medkit: 1, antiseptic: 2, painkiller: 1 } },
+  soldier:    { money: 15, tools: ['flask'], cons: { ammo_rifle: 10, bandage: 1 } },
+  shooter:    { money: 20, tools: [], cons: { ammo_rifle: 20 } },
+  saboteur:   { money: 25, tools: ['lockpicks', 'ctools'], cons: { ammo_pistol: 8 } },
+  occultist:  { money: 30, tools: ['grimoire', 'ritualkit'], cons: { ammo_pistol: 8 } },
+  technician: { money: 20, tools: ['tools', 'gauges'], cons: { ammo_pistol: 8, parts: 3 } },
+  medic:      { money: 20, tools: ['surgerykit'], cons: { ammo_pistol: 6, bandage: 3, antiseptic: 1 } },
 };
 export const SQUAD_EQUIP: Record<string, Equip> = {
   halloway: { main: 'rifle', side: 'knife', head: 'helmet', body: 'greatcoat' },
@@ -171,12 +176,12 @@ export const ITEM_WT: Record<string, number> = {
   clothes: 1, greatcoat: 3, leather: 4, quilted: 6, cuirass: 10, sapper: 18, chitin: 4, apron: 2,
   gloves: 0.3, shootgloves: 0.2, boots: 1.5, greaves: 3,
   rabbitfoot: 0.1, wormwood: 0.1, locket: 0.1,
-  tools: 6, lockpicks: 0.3, surgerykit: 3, grimoire: 1.5, ritualkit: 2, oillamp: 1.5, elamp: 2,
+  tools: 6, ctools: 1.5, gauges: 1, flask: 0.8, bayonet: 0.5, lockpicks: 0.3, surgerykit: 3, grimoire: 1.5, ritualkit: 2, oillamp: 1.5, elamp: 2,
 };
 /** Вес одной штуки расходника, кг (патроны — за патрон). */
 export const CONS_WT: Record<ConsId, number> = {
   bandage: 0.1, medkit: 1, antiseptic: 0.3, painkiller: 0.1, ammo_pistol: 0.02, ammo_rifle: 0.03, ammo_shell: 0.05, ammo_mg: 0.04,
-  grenade: 0.6, dynamite: 0.3, smoke: 0.5, filter: 0.3, tissue: 0.4, ration: 0.5,
+  grenade: 0.6, dynamite: 0.3, parts: 0.2, smoke: 0.5, filter: 0.3, tissue: 0.4, ration: 0.5,
 };
 
 // ------------------------------------------------------------ состояние оружия

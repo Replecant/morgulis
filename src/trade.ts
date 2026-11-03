@@ -43,8 +43,8 @@ export const SHOPS: Record<string, Shop> = {
   },
   hailstone: {
     name: 'Скупщик лома — Хейлстоун', greet: 'Всё, что звенит, — ко мне. Кое-что из найденного продам.',
-    items: { helmet: 1, tools: 1, smask: 1, spade: 1, 'carbine~w': 1, 'rifle~w': 1, 'mg~b': 1 },
-    cons: ['ration', 'ammo_rifle'], repair: true,
+    items: { helmet: 1, tools: 1, ctools: 1, gauges: 1, smask: 1, spade: 1, 'carbine~w': 1, 'rifle~w': 1, 'mg~b': 1 },
+    cons: ['parts', 'ration', 'ammo_rifle'], repair: true,
   },
   mossley: {
     name: 'Ровена — Мосслей', greet: 'Сушёные грибы, вяленое жучье мясо, настойка от боли.',
@@ -53,14 +53,14 @@ export const SHOPS: Record<string, Shop> = {
   },
   bquarter: {
     name: 'Интендант — форт баронессы', greet: 'Казённое снаряжение. Каждая вещь — по ведомости.',
-    items: { rifle: 2, carbine: 2, spade: 2, helmet: 2, steelhelm: 1, greatcoat: 2, quilted: 1, boots: 1, gloves: 1, goggles: 1, oillamp: 1 },
+    items: { rifle: 2, carbine: 2, bayonet: 2, spade: 2, helmet: 2, steelhelm: 1, greatcoat: 2, quilted: 1, boots: 1, gloves: 1, goggles: 1, oillamp: 1 },
     cons: ['ammo_rifle', 'ammo_pistol', 'ammo_mg', 'grenade', 'ration', 'bandage', 'medkit'], repair: true,
   },
   // ---------------- юг: земли Винферда
-  greywell: { name: 'Контора промысла — Грейвелл', greet: 'По накладной и с квитанцией. Иначе — никак.', items: { wrench: 1, gloves: 1, goggles: 1, oillamp: 1 }, cons: ['ration', 'filter', 'bandage'], repair: true },
+  greywell: { name: 'Контора промысла — Грейвелл', greet: 'По накладной и с квитанцией. Иначе — никак.', items: { wrench: 1, gloves: 1, goggles: 1, oillamp: 1 }, cons: ['parts', 'ration', 'filter', 'bandage'], repair: true },
   bramley: { name: 'Старший погонщик — Брэмли', greet: 'Мясо, панцирь — всё с номером.', items: { chitin: 2 }, cons: ['ration'] },
   willowbrook: { name: 'Староста — Уиллоубрук', greet: 'Рыба вяленая, грибы сушёные, настойка от боли.', items: { wormwood: 1 }, cons: ['ration', 'painkiller'] },
-  ironcliff: { name: 'Штейгер — Айронклифф', greet: 'Каски, инструмент, патроны со склада. Всё казённое — с клеймом.', items: { helmet: 2, tools: 1, boots: 1, hammer: 1, oillamp: 2, goggles: 1 }, cons: ['ammo_rifle', 'dynamite', 'ration'], repair: true },
+  ironcliff: { name: 'Штейгер — Айронклифф', greet: 'Каски, инструмент, патроны со склада. Всё казённое — с клеймом.', items: { helmet: 2, tools: 1, boots: 1, hammer: 1, oillamp: 2, goggles: 1 }, cons: ['parts', 'ammo_rifle', 'dynamite', 'ration'], repair: true },
   wf_market: { name: 'Торговые ряды — форт Винферда', greet: 'Лучший выбор по эту сторону пустоши. Ценники, клейма, квитанции.', items: { rifle: 1, carbine: 1, huntrifle: 1, revolver: 1, autopistol: 1, pumpshot: 1, mg: 1, greatcoat: 1, quilted: 1, leather: 1, steelhelm: 1, boots: 2, gloves: 1, gasmask: 1, smask: 1, goggles: 1, oillamp: 1, elamp: 1, cap: 1 }, repair: true, cons: ['ammo_pistol', 'ammo_rifle', 'ammo_shell', 'ammo_mg', 'grenade', 'dynamite', 'smoke', 'ration', 'bandage', 'medkit', 'antiseptic', 'painkiller', 'filter'] },
   // ---------------- ковен
   coven: { name: 'Старшая ведьма — ковен', greet: 'Бери, что глянется. Платят у нас по-разному — сегодня шиллингами.', items: { ritualkit: 2, grimoire: 1, rdagger: 1, locket: 1, rabbitfoot: 1 }, cons: ['painkiller', 'tissue'] },
@@ -98,7 +98,7 @@ export const SHOPS: Record<string, Shop> = {
   market: {
     name: 'Торговец — рынок Среднего города', greet: 'Лучший товар в округе. Цены — тоже лучшие. Для меня.',
     items: { revolver: 1, autopistol: 1, carbine: 1, rifle: 1, huntrifle: 1, shotgun2: 1, pumpshot: 1, mg: 1, saber: 1, hammer: 1, trenchclub: 1, spade: 1, greatcoat: 1, gloves: 1, boots: 1, apron: 1, tools: 1, lockpicks: 1, grimoire: 1, helmet: 2, steelhelm: 1, smask: 1, goggles: 1, quilted: 1, cuirass: 1, sapper: 1, greaves: 1, shootgloves: 1, oillamp: 1, elamp: 1, flamer: 1, exprifle: 1, 'shotgun2~w': 1 },
-    cons: ['ammo_pistol', 'ammo_rifle', 'ammo_shell', 'ammo_mg', 'grenade', 'dynamite', 'smoke', 'ration'], repair: true,
+    cons: ['ammo_pistol', 'ammo_rifle', 'ammo_shell', 'ammo_mg', 'grenade', 'dynamite', 'smoke', 'parts', 'ration'], repair: true,
   },
 };
 

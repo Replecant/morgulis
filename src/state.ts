@@ -57,6 +57,9 @@ export function journal(): { text: string; done: boolean }[] {
 /** Есть ли у отряда предмет (спецснаряжение лежит в обозе). */
 export const hasTool = (id: string) => G.stash.includes(id) || G.squad.some((b) => Object.values(b.equip ?? {}).includes(id));
 
+/** Есть чем чинить и разбирать механизмы: большой или компактный набор инструментов. */
+export const hasRepairKit = () => hasTool('tools') || hasTool('ctools');
+
 /** Фонарь отряда: 0 — нет, 1 — масляный, 2 — электрический. */
 export const lampLevel = () => (hasTool('elamp') ? 2 : hasTool('oillamp') ? 1 : 0);
 
