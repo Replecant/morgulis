@@ -726,6 +726,7 @@ export const Explore = {
     NPC('wallace', 'Уоллес, погонщик', 'herder', 66, 19, 'wallace');
     NPC('hob', 'Хоб, мясник', 'butcher', 75, 26, 'hob');
     NPC('penny', 'Пенни, пастушка', 'girl', 84, 19, 'penny');
+    NPC('alex', 'Александр', 'alex', 70, 21, 'alex', () => !G.flags.alexJoined);
     NPC('agnes', 'Агнес, старшая грибница', 'grower', 10, 23, 'agnes');
     NPC('toby', 'Тоби, сборщик', 'picker', 7, 18, 'toby');
     NPC('abe', 'Слепой Эйб', 'miner', 21, 15, 'abe');

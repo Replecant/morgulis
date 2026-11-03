@@ -115,6 +115,15 @@ export function makeLeader(c: Character): UnitBase {
   };
 }
 
+/** Александр — мальчишка из Ричморда, мечтает о приключениях. Самый лёгкий и быстрый в отряде — и самый хилый. */
+export function makeAlex(): UnitBase {
+  return {
+    id: 'alex', name: 'Александр', kind: 'alex', hp: 6, maxHp: 6, move: 5,
+    weapons: ['knife'], atkM: 0, atkR: 0, def: 12, armor: 0, dmgM: 0, horror: -1, med: 0, wounds: [],
+    equip: { main: 'knife', head: 'cap', body: 'clothes' }, abil: {},
+  };
+}
+
 /** Игрок начинает один — отряд пока состоит только из героя. */
 export function makeSquad(c: Character): UnitBase[] {
   return [makeLeader(c)];

@@ -10,6 +10,7 @@ import { World, clockText, LOCS } from './worldmap';
 import { Combat, CT } from './combat';
 import { Dialog, refreshHud, exploreHint, toast, combatShow, combatLog, combatPanel, screen, hideScreen, openSquad, closeSquad, squadOpen } from './ui';
 import { setPcStyle, applyEquipLooks } from './gfx';
+import { makeAlex } from './data';
 import { Inventory } from './inventory';
 import { Sheet } from './sheet';
 import { Music } from './music';
@@ -171,6 +172,7 @@ Dialog.onAction = (act) => {
   else if (act === 'rest') { toast(rest()); refreshHud(); }
   else if (act.startsWith('trade:')) { G.keys.clear(); Trade.show(act.slice(6), () => { refreshHud(); hint(); }); }
   else if (act === 'battle_scav') startBattle('ruins');
+  else if (act === 'recruit_alex') { if (!G.squad.some((s) => s.id === 'alex')) { G.squad.push(makeAlex()); applyEquipLooks(G.squad); if (G.mode === 'explore') Explore.enter(Explore.scene, Explore.player); toast('Александр в отряде'); refreshHud(); } }
   else if (act === 'battle_band') startBattle('band_' + (World.bandHit?.kinds.join('+') ?? 'bandit_gun+bandit_axe'));
   else if (act === 'band_calm') World.calmBand(24);
   else if (act === 'band_lose') World.calmBand(8);

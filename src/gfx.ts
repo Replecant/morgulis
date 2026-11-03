@@ -31,6 +31,7 @@ export const STYLES: Record<string, Style> = {
   elder: { coat: '#3f3a32', legs: '#24211c', hat: 'tophat', hatC: '#191715', beard: '#b8b4aa', skin: '#c4b29c' },
   widow: { coat: '#2b282d', dress: true, hat: 'bonnet', hatC: '#17151a', skin: '#c0ae98', weapon: 'pole' },
   priest: { coat: '#141414', dress: true, collar: true, hair: '#8a8a86', skin: '#c8b8a2' },
+  alex: { coat: '#5a4a35', legs: '#3a3226', belt: '#2a1d12', hat: 'flatcap', hatC: '#4a3a26', scale: 0.8, skin: '#d8c0a2', hair: '#8a5a2a', weapon: 'knife' },
   boy: { coat: '#5a4a35', legs: '#3a3226', hat: 'flatcap', hatC: '#3a3226', scale: 0.78, skin: '#d2bca0' },
   miner: { coat: '#3c382f', legs: '#2a2721', hat: 'minerhelm', hatC: '#5a4a2a', beard: '#6a655c', weapon: 'bottle' },
   militia: { coat: '#5a4a36', legs: '#2e2a22', hat: 'flatcap', hatC: '#2c2620', weapon: 'fork', skin: '#bfa88c' },
