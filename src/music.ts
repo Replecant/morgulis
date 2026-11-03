@@ -7,6 +7,8 @@
 //    и потом продолжаются с того же места.
 //  · Боевые темы — в бою: каждый бой начинается с начала случайного
 //    трека (не того, что был в прошлом бою), дальше — по очереди.
+//  Громкость треков выровнена: у каждого — поправка по измеренной громкости (LUFS),
+//  чтобы все звучали на одном уровне.
 //  Переходы плавные. Выключить/включить — в меню паузы (Esc), выбор запоминается.
 // ============================================================
 import theme1 from './assets/theme-1.mp3';
@@ -20,26 +22,34 @@ import battle3 from './assets/battle-3.mp3';
 const FADE = 1.2; // время затухания (с)
 let VOL = 0.55;   // громкость музыки 0..1 (настраивается в меню паузы)
 
+/** Трек с поправкой громкости: измеренная громкость (ffmpeg ebur128, LUFS) приводится к самому тихому треку. */
+const REF_LUFS = -14.1;
+type Track = { url: string; gain: number };
+const T = (url: string, lufs: number): Track => ({ url, gain: Math.min(1, Math.pow(10, (REF_LUFS - lufs) / 20)) });
+
 /** Дорожка: плейлист по кругу с плавной громкостью. */
 class Lane {
   cur = 0;
   a: HTMLAudioElement;
   playing = false;
-  constructor(private list: string[], private shuffle = false) {
+  constructor(private list: Track[], private shuffle = false) {
     if (shuffle) this.cur = Math.floor(Math.random() * list.length);
     this.a = this.make(0);
   }
   private make(vol: number) {
-    const a = new Audio(this.list[this.cur]);
+    const a = new Audio(this.list[this.cur].url);
     a.preload = 'auto'; a.volume = vol;
     a.onended = () => this.next();
     if (this.list.length === 1) a.loop = true;
     return a;
   }
+  /** Полная громкость текущего трека. */
+  full() { return VOL * this.list[this.cur].gain; }
   next() {
+    const prev = this.cur;
     if (this.shuffle && this.list.length > 1) { let n = this.cur; while (n === this.cur) n = Math.floor(Math.random() * this.list.length); this.cur = n; }
     else this.cur = (this.cur + 1) % this.list.length;
-    const vol = this.a.volume;
+    const vol = this.a.volume / this.list[prev].gain * this.list[this.cur].gain; // та же доля громкости у нового трека
     this.a.onended = null;
     this.a = this.make(vol);
     if (this.playing) this.a.play().catch(() => {});
@@ -55,17 +65,17 @@ class Lane {
       this.a.play().catch(() => {});
     }
     this.playing = want;
-    const target = want ? VOL : 0, step = (VOL / FADE) * dt, b = this.a;
-    b.volume = Math.max(0, Math.min(VOL, b.volume + Math.sign(target - b.volume) * Math.min(step, Math.abs(target - b.volume))));
+    const full = this.full(), target = want ? full : 0, step = (full / FADE) * dt, b = this.a;
+    b.volume = Math.max(0, Math.min(full, b.volume + Math.sign(target - b.volume) * Math.min(step, Math.abs(target - b.volume))));
     if (!want && b.volume === 0 && !b.paused) b.pause();
   }
-  setVol() { if (!this.a.paused && this.playing) this.a.volume = VOL; }
+  setVol() { if (!this.a.paused && this.playing) this.a.volume = this.full(); }
   state() { return { track: this.cur + 1, paused: this.a.paused, volume: +this.a.volume.toFixed(2), time: +this.a.currentTime.toFixed(1) }; }
 }
 
-const peace = new Lane([theme1, theme2, theme3], true);
-const menu = new Lane([menuTheme]);
-const battle = new Lane([battle1, battle2, battle3], true);
+const peace = new Lane([T(theme1, -12.8), T(theme2, -14.1), T(theme3, -11.5)], true);
+const menu = new Lane([T(menuTheme, -11.7)]);
+const battle = new Lane([T(battle1, -9.4), T(battle2, -8.3), T(battle3, -8.3)], true);
 
 let muted = false;
 try {

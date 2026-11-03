@@ -27,8 +27,8 @@ const hitBlunt = new Audio(hitBluntUrl); hitBlunt.preload = 'auto';
 const hitCut = new Audio(hitCutUrl); hitCut.preload = 'auto';
 const PISTOLS = new Set(['revolver', 'autopistol']);
 const SHOTGUNS = new Set(['shotgun2', 'pumpshot', 'sawnoff']);
-/** Холодное оружие: тупое и режущее/колющее. */
-const BLUNT = new Set(['hammer', 'wrench', 'trenchclub', 'fists', 'buttstock', 'cudgel']);
+/** Холодное оружие и укусы: тупое и режущее/колющее. */
+const BLUNT = new Set(['hammer', 'wrench', 'trenchclub', 'fists', 'buttstock', 'cudgel', 'houndbite', 'salbite']); // укусы — тоже тупой удар
 const CUT = new Set(['knife', 'saber', 'bayonet', 'rustbayonet', 'axe', 'rdagger', 'spade', 'pitchfork', 'claws', 'demonclaw']);
 /** Оружие, которому подходит звук выстрела ружья: длинноствольное. */
 const RIFLES = new Set(['rifle', 'huntrifle', 'carbine', 'musket', 'oldrifle', 'exprifle', 'mg']);
