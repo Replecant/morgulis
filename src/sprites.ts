@@ -160,7 +160,7 @@ function buildChar(kind: string, frame: number): HTMLCanvasElement {
   } else {
     if (st.longHair && st.hair) { R(7, hy + 1, 4, 10, shade(st.hair, -0.1)); P(7, hy + 11, shade(st.hair, -0.25)); P(10, hy + 11, shade(st.hair, -0.25)); } // волосы по плечам сзади
     R(hx0, hy, 6, 7, skin); R(hx0 + 5, hy, 1, 7, skinD);
-    P(hx0 + 1, hy + 3, skinD);                                      // ухо
+    // ухо не рисуем: точка в ряд с глазом читалась как второй, серый глаз
     if (st.hair) { R(hx0, hy - 1, 6, 2, st.hair); R(hx0, hy, 2, 4, st.hair); }
     if (st.longHair && st.hair) { // женская причёска: чёлка и прядь с лицевой стороны, спадающая на плечо
       const hd = shade(st.hair, -0.15), hl = shade(st.hair, 0.15);
