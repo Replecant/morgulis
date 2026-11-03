@@ -51,6 +51,7 @@ class Lane {
     else this.cur = (this.cur + 1) % this.list.length;
     const vol = this.a.volume / this.list[prev].gain * this.list[this.cur].gain; // та же доля громкости у нового трека
     this.a.onended = null;
+    this.a.pause(); // прежний трек замолкает: два трека одной дорожки не звучат разом
     this.a = this.make(vol);
     if (this.playing) this.a.play().catch(() => {});
   }
@@ -89,6 +90,17 @@ const unlock = () => { unlocked = true; };
 window.addEventListener('pointerdown', unlock, { once: true });
 window.addEventListener('keydown', unlock, { once: true });
 
+// Игра открыта в нескольких вкладках — музыка звучит только в той, где играют последней:
+// вкладка, в которой нажали клавишу или кликнули, «забирает» музыку, остальные затихают.
+let quiet = false;
+const TAB = Math.random().toString(36).slice(2);
+const chan = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('morgulis.music') : null;
+if (chan) chan.onmessage = (e) => { if (e.data?.claim && e.data.claim !== TAB) quiet = true; };
+const claim = () => { quiet = false; chan?.postMessage({ claim: TAB }); };
+window.addEventListener('pointerdown', claim);
+window.addEventListener('keydown', claim);
+window.addEventListener('focus', claim);
+
 export const Music = {
   /** следующий мирный трек (для отладки) */
   skip() { peace.next(); },
@@ -110,7 +122,7 @@ export const Music = {
   },
   /** Каждый кадр: inBattle — боевая тема, inMenu — тема меню, иначе мирные. */
   update(dt: number, inBattle: boolean, inMenu = false) {
-    const on = !muted && unlocked;
+    const on = !muted && unlocked && !quiet;
     menu.update(dt, on && inMenu && !inBattle);
     peace.update(dt, on && !inBattle && !inMenu);
     battle.update(dt, on && inBattle, true);
