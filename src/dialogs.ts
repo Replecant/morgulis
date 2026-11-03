@@ -3,7 +3,7 @@
 //  go — следующий узел, act — действие, do — эффект.
 //  Вариант может требовать проверку навыка: check { skill, dc, ok, fail }.
 // ============================================================
-import { G } from './state';
+import { G, hasTool } from './state';
 import type { SkillKey } from './rules';
 import { addWound, folkHeal } from './wounds';
 import { World } from './worldmap';
@@ -1084,7 +1084,7 @@ const WORLD_DIALOGS: Record<string, DTree> = {
 
   poi_lorry: { start: (g: Flags) => (F(g).lorryDone ? 'empty' : 'a'), nodes: {
     a: { s: 'nar', t: 'Остов имперского грузовика в ложбине — видно, съехал с тракта и завяз. Колёса со спицами вросли в землю, брезент на кузове истлел. Дизель давно растащили, но под рамой ещё что-то поблёскивает.', c: [
-      { t: '[Механика] Разобрать то, что осталось', check: { skill: 'mechanics', dc: 15, ok: 'ok', fail: 'fail' } },
+      { t: '[Механика] Разобрать то, что осталось (набор инструментов)', check: { skill: 'mechanics', dc: 15, ok: 'ok', fail: 'fail' }, if: () => hasTool('tools') },
       { t: 'Уйти', go: 'bye' },
     ] },
     ok: { s: 'nar', t: 'Вы снимаете с рамы армейский подсумок, прикрученный проволокой, и вытаскиваете из бардачка пачку бинтов. В подсумке — две гранаты. (Получено: 2 гранаты, 1 бинт.)', do: (g) => { F(g).lorryDone = true; g.supplies.grenade += 2; g.supplies.bandage += 1; } },
@@ -1159,7 +1159,7 @@ const WORLD_DIALOGS: Record<string, DTree> = {
   } },
   poi_bunker: { start: (g: Flags) => (F(g).bunkerDone ? 'empty' : 'a'), nodes: {
     a: { s: 'nar', t: 'Бетонный командный блиндаж врос в землю. Бронедверь на клёпках перекосило взрывом — она заклинила, но изнутри тянет сухим воздухом. Там, похоже, ничего не тронуто.', c: [
-      { t: '[Механика] Разобрать заклинивший запор', check: { skill: 'mechanics', dc: 15, ok: 'ok', fail: 'mfail' } },
+      { t: '[Механика] Разобрать заклинивший запор (набор инструментов)', check: { skill: 'mechanics', dc: 15, ok: 'ok', fail: 'mfail' }, if: () => hasTool('tools') },
       { t: '[Атлетика] Выбить дверь', check: { skill: 'athletics', dc: 18, ok: 'ok', fail: 'afail' } },
       { t: 'Уйти', go: 'bye' },
     ] },

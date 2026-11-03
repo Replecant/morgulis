@@ -60,11 +60,7 @@ export const hasTool = (id: string) => G.stash.includes(id) || G.squad.some((b) 
 /** Фонарь отряда: 0 — нет, 1 — масляный, 2 — электрический. */
 export const lampLevel = () => (hasTool('elamp') ? 2 : hasTool('oillamp') ? 1 : 0);
 
-/** Бонус спецснаряжения к проверке навыка. */
+/** Прибавка к проверке навыка героя от утраченных конечностей и протезов. Спецснаряжение бонусов не даёт — только доступ к действиям. */
 export function gearBonus(skill: SkillKey): number {
-  let b = limbSkill(G.squad[0], skill); // утраченные конечности и протезы героя
-  if (skill === 'mechanics' && hasTool('tools')) b += 2;
-  if (skill === 'stealth' && hasTool('lockpicks')) b += 2;
-  if (skill === 'medicine' && hasTool('surgerykit')) b += 2;
-  return b;
+  return limbSkill(G.squad[0], skill);
 }

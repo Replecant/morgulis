@@ -2,9 +2,10 @@
 //  Окно снаряжения: «человечек» со слотами + общий обоз
 //  Перетаскивание мышью, клик-выбор, двойной клик — надеть/снять.
 // ============================================================
-import { G } from './state';
+import { G, hasTool, gearBonus } from './state';
+import { check, skillBonus, DC } from './rules';
 import { UnitBase } from './data';
-import { ItemKind, SLOTS, SLOT_ORDER, Slot, KIND_NAMES, canEquip, equipStats, itemStatLines, CONSUMABLES, CONS_ORDER, Consumable, itemOf, itemName, condOf, COND_NAME } from './items';
+import { ItemKind, SLOTS, SLOT_ORDER, Slot, KIND_NAMES, canEquip, equipStats, itemStatLines, CONSUMABLES, CONS_ORDER, Consumable, itemOf, itemName, condOf, withCond, COND_NAME } from './items';
 import { woundMods, effMaxHp } from './wounds';
 import { drawFigure, applyEquipLooks } from './gfx';
 import { h } from './book';
@@ -167,10 +168,11 @@ export const Inventory = {
   sel: null as Sel,
   filter: 'all' as 'all' | ItemKind | 'armor',
   hover: null as string | null, // id экземпляра под курсором
+  note: '',                     // итог починки в походе
   onClose: () => {},
 
   show(onClose: () => void) {
-    this.open = true; this.onClose = onClose; this.sel = null;
+    this.open = true; this.onClose = onClose; this.sel = null; this.note = '';
     this.render();
     withFrame('inv', $('inv'), () => { if (this.open) $('inv').classList.remove('hidden'); });
   },
@@ -222,6 +224,19 @@ export const Inventory = {
     let slot = SLOT_ORDER.find((s) => SLOTS[s].kind === it.kind)!;
     if (it.kind === 'weapon') slot = !eq.main ? 'main' : !eq.side ? 'side' : 'main';
     this.equipFromStash(idx, slot);
+  },
+  /** Починка изношенного оружия в походе: нужен набор инструментов, проверка Механики героя. */
+  fieldRepair(idx: number) {
+    const id = G.stash[idx];
+    if (!id || condOf(id) !== 'worn' || !hasTool('tools') || !G.pc) return;
+    const lock = G.checkLock.repair ?? -1;
+    if (lock > G.clock) { this.note = `Руки ещё не дошли: следующая попытка — через ${Math.ceil(lock - G.clock)} ч.`; this.render(); return; }
+    const bonus = skillBonus(G.pc, 'mechanics') + gearBonus('mechanics'), r = check(bonus, DC.normal);
+    const rt = `[Механика: d20 ${r.roll}${bonus >= 0 ? '+' : ''}${bonus} против ${DC.normal}]`;
+    G.clock += 1;
+    if (r.success) { G.stash[idx] = withCond(id, 'ok'); this.note = `${itemOf(id).name}: разобрано, вычищено, собрано — снова в идеальном состоянии. ${rt}`; }
+    else { G.checkLock.repair = G.clock + 24; this.note = `${itemOf(id).name}: не выходит — нужна деталь или свежая голова. Следующая попытка через сутки. ${rt}`; }
+    this.sel = r.success ? this.sel : null; this.render();
   },
   /** Куда можно положить выбранную/перетаскиваемую вещь. */
   validSlots(id: string | undefined): Slot[] {
@@ -409,6 +424,7 @@ export const Inventory = {
       const btns = h('div', { class: 'dbtns' });
       if (this.sel.from === 'stash') {
         const idx = this.sel.idx;
+        if (it.weapon && condOf(iid!) === 'worn' && hasTool('tools')) btns.append(h('button', { class: 'btn', title: 'Набор инструментов: изношенное — в идеальное. Час работы. Провал — следующая попытка через сутки.', onclick: () => this.fieldRepair(idx) }, `Починить [Механика ${DC.normal}]`));
         if (it.kind !== 'tool' && condOf(iid!) !== 'broken') btns.append(h('button', { class: 'btn', onclick: () => this.autoEquip(idx) }, 'Надеть'));
       } else {
         const slot = this.sel.slot;
@@ -416,6 +432,7 @@ export const Inventory = {
       }
       box.querySelector('.dh')!.append(btns); // кнопки — в шапке описания, чтобы не уезжали за край
     }
+    if (this.note) box.append(h('div', { class: 'dcmp' }, this.note));
   },
 };
 

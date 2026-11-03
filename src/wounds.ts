@@ -4,7 +4,7 @@
 //  аптечки и антисептик. Тяжёлые ранения снимает только операция
 //  (нужен хирургический набор).
 // ============================================================
-import { G, hasTool, gearBonus } from './state';
+import { G, hasTool } from './state';
 import { UnitBase } from './data';
 import { check, CheckResult } from './rules';
 import { pick } from './util';
@@ -129,7 +129,6 @@ export function surgery(b: UnitBase, woundId: string): { text: string; roll?: Ch
   if (G.supplies.antiseptic <= 0) return { text: 'Нет антисептика для операции.' };
   G.supplies.antiseptic--;
   const healer = bestHealer();
-  healer.bonus += gearBonus('medicine');
   const r = check(healer.bonus, 13);
   const w = WOUNDS[woundId];
   const rollTxt = `d20 (${r.roll}) ${healer.bonus >= 0 ? '+' : '−'} ${Math.abs(healer.bonus)} = ${r.total} против 13`;
