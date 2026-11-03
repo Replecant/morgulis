@@ -604,6 +604,15 @@ body { font-family: 'Old Standard TT', Georgia, serif; color: var(--text); }
 .dbg-row .btn.active { border-color: #f08070; color: #f0c0a0; }
 .dbg-h { margin: 8px 0 4px; color: var(--brass); font-size: 12px; letter-spacing: 1px; }
 .dbg-tpg { margin-bottom: 5px; }
+.dbg-tabs { display: flex; gap: 4px; margin-bottom: 6px; }
+.dbg-tabs .btn { flex: 1; padding: 2px 6px; font-size: 12px; }
+.dbg-tabs .btn.active { border-color: #f08070; color: #f0c0a0; }
+.dbg-items { max-height: 300px; overflow-y: auto; margin: 4px 0; }
+.dbg-item { display: flex; align-items: center; gap: 3px; padding: 2px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
+.dbg-item span { flex: 1; font-size: 12px; }
+.dbg-item i { font-style: normal; color: var(--dim); }
+.dbg-item .btn { padding: 0 6px; font-size: 11px; }
+.dbg-note { font-size: 11px; color: var(--dim); margin-top: 4px; }
 .dbg-tpg em { display: block; font-style: normal; font-size: 11px; color: var(--dim); margin-bottom: 2px; }
 .dbg-tpg .btn { padding: 1px 6px; font-size: 11px; margin: 0 3px 3px 0; }
 
