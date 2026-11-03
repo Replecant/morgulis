@@ -164,7 +164,7 @@ const DEAD_START: [string, string[], number, number][] = [
 ];
 // голодные бандиты: оборванцы бродят вглубь земли барона — слабые и медленные
 interface Hungry { id: number; kinds: string[]; x: number; y: number; tx: number; ty: number; alive: boolean; respawn: number; calm: number; seen: boolean }
-const HUNGRY_START: [number, number][] = [[700, 650], [1350, 560], [950, 1100]];
+const HUNGRY_START: [number, number][] = [[640, 560], [1330, 640], [1100, 1150]];
 // морские демоны: двое бродят по берегу озера баронессы
 interface LakeDemon { id: number; x: number; y: number; tx: number; ty: number; alive: boolean; respawn: number; calm: number; seen: boolean; a: number }
 const lakeRing = (a: number, k: number) => ({ x: -1650 + Math.cos(a) * 250 * k, y: 420 + Math.sin(a) * 140 * k });
@@ -183,8 +183,13 @@ const COVEN_AT = { x: -420, y: -560 }, COVEN_R = 520;
 const DSQ_START: [number, number, string[]][] = [[-700, -430, ['hound', 'imp']], [-180, -720, ['demon', 'imp']], [-470, -230, ['hound', 'hound', 'imp']], [-640, -800, ['demon', 'hound']]];
 const nearCoven = (q: Pt, r = COVEN_R) => dist(q, COVEN_AT) < r;
 // шайки бандитов: бродят по пустошам барона, по 2–4 человека
-interface Band { id: number; kinds: string[]; x: number; y: number; tx: number; ty: number; alive: boolean; respawn: number; calm: number; seen: boolean }
-const BAND_START: [number, number][] = [[1050, 1080], [600, 520], [1450, 640], [300, 1050]];
+interface Band { raid?: boolean; id: number; kinds: string[]; x: number; y: number; tx: number; ty: number; alive: boolean; respawn: number; calm: number; seen: boolean }
+const BAND_START: [number, number][] = [[750, 1180], [1450, 1180], [820, 200], [1560, 430]]; // глухие углы, подальше от трактов
+/** Глушь для шайки: подальше от трактов, рельсов, сёл и воды. */
+const BAND_ROAD = 190;
+function bandWild(q: Pt) {
+  return q.x > 200 && q.x < 1700 && q.y > 150 && q.y < SOUTH_Y - 60 && !nearRoad(q, BAND_ROAD) && !railNear(q, BAND_ROAD - 40) && !waterAt(q, 20) && !LOCS.some((l) => l.kind !== 'poi' && dist(l, q) < 260);
+}
 /** Состав шайки: 2–4 бандита; в шайке из 3–4 может быть главарь. */
 function bandRoll(): string[] {
   const n = 2 + Math.floor(Math.random() * 3), pool = ['bandit_gun', 'bandit_shot', 'bandit_axe'];
@@ -295,7 +300,7 @@ export const World = {
 
   init() {
     this.bg = renderBackground();
-    this.bands = BAND_START.map(([x, y], i) => ({ id: i, kinds: bandRoll(), x, y, tx: x, ty: y, alive: true, respawn: 0, calm: 0, seen: false }));
+    this.bands = BAND_START.map(([x, y], i) => ({ id: i, kinds: bandRoll(), x, y, tx: x, ty: y, alive: true, respawn: 0, calm: 0, seen: false, raid: false }));
     this.lastDay = Math.floor(G.clock / 24);
     // первый выходит из Эшфорда к форту, второй — из форта к Ричморду: идут навстречу и расходятся
     this.clouds = [[2500, 400], [2800, 1300], [2650, 2050], [3000, 700], [2400, -600], [2900, -200], [300, 1520], [-700, 1660], [1100, 2120], [-1500, 2000], [600, 2210], [-300, 1750], [200, 300], [760, 1080], [1250, 560], [-300, 420], [-650, 900], [1560, 1120], [900, 180], [-1250, 220], [-2050, 950], [-1500, 1150], [-2300, 380]].map(([x, y], i) => ({
@@ -424,36 +429,40 @@ export const World = {
     }
   },
 
-  /** Шайки бандитов: бродят по пустоши, замечают отряд и преследуют. */
+  /** Шайки бандитов: держатся глуши, далеко от трактов; лишь изредка (налёт) выходят к дороге. Замечают отряд в глуши и преследуют — но на тракт за ним почти не идут. */
   updateBand(dt: number) {
     const p = this.party;
+    const pick = (b: Band, from: Pt, r: number) => { // следующая точка в глуши; совсем редко — налёт к тракту
+      b.raid = Math.random() < 0.04;
+      for (let k = 0; k < 24; k++) {
+        const a = Math.random() * TAU, t = { x: from.x + Math.cos(a) * r, y: from.y + Math.sin(a) * r };
+        if (b.raid ? (t.x > 200 && t.x < 1700 && t.y > 150 && t.y < SOUTH_Y - 60 && !LOCS.some((l) => l.kind !== 'poi' && dist(l, t) < 200)) : bandWild(t)) { b.tx = t.x; b.ty = t.y; return; }
+      }
+      b.raid = false; b.tx = b.x; b.ty = b.y;
+    };
     for (const b of this.bands) {
       if (!b.alive) {
         if (G.clock >= b.respawn) {
-          b.alive = true; b.kinds = bandRoll();
-          do { b.x = 200 + Math.random() * 1500; b.y = 200 + Math.random() * 900; } while (dist(b, p) < 500 || LOCS.some((l) => l.kind !== 'poi' && dist(l, b) < 160));
-          b.tx = b.x; b.ty = b.y;
+          for (let k = 0; k < 200; k++) {
+            const q = { x: 200 + Math.random() * 1500, y: 150 + Math.random() * (SOUTH_Y - 210) };
+            if (bandWild(q) && dist(q, p) > 600 && this.hungry.every((g) => dist(g, q) > 450) && this.bands.every((o) => o === b || !o.alive || dist(o, q) > 400)) {
+              b.alive = true; b.kinds = bandRoll(); b.x = b.tx = q.x; b.y = b.ty = q.y; b.raid = false; break;
+            }
+          }
         }
         continue;
       }
       const d = dist(b, p);
-      // при патруле рядом бандиты не нападают и уходят подальше
-      const patrolNear = this.nearPatrol(b, 200);
-      const chase = !Debug.invisible && d < 250 && G.clock >= b.calm && !patrolNear && !this.nearPatrol(p, 220) && !LOCS.some((l) => l.kind !== 'poi' && dist(l, p) < 110);
-      if (patrolNear) {
-        const pt = this.patrols.reduce((a, q) => (dist(this.patrolPos(q), b) < dist(this.patrolPos(a), b) ? q : a));
-        const pp = this.patrolPos(pt), a = Math.atan2(b.y - pp.y, b.x - pp.x);
-        b.tx = clamp(b.x + Math.cos(a) * 260, 100, OLD_E - 200); b.ty = clamp(b.y + Math.sin(a) * 260, 100, SOUTH_Y - 100);
-      }
+      const patrolNear = this.nearPatrol(b, 220);
+      // в погоню — только если отряд сам сошёл в глушь (или идёт налёт)
+      const chase = !Debug.invisible && d < 220 && G.clock >= b.calm && !patrolNear && !this.nearPatrol(p, 240) && (b.raid || !nearRoad(p, BAND_ROAD - 70)) && !LOCS.some((l) => l.kind !== 'poi' && dist(l, p) < 160);
       b.seen = d < 340 * Weather.sightK();
       if (chase) { b.tx = p.x; b.ty = p.y; }
-      else if (!patrolNear && (dist(b, { x: b.tx, y: b.ty }) < 4 || (G.clock < b.calm && d < 300))) {
-        const away = G.clock < b.calm;
-        const a = away ? Math.atan2(b.y - p.y, b.x - p.x) + (Math.random() - 0.5) : Math.random() * TAU;
-        b.tx = clamp(b.x + Math.cos(a) * 250, 100, OLD_E - 200); b.ty = clamp(b.y + Math.sin(a) * 250, 100, SOUTH_Y - 100);
-        if (LOCS.some((l) => l.kind !== 'poi' && dist(l, { x: b.tx, y: b.ty }) < 150)) { b.tx = b.x; b.ty = b.y; }
+      else if (patrolNear || dist(b, { x: b.tx, y: b.ty }) < 4 || (G.clock < b.calm && d < 300) || (!b.raid && nearRoad({ x: b.tx, y: b.ty }, BAND_ROAD - 40))) {
+        if (G.clock < b.calm || patrolNear) b.raid = false;
+        pick(b, b, 230);
       }
-      const sp = (chase ? 70 : 40) * HOURS_PER_SEC * dt, dd = dist(b, { x: b.tx, y: b.ty });
+      const sp = (chase ? 70 : 34) * HOURS_PER_SEC * dt, dd = dist(b, { x: b.tx, y: b.ty });
       if (dd > 0.5) { b.x += ((b.tx - b.x) / dd) * Math.min(sp, dd); b.y += ((b.ty - b.y) / dd) * Math.min(sp, dd); }
       if (chase && dist(b, p) < 20) { p.moving = false; this.pending = null; G.keys.clear(); this.bandHit = b; this.onEncounter(); return; }
     }
@@ -476,7 +485,7 @@ export const World = {
       else if (patrolNear || dist(g, { x: g.tx, y: g.ty }) < 4) {
         for (let k = 0; k < 8; k++) {
           const a = Math.random() * TAU, t = { x: g.x + Math.cos(a) * 180, y: g.y + Math.sin(a) * 180 };
-          if (inBaronLand(t) && !LOCS.some((l) => l.kind !== 'poi' && dist(l, t) < 140)) { g.tx = t.x; g.ty = t.y; break; }
+          if (inBaronLand(t) && !nearRoad(t, 70) && this.bands.every((b) => !b.alive || dist(b, t) > 300) && !LOCS.some((l) => l.kind !== 'poi' && dist(l, t) < 140)) { g.tx = t.x; g.ty = t.y; break; }
         }
       }
       const sp = (chase ? 36 : 20) * hours, dd = dist(g, { x: g.tx, y: g.ty });   // медленнее отряда
