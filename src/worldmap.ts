@@ -174,7 +174,7 @@ const DEAD_START: [string, string[], number, number][] = [
   ['trench3', ['dead_sapper', 'dead_soldier', 'dead_gas'], -760, 950],
 ];
 // голодные бандиты: оборванцы бродят вглубь земли Олдриджа — слабые и медленные
-interface Hungry { id: number; kinds: string[]; x: number; y: number; tx: number; ty: number; alive: boolean; respawn: number; calm: number; seen: boolean }
+interface Hungry { id: number; kinds: string[]; x: number; y: number; tx: number; ty: number; alive: boolean; respawn: number; calm: number; seen: boolean; chasing?: boolean }
 const HUNGRY_START: [number, number][] = [[640, 560], [1330, 640], [1100, 1150]];
 // морские демоны: двое бродят по берегу озера баронессы
 interface LakeDemon { id: number; x: number; y: number; tx: number; ty: number; alive: boolean; respawn: number; calm: number; seen: boolean; a: number }
@@ -540,9 +540,15 @@ export const World = {
   },
   /** Стычка закончилась: проигравшие разбиты (патруль не гибнет — отходит зализывать раны). */
   endClash(c: Clash, winner: 'a' | 'b') {
-    const lose = winner === 'a' ? c.b : c.a;
+    const lose = winner === 'a' ? c.b : c.a, win = winner === 'a' ? c.a : c.b;
     const r = lose.ref as { alive?: boolean; respawn?: number; wait?: number };
-    if (lose.kind === 'patrol') r.wait = 10;
+    if (lose.kind === 'patrol') {
+      r.wait = 10;
+      if (win.kind !== 'patrol') { // отбились от патруля — уходят от него, а не стоят рядом
+        const w = win.ref as Pt & { tx: number; ty: number }, lp = this.sidePos(lose), a = Math.atan2(w.y - lp.y, w.x - lp.x);
+        w.tx = w.x + Math.cos(a) * 220; w.ty = w.y + Math.sin(a) * 220;
+      }
+    }
     else { r.alive = false; r.respawn = G.clock + (lose.kind === 'hungry' ? 48 : 60); }
     this.clashes = this.clashes.filter((x) => x !== c);
     if (this.clashHit === c) this.clashHit = null;
@@ -663,10 +669,14 @@ export const World = {
       const d = dist(g, p), patrolNear = this.nearPatrol(g, 180);
       g.seen = d < 300;
       const chase = !Debug.invisible && d < 170 && G.clock >= g.calm && !patrolNear && !this.nearPatrol(p, 200) && inBaronLand(p) && !LOCS.some((l) => l.kind !== 'poi' && dist(l, p) < 100);
+      g.chasing = chase;
+      // рядом патруль — уходят от него (а не мечутся на месте)
+      const pq = patrolNear ? this.patrols.map((pt) => this.patrolPos(pt)).find((q) => dist(q, g) < 180) : undefined;
       if (chase) { g.tx = p.x; g.ty = p.y; }
-      else if (patrolNear || dist(g, { x: g.tx, y: g.ty }) < 4) {
+      else if ((pq && dist(pq, { x: g.tx, y: g.ty }) < 220) || dist(g, { x: g.tx, y: g.ty }) < 4) {
+        const base = pq ? Math.atan2(g.y - pq.y, g.x - pq.x) : Math.random() * TAU;
         for (let k = 0; k < 8; k++) {
-          const a = Math.random() * TAU, t = { x: g.x + Math.cos(a) * 180, y: g.y + Math.sin(a) * 180 };
+          const a = base + (pq ? (Math.random() - 0.5) * 1.6 : 0), t = { x: g.x + Math.cos(a) * 180, y: g.y + Math.sin(a) * 180 };
           if (inBaronLand(t) && !nearRoad(t, 70) && this.bands.every((b) => !b.alive || dist(b, t) > 300) && !LOCS.some((l) => l.kind !== 'poi' && dist(l, t) < 140)) { g.tx = t.x; g.ty = t.y; break; }
         }
       }
@@ -1061,22 +1071,29 @@ export const World = {
       if (hv) { c.font = '12px "Old Standard TT", serif'; c.fillStyle = 'rgba(0,0,0,0.85)'; c.fillText(l.desc, x + 1, y + 17); c.fillStyle = '#c9c4aa'; c.fillText(l.desc, x, y + 16); }
       c.textAlign = 'left';
     }
+    // подписи отрядов: если место занято другой подписью — поднимаем выше, чтобы не наползали друг на друга
+    const placed: { x0: number; x1: number; y: number }[] = [];
+    const tag = (lbl: string, x: number, y: number, col: string) => {
+      c.font = 'italic 12px "Old Standard TT", serif'; c.textAlign = 'center';
+      const w = c.measureText(lbl).width / 2 + 4;
+      for (let k = 0; k < 6 && placed.some((r) => x - w < r.x1 && x + w > r.x0 && Math.abs(y - r.y) < 14); k++) y -= 15;
+      placed.push({ x0: x - w, x1: x + w, y });
+      c.fillStyle = 'rgba(0,0,0,0.85)'; c.fillText(lbl, x + 1, y + 1); c.fillStyle = col; c.fillText(lbl, x, y);
+    };
     for (const b of this.bands) {
       if (!b.alive || !b.seen) continue;
       const who = b.fac === 'deserter' ? 'Дезертиры' : 'Бандиты', ch = this.clashes.find((c) => c.a.ref === b || c.b.ref === b);
       if (ch?.met) continue; // в перестрелке — подпись у стычки
       const lbl = ch ? (ch.b.ref === b ? (strength(ch.b.units) >= strength(ch.a.units) * 0.8 ? `${who} — принимают бой` : `${who} — уходят от погони`) : `${who} — в погоне`) : G.clock < b.calm ? `${who} (отстали)` : dist(b, p) < 250 ? `${who} — преследуют!` : who;
       c.font = 'italic 12px "Old Standard TT", serif'; c.textAlign = 'center';
-      c.fillStyle = 'rgba(0,0,0,0.85)'; c.fillText(lbl, b.x - cx + 1, b.y - cy - 39);
-      c.fillStyle = '#e07060'; c.fillText(lbl, b.x - cx, b.y - cy - 40);
+      tag(lbl, b.x - cx, b.y - cy - 40, '#e07060');
       c.textAlign = 'left';
     }
     for (const g of this.demons) {
       if (!g.alive || !g.seen) continue;
       const lbl = G.clock < g.calm ? 'Морской демон (ушёл в воду)' : dist(g, p) < 160 && nearLake(p) ? 'Морской демон — идёт к вам!' : 'Морской демон';
       c.font = 'italic 12px "Old Standard TT", serif'; c.textAlign = 'center';
-      c.fillStyle = 'rgba(0,0,0,0.85)'; c.fillText(lbl, g.x - cx + 1, g.y - cy - 33);
-      c.fillStyle = '#9ac8a0'; c.fillText(lbl, g.x - cx, g.y - cy - 34);
+      tag(lbl, g.x - cx, g.y - cy - 34, '#9ac8a0');
       c.textAlign = 'left';
     }
     for (const g of this.dsq) {
@@ -1085,8 +1102,7 @@ export const World = {
       const who = g.hell ? 'Культ' : 'Демоны';
       const lbl = G.clock < g.calm ? `${who} (отстали)` : dist(g, p) < 170 && (g.hell ? hellWild(p) : nearCoven(p, COVEN_R + 120)) ? `${who} — идут на вас!` : who;
       c.font = 'italic 12px "Old Standard TT", serif'; c.textAlign = 'center';
-      c.fillStyle = 'rgba(0,0,0,0.85)'; c.fillText(lbl, g.x - cx + 1, g.y - cy - 39);
-      c.fillStyle = '#e08a60'; c.fillText(lbl, g.x - cx, g.y - cy - 40);
+      tag(lbl, g.x - cx, g.y - cy - 40, '#e08a60');
       c.textAlign = 'left';
     }
     for (const g of this.loyal) {
@@ -1095,25 +1111,22 @@ export const World = {
       if (chl?.met) continue;
       const lbl = chl ? 'Лоялисты — уходят от погони' : G.clock < g.calm ? 'Лоялисты (скрылись)' : dist(g, p) < 150 && !onRoad(p) ? 'Лоялисты — выходят к вам' : 'Лоялисты';
       c.font = 'italic 12px "Old Standard TT", serif'; c.textAlign = 'center';
-      c.fillStyle = 'rgba(0,0,0,0.85)'; c.fillText(lbl, g.x - cx + 1, g.y - cy - 39);
-      c.fillStyle = '#a8b0d0'; c.fillText(lbl, g.x - cx, g.y - cy - 40);
+      tag(lbl, g.x - cx, g.y - cy - 40, '#a8b0d0');
       c.textAlign = 'left';
     }
     for (const g of this.hungry) {
       if (!g.alive || !g.seen) continue;
       const chg = this.clashes.find((c) => c.b.ref === g);
       if (chg?.met) continue;
-      const lbl = chg ? 'Голодные бандиты — бегут' : G.clock < g.calm ? 'Голодные бандиты (ушли)' : dist(g, p) < 170 ? 'Голодные бандиты — идут к вам' : 'Голодные бандиты';
+      const lbl = chg ? 'Голодные бандиты — бегут' : G.clock < g.calm ? 'Голодные бандиты (ушли)' : g.chasing ? 'Голодные бандиты — идут к вам' : 'Голодные бандиты';
       c.font = 'italic 12px "Old Standard TT", serif'; c.textAlign = 'center';
-      c.fillStyle = 'rgba(0,0,0,0.85)'; c.fillText(lbl, g.x - cx + 1, g.y - cy - 39);
-      c.fillStyle = '#c8a878'; c.fillText(lbl, g.x - cx, g.y - cy - 40);
+      tag(lbl, g.x - cx, g.y - cy - 40, '#c8a878');
       c.textAlign = 'left';
     }
     for (const g of this.dead) {
       if (!g.alive || !g.seen || this.clashes.some((cl) => cl.met && cl.a.ref === g)) continue; // в стычке — подпись у стычки
       c.font = 'italic 12px "Old Standard TT", serif'; c.textAlign = 'center';
-      c.fillStyle = 'rgba(0,0,0,0.85)'; c.fillText('Мертвецы', g.x - cx + 1, g.y - cy - 39);
-      c.fillStyle = '#a8d070'; c.fillText(G.clock < g.calm ? 'Мертвецы (потеряли след)' : dist(g, p) < 190 && (g.hell ? hellWild(p) : inFront(p)) ? 'Мертвецы — идут на вас!' : 'Мертвецы', g.x - cx, g.y - cy - 40);
+      tag(G.clock < g.calm ? 'Мертвецы (потеряли след)' : dist(g, p) < 190 && (g.hell ? hellWild(p) : inFront(p)) ? 'Мертвецы — идут на вас!' : 'Мертвецы', g.x - cx, g.y - cy - 40, '#a8d070');
       c.textAlign = 'left';
     }
     this.patrols.forEach((pt, i) => {
@@ -1124,8 +1137,7 @@ export const World = {
       c.font = 'italic 12px "Old Standard TT", serif'; c.textAlign = 'center';
       const lbl = PATROL_NAME[pt.owner];
       const ly = sy - (pt.owner === 'wfcar' ? 28 : 40);
-      c.fillStyle = 'rgba(0,0,0,0.85)'; c.fillText(lbl, sx + 1, ly + 1);
-      c.fillStyle = pt.owner === 'baroness' ? '#d8a0a0' : pt.owner === 'revo' ? '#e07a68' : pt.owner === 'winford' || pt.owner === 'wfcar' ? '#a8c0e0' : '#d8c080'; c.fillText(lbl, sx, ly);
+      tag(lbl, sx, ly, pt.owner === 'baroness' ? '#d8a0a0' : pt.owner === 'revo' ? '#e07a68' : pt.owner === 'winford' || pt.owner === 'wfcar' ? '#a8c0e0' : '#d8c080');
       c.textAlign = 'left';
     });
     for (const cl of this.clashes) { // подпись стычки
@@ -1134,7 +1146,7 @@ export const World = {
       if (sx < -80 || sx > VW + 80 || sy < -40 || sy > VH + 60 || dist(cl, p) > 420) continue;
       const lbl = `Стычка: ${cl.a.name} — ${cl.b.name}`;
       c.font = 'italic 12px "Old Standard TT", serif'; c.textAlign = 'center';
-      c.fillStyle = 'rgba(0,0,0,0.85)'; c.fillText(lbl, sx + 1, sy - 55); c.fillStyle = '#f0a060'; c.fillText(lbl, sx, sy - 56); c.textAlign = 'left';
+      tag(lbl, sx, sy - 56, '#f0a060'); c.textAlign = 'left';
     }
     const near = this.nearLoc();
     const nearPt = !near && !p.moving ? this.patrolNear(p, 45) : null;
