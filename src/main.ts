@@ -135,7 +135,7 @@ Debug.load();
 Debug.weathers = WEATHER_ORDER.map((k) => ({ id: k, name: WEATHER_NAMES[k] }));
 Debug.onSpawn = () => { refreshHud(); if (Inventory.open) Inventory.render(); };
 Debug.onWeather = (k) => { if (k === 'auto') Weather.locked = false; else Weather.set(k as typeof WEATHER_ORDER[number], true); refreshHud(); };
-Debug.places = LOCS.map((l) => ({ id: l.id, name: l.name, group: l.x > 2200 ? 'Восток: Траншейный Ад' : l.y > 1280 ? 'Юг: земли Винферда' : l.y < 0 ? 'Север: земли Собрания' : l.x < -900 ? 'Земли баронессы' : l.x < 120 ? 'Поле сражений' : 'Земли барона' }));
+Debug.places = LOCS.map((l) => ({ id: l.id, name: l.name, group: l.x > 2200 ? 'Восток: Траншейный Ад' : l.y > 1280 ? 'Юг: земли Винферда' : l.y < 0 ? 'Север: земли Собрания' : l.x < -900 ? 'Земли Леди Харрингтон' : l.x < 120 ? 'Поле сражений' : 'Земли Олдриджа' }));
 Debug.onTeleport = (id) => {
   if (G.mode === 'combat' || G.mode === 'title' || G.mode === 'create') { toast('Телепорт — только на карте или в сцене'); return; }
   const l = LOCS.find((x) => x.id === id)!;

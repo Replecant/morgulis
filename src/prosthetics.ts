@@ -17,9 +17,9 @@ export const partOf = (l: Limb): Part => (l.startsWith('arm') ? 'arm' : l.starts
 /** Поправки: в бою (атаки, защита, перемещение) и к навыкам. */
 export interface LimbMods { atkM?: number; atkR?: number; def?: number; move?: number; skills?: Partial<Record<SkillKey, number>> }
 export type Shop = 'clinic' | 'under' | 'bclinic' | 'hawley';
-export const SHOP_NAMES: Record<Shop, string> = { clinic: 'Клиника протезирования', under: 'Подпольная мастерская', bclinic: 'Лазарет форта баронессы', hawley: 'Тайный протезист' };
+export const SHOP_NAMES: Record<Shop, string> = { clinic: 'Клиника протезирования', under: 'Подпольная мастерская', bclinic: 'Лазарет форта Леди Харрингтон', hawley: 'Тайный протезист' };
 /** Где мастерская (для подсказки «где ставят»). Тайного протезиста в подсказках не выдаём. */
-export const SHOP_WHERE: Record<Shop, string> = { clinic: 'клиника (Средний город)', under: 'подполье (Нижний город)', bclinic: 'лазарет форта баронессы', hawley: '' };
+export const SHOP_WHERE: Record<Shop, string> = { clinic: 'клиника (Средний город)', under: 'подполье (Нижний город)', bclinic: 'лазарет форта Леди Харрингтон', hawley: '' };
 /** Что ставит мастерская: p.shop — какого рода протез (заводской или подпольный). */
 export function sells(shop: Shop, p: Prosthesis) {
   if (shop === 'under') return p.shop === 'under';

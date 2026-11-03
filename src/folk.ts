@@ -263,7 +263,7 @@ export const FOLK: FolkDef[] = [
   },
 
 
-  // ================= земли баронессы
+  // ================= земли Леди Харрингтон
   // ---------------- Бриммор
   { id: 'b_fisher1', name: 'Рыбак', kind: 'fisher', scene: 'brimmor',
     route: [{ x: 198, y: 30, wait: 9, work: true }, { x: 205, y: 42, wait: 4 }, { x: 211, y: 30, wait: 8, work: true }],
@@ -316,7 +316,7 @@ export const FOLK: FolkDef[] = [
   { id: 'b_cook', name: 'Повариха', kind: 'bworker_w', scene: 'bcamp', speed: 0.9,
     route: [{ x: 350, y: 51, wait: 12, work: true }, { x: 346, y: 52, wait: 6 }],
     barks: ['Котёл один, мисок — сотня. Кому не хватит — завтра.', 'Я вольнонаёмная. Не путай.'] },
-  // ---------------- Форт баронессы
+  // ---------------- Форт Леди Харрингтон
   { id: 'b_drill1', name: 'Солдат', kind: 'bguard', scene: 'bfort', speed: 1.4,
     route: [{ x: 385, y: 29, wait: 1 }, { x: 395, y: 29, wait: 1 }, { x: 395, y: 44, wait: 1 }, { x: 385, y: 44, wait: 1 }],
     barks: ['Раз-два! Раз-два!', 'Служба — это честь!'] },

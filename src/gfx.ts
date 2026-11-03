@@ -70,9 +70,9 @@ export const STYLES: Record<string, Style> = {
   porter: { coat: '#4a4030', legs: '#2a2418', belt: '#3a2a1a', hair: '#2a2018', skin: '#b08a6a', weapon: 'bag', scale: 1.1 },
   surgeon_under: { coat: '#2a2622', legs: '#1a1816', apron: '#4a3020', hair: '#2a2622', skin: '#b8a090', goggles: true, weapon: 'knife' },
   medic_civ: { coat: '#d0ccc0', legs: '#2a2826', apron: '#a8a498', hair: '#5a5a56', skin: '#c8b096', goggles: true, weapon: 'wrench' },
-  // земли баронессы
+  // земли Леди Харрингтон
   // солдаты баронессы: тёмный серо-оливковый мундир, красные петлицы, та же каска — и противогаз на лице
-  // горожане форта баронессы — у многих красные повязки
+  // горожане форта Леди Харрингтон — у многих красные повязки
   bcit_m: { coat: '#5a5248', legs: '#3a362e', hat: 'flatcap', hatC: '#3a342c', skin: '#c4a888', beard: '#5a4a3a', armband: '#a03028' },
   bcit_w: { coat: '#4e4a52', dress: true, apron: '#6a5a50', hat: 'bonnet', hatC: '#8a2a24', skin: '#d0b49a', hair: '#5a3a22', longHair: true, weapon: 'bag' },
   bcit_w2: { coat: '#6a5a44', dress: true, apron: '#a09070', skin: '#d8c0a0', hair: '#b09060', longHair: true, armband: '#a03028' },

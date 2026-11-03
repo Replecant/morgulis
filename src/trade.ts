@@ -35,7 +35,7 @@ export const SHOPS: Record<string, Shop> = {
     items: { ritualkit: 2, rabbitfoot: 1, locket: 1, oillamp: 1, tophat: 1, 'revolver~w': 1 },
     cons: [],
   },
-  // ---------------- земли баронессы
+  // ---------------- земли Леди Харрингтон
   brimmor: {
     name: 'Скупщица — Бриммор', greet: 'Рыба солёная и копчёная. В дорогу — лучше не придумаешь.',
     items: { knife: 1 },
@@ -52,7 +52,7 @@ export const SHOPS: Record<string, Shop> = {
     cons: ['ration', 'painkiller'],
   },
   bquarter: {
-    name: 'Интендант — форт баронессы', greet: 'Казённое снаряжение. Каждая вещь — по ведомости.',
+    name: 'Интендант — форт Леди Харрингтон', greet: 'Казённое снаряжение. Каждая вещь — по ведомости.',
     items: { rifle: 2, carbine: 2, bayonet: 2, spade: 2, helmet: 2, steelhelm: 1, greatcoat: 2, quilted: 1, boots: 1, gloves: 1, goggles: 1, oillamp: 1 },
     cons: ['ammo_rifle', 'ammo_pistol', 'ammo_mg', 'grenade', 'ration', 'bandage', 'medkit'], repair: true,
   },

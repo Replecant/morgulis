@@ -25,7 +25,7 @@ const OLD_E = 1920;
 export const SOUTH_Y = 1280;
 /** Западная граница мира: за Эшфордом — старый фронт (траншеи, проволока, мертвецы). */
 export const WX0 = -2500;
-/** Восточнее — старый фронт (поле сражений баронов), западнее — земли баронессы. */
+/** Восточнее — старый фронт (поле сражений баронов), западнее — земли Леди Харрингтон. */
 const FRONT_W0 = -900;
 const OX = -WX0 / 2;          // сдвиг фона: пиксель фона = (x мира − WX0) / 2
 /** Северная граница мира: севернее y=0 — земли бывшего барона Сильвера (густые леса, власть Народного Собрания). */
@@ -43,7 +43,7 @@ export const LOCS: Loc[] = [
   { id: 'ashford', name: 'Эшфорд', kind: 'village', x: 430, y: 760, talk: 'loc_ashford', scene: 'ashford', desc: 'Деревня нефтяников. Качалки, цистерны, пустые дома.' },
   { id: 'richmord', name: 'Ричморд', kind: 'village', x: 1180, y: 330, talk: 'loc_richmord', scene: 'richmord', desc: 'Жучиные фермы. Мясо и панцирь.' },
   { id: 'fenmor', name: 'Фенмор', kind: 'village', x: 470, y: 270, talk: 'loc_fenmor', scene: 'fenmor', desc: 'Грибные фермы в болотистой низине.' },
-  { id: 'fort', name: 'Форт барона', kind: 'fort', x: 1730, y: 840, talk: 'loc_fort', scene: 'fortgate', desc: 'Город-крепость барона Олдриджа.' },
+  { id: 'fort', name: 'Форт Олдриджа', kind: 'fort', x: 1730, y: 840, talk: 'loc_fort', scene: 'fortgate', desc: 'Город-крепость барона Олдриджа.' },
   { id: 'airship', name: 'Руины дирижабля', kind: 'poi', x: 930, y: 520, talk: 'poi_airship', desc: 'Остов огромного воздушного корабля.' },
   { id: 'post', name: 'Разрушенный пост', kind: 'poi', x: 1150, y: 905, talk: 'poi_post', desc: 'Руины имперского поста между трактом и путями.' },
   { id: 'bones', name: 'Старые кости', kind: 'poi', x: 760, y: 430, talk: 'poi_bones', desc: 'Скелет исполинского жука.' },
@@ -51,8 +51,8 @@ export const LOCS: Loc[] = [
   { id: 'trenches', name: 'Старые траншеи', kind: 'poi', x: -500, y: 600, talk: 'poi_trenches', desc: 'Здесь бились бароны этих и соседних земель.' },
   { id: 'bunker', name: 'Командный блиндаж', kind: 'poi', x: -700, y: 360, talk: 'poi_bunker', desc: 'Бетонный блиндаж с заклинившей бронедверью.' },
   { id: 'armorcar', name: 'Ржавая бронемашина', kind: 'poi', x: -260, y: 980, talk: 'poi_armorcar', desc: 'Брошенная бронемашина в воронке.' },
-  // ---------------- земли баронессы (к западу от поля сражений)
-  { id: 'bfort', name: 'Форт баронессы', kind: 'fort', x: -2150, y: 620, talk: 'loc_bfort', scene: 'bfort', desc: 'Крепость баронессы: один большой ярус и замок.' },
+  // ---------------- земли Леди Харрингтон (к западу от поля сражений)
+  { id: 'bfort', name: 'Форт Леди Харрингтон', kind: 'fort', x: -2150, y: 620, talk: 'loc_bfort', scene: 'bfort', desc: 'Крепость баронессы: один большой ярус и замок.' },
   { id: 'brimmor', name: 'Бриммор', kind: 'village', x: -1640, y: 640, talk: 'loc_brimmor', scene: 'brimmor', desc: 'Рыбацкая деревня на берегу озера.' },
   { id: 'hailstone', name: 'Хейлстоун', kind: 'village', x: -1920, y: 1060, talk: 'loc_hailstone', scene: 'hailstone', desc: 'Деревня старателей: руда и металлолом.' },
   { id: 'mossley', name: 'Мосслей', kind: 'village', x: -2240, y: 240, talk: 'loc_mossley', scene: 'mossley', desc: 'Деревня грибников и пастухов.' },
@@ -86,7 +86,7 @@ const ROADS: number[][][] = [
   [[430, 760], [450, 600], [480, 440], [470, 270]],
   // старая военная дорога — от Эшфорда на запад, к фронту
   [[430, 760], [260, 800], [40, 790], [-220, 740], [-480, 700], [-760, 640]],
-  // земли баронессы: тракт от поля сражений к форту баронессы
+  // земли Леди Харрингтон: тракт от поля сражений к форту Леди Харрингтон
   [[-760, 640], [-1000, 620], [-1300, 650], [-1640, 690], [-1950, 680], [-2150, 640]],
   [[-1950, 680], [-2100, 430], [-2240, 250]],
   [[-1640, 690], [-1800, 900], [-1920, 1060]],
@@ -107,7 +107,7 @@ const ROADS: number[][][] = [
   // восток: тракт от форта Олдриджа к Траншейному Аду — и обрывается
   [[1730, 840], [1900, 815], [2060, 830], [2210, 822]],
 ];
-/** Озеро и реки в землях баронессы (координаты мира). */
+/** Озеро и реки в землях Леди Харрингтон (координаты мира). */
 const LAKE = { x: -1650, y: 420, rx: 250, ry: 140 };
 const RIVERS: number[][][] = [
   [[-1380, -1200], [-1420, -900], [-1400, -600], [-1450, -300], [-1480, 0], [-1520, 120], [-1580, 210], [-1600, 290]], // из северных лесов в озеро
@@ -165,7 +165,7 @@ const DEAD_START: [string, string[], number, number][] = [
   ['trench2', ['dead_gas', 'dead_soldier', 'dead_rifle'], -330, 860],
   ['trench3', ['dead_sapper', 'dead_soldier', 'dead_gas'], -760, 950],
 ];
-// голодные бандиты: оборванцы бродят вглубь земли барона — слабые и медленные
+// голодные бандиты: оборванцы бродят вглубь земли Олдриджа — слабые и медленные
 interface Hungry { id: number; kinds: string[]; x: number; y: number; tx: number; ty: number; alive: boolean; respawn: number; calm: number; seen: boolean }
 const HUNGRY_START: [number, number][] = [[640, 560], [1330, 640], [1100, 1150]];
 // морские демоны: двое бродят по берегу озера баронессы
@@ -357,7 +357,7 @@ export const World = {
   nearLoc() { return LOCS.find((l) => this.known(l) && dist(l, this.party) < (l.kind === 'fort' ? 90 : 40)) ?? null; },
   updateLocation() {
     const l = this.nearLoc();
-    G.location = l ? `У места: ${l.name}` : this.inCloud(this.party) ? 'Едкое облако' : inHell(this.party) ? 'Траншейный Ад' : this.party.y > SOUTH_Y ? (onRoad(this.party) ? 'Тракт Винферда' : 'Земли Винферда') : inNorth(this.party) ? (onRoad(this.party) ? 'Северный тракт' : 'Северные леса') : this.party.x < FRONT_W0 ? 'Земли баронессы' : this.party.x < FRONT_X ? 'Старый фронт' : onRoad(this.party) ? 'Тракт' : 'Серая пустошь';
+    G.location = l ? `У места: ${l.name}` : this.inCloud(this.party) ? 'Едкое облако' : inHell(this.party) ? 'Траншейный Ад' : this.party.y > SOUTH_Y ? (onRoad(this.party) ? 'Тракт Винферда' : 'Земли Винферда') : inNorth(this.party) ? (onRoad(this.party) ? 'Северный тракт' : 'Северные леса') : this.party.x < FRONT_W0 ? 'Земли Леди Харрингтон' : this.party.x < FRONT_X ? 'Старый фронт' : onRoad(this.party) ? 'Тракт' : 'Земли Олдриджа';
   },
 
   patrolNear(q: Pt, r: number) { return this.patrols.find((pt) => dist(this.patrolPos(pt), q) < r) ?? null; },
@@ -479,7 +479,7 @@ export const World = {
       if (chase && dist(b, p) < 20) { p.moving = false; this.pending = null; G.keys.clear(); this.bandHit = b; this.onEncounter(); return; }
     }
   },
-  /** Голодные бандиты: бродят по земле барона, держатся подальше от деревень, форта и патрулей; заметив отряд — плетутся к нему. */
+  /** Голодные бандиты: бродят по земле Олдриджа, держатся подальше от деревень, форта и патрулей; заметив отряд — плетутся к нему. */
   updateHungry(dt: number) {
     const p = this.party, hours = dt * HOURS_PER_SEC;
     for (const g of this.hungry) {
@@ -702,7 +702,7 @@ export const World = {
     // земли — крупными бледными буквами
     c.textAlign = 'center';
     c.font = `italic ${Math.round(ch * 0.034)}px "Old Standard TT", serif`;
-    for (const [name, wx, wy] of [['Земли барона', 1000, 1120], ['Старый фронт', -390, 1080], ['Земли баронессы', -1700, 1150], ['Северные леса — земли Собрания', 700, -1110], ['Земли барона Винферда', 400, 1420], ['Траншейный Ад', 2740, 900]] as [string, number, number][])
+    for (const [name, wx, wy] of [['Земли Олдриджа', 1000, 1120], ['Старый фронт', -390, 1080], ['Земли Леди Харрингтон', -1700, 1150], ['Северные леса — земли Собрания', 700, -1110], ['Земли барона Винферда', 400, 1420], ['Траншейный Ад', 2740, 900]] as [string, number, number][])
       text(name, X(wx), Y(wy), 'rgba(216,206,170,0.7)');
     // места: точка и название
     let hov: Loc | null = null;
@@ -1124,7 +1124,7 @@ function renderBackground(): HTMLCanvasElement {
   drawWarZone(c, r, thick);
   // Траншейный Ад на востоке
   drawHell(c, thick);
-  // земли баронессы: озеро и реки (дороги и рельсы ложатся поверх — мосты и броды)
+  // земли Леди Харрингтон: озеро и реки (дороги и рельсы ложатся поверх — мосты и броды)
   drawWater(c, r, thick);
   // север: густой лес бывших земель барона Сильвера
   drawForest(c);
@@ -1651,7 +1651,7 @@ function drawLocIcon(c: CanvasRenderingContext2D, l: Loc, r: () => number) {
         for (const tx of [2, 54]) { prect(s, tx, 0, 4, 8, '#3a3428'); prect(s, tx - 1, 0, 6, 2, '#4a4038'); ppx(s, tx + 1, 2, '#f0d080'); }
       });
       break;
-    case 'bfort': { // форт баронессы: один большой ярус в кольце стен и замок на скале
+    case 'bfort': { // форт Леди Харрингтон: один большой ярус в кольце стен и замок на скале
       stamp(c, x, y + 40, 112, 92, (s) => {
         const ox = 56, oy = 56, R = 46;
         const walls = pixelize(112, 92, (v) => {
