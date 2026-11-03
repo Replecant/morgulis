@@ -111,10 +111,10 @@ body { font-family: 'Old Standard TT', Georgia, serif; color: var(--text); }
 #screen:empty { display: none; }
 /* смерть: надгробие со скелетом-солдатом и подпись */
 #screen.death { background: #000; animation: deathIn 1.2s ease-out; }
-#screen.death .scr { max-width: 640px; padding: 0; }
-.death-img { display: block; width: 400px; height: 400px; margin: 0 auto; image-rendering: pixelated; }
+#screen.death .scr { max-width: 900px; padding: 0; }
+.death-img { display: block; width: 660px; height: 440px; margin: 0 auto; image-rendering: pixelated; } /* пляска смерти — 3:2, картинка автора */
 .death-cap { font-family: 'Playfair Display SC', 'Old Standard TT', serif; font-size: 22px; letter-spacing: 2px; color: #d8cfa8; margin-top: 6px; text-shadow: 0 0 18px rgba(159, 211, 106, 0.35); }
-#screen.death .btn { font-size: 15px; padding: 7px 22px; margin: 18px 6px 0; }
+#screen.death .btn { font-size: 15px; padding: 7px 22px; margin: 12px 6px 0; }
 @keyframes deathIn { from { opacity: 0; } to { opacity: 1; } }
 .scr { text-align: center; max-width: 560px; padding: 20px; }
 .scr h1 { font-size: 64px; margin: 0; letter-spacing: 10px; color: var(--green); text-shadow: 0 0 24px rgba(159, 211, 106, 0.45); }
