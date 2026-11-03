@@ -41,7 +41,7 @@ export const SHOPS: Record<string, Shop> = {
     items: { knife: 1 },
     cons: ['ration', 'bandage'],
   },
-  // ---------------- Траншейный Ад
+  // ---------------- Траншейное море
   volnitsa: {
     name: 'Барыга — Вольница', greet: 'С чужого плеча, без вопросов. Сломанное — дешевле, целое — дороже, краденое — как повезёт.',
     items: { sawnoff: 1, 'revolver~w': 1, 'rifle~w': 1, 'carbine~b': 1, trenchclub: 1, knife: 1, leather: 1, smask: 1, lockpicks: 1, oillamp: 1 },

@@ -65,7 +65,7 @@ export function paintTile(c: Ctx, X: number, Y: number, g: string, r: () => numb
   if (g === 'm' && r() < 0.2) { const x = X + 4 + r() * 12, y = Y + 6 + r() * 10; ppx(c, x, y + 1, '#d8d0b0'); prect(c, x - 1, y, 3, 1, '#c8c0a0'); }
 }
 
-/** Траншейный Ад: земля над траншеей (стенка хода) — перепаханная грязь; у края хода — бруствер.
+/** Траншейное море: земля над траншеей (стенка хода) — перепаханная грязь; у края хода — бруствер.
  *  fl(dx, dy) — есть ли проход (дно траншеи, площадка) в соседней клетке. */
 export function paintTrenchEarth(c: Ctx, X: number, Y: number, r: () => number, fl: (dx: number, dy: number) => boolean) {
   prect(c, X, Y, T, T, '#2a2219');
