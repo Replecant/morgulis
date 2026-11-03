@@ -181,7 +181,7 @@ export function applyEquipLooks(squad: UnitBase[]) {
     clearSpriteCache(key);
     STYLES[key] = {
       ...base,
-      hat: head?.hat, hatC: head?.hat === 'helmet' ? '#3d4030' : head?.hat === 'cap' ? (base.hat === 'cap' ? base.hatC : '#211a16') : undefined,
+      hat: head?.hat, hatC: head?.hat === 'helmet' ? '#3d4030' : head?.hat === 'tophat' ? '#141214' : head?.hat === 'cap' ? (base.hat === 'cap' ? base.hatC : '#211a16') : undefined,
       hair: base.hair ?? (head ? undefined : '#3a2a1a'),
       cuirass: b.equip.body === 'cuirass',
       mask: b.equip.face === 'gasmask' ? true : base.mask,

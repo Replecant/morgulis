@@ -32,7 +32,7 @@ export const SHOPS: Record<string, Shop> = {
   },
   abe: {
     name: 'Слепой Эйб — старые вещи', greet: 'Руками трогай, глазами не верь. Тут всё настоящее.',
-    items: { ritualkit: 2, rabbitfoot: 1, locket: 1, oillamp: 1, 'revolver~w': 1 },
+    items: { ritualkit: 2, rabbitfoot: 1, locket: 1, oillamp: 1, tophat: 1, 'revolver~w': 1 },
     cons: [],
   },
   // ---------------- земли баронессы

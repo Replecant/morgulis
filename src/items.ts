@@ -42,7 +42,7 @@ export interface Item {
   gas?: boolean;            // лицо: противогаз — защита от газа и зловонного дыхания
   splinter?: boolean;       // лицо: защитная маска — осколки, дробь и брызги огня на 1 слабее
   lamp?: number;            // фонарь: 1 — масляный, 2 — электрический
-  hat?: 'helmet' | 'cap';   // как выглядит на фигурке
+  hat?: 'helmet' | 'cap' | 'tophat'; // как выглядит на фигурке
   tool?: string;            // спецснаряжение: что даёт
 }
 
@@ -80,6 +80,7 @@ export const ITEMS: Record<string, Item> = {
   // ---------------- голова
   cap:      { id: 'cap', name: 'Кепи', kind: 'head', icon: 'cap', hat: 'cap', price: 4, desc: 'Не защищает, зато прикрывает голову от пепла.' },
   helmet:   { id: 'helmet', name: 'Стальная каска', kind: 'head', icon: 'helmet', hat: 'helmet', mods: { def: 1 }, price: 15, desc: 'Плоская каска пехотного образца. Отводит осколки и скользящие пули.' },
+  tophat:   { id: 'tophat', name: 'Цилиндр', kind: 'head', icon: 'tophat', hat: 'tophat', price: 10, desc: 'Высокий чёрный цилиндр с потёртой лентой. Не защищает ни от чего — зато сразу видно, что человек знает больше, чем говорит.' },
   steelhelm: { id: 'steelhelm', name: 'Стальной шлем', kind: 'head', icon: 'steelhelm', hat: 'helmet', armor: 1, mods: { def: 1 }, price: 45, desc: 'Глубокий штурмовой шлем с назатыльником и толстым налобником. Держит не только осколки, но и прямой удар.' },
   // ---------------- лицо
   gasmask:  { id: 'gasmask', name: 'Противогаз', kind: 'face', icon: 'gasmask', gas: true, price: 25, desc: 'Резиновая маска с круглыми стёклами и коробкой фильтра. Кто в нём — тот дышит в газовом облаке (тратятся фильтры) и не боится зловонного дыхания.' },
@@ -110,7 +111,6 @@ export const ITEMS: Record<string, Item> = {
   grimoire:   { id: 'grimoire', name: 'Оккультный гримуар', kind: 'tool', icon: 'grimoire', price: 60, tool: 'Оккультисту — на один знак больше.', desc: 'Рукописная книга в почерневшем переплёте. Половина страниц исписана чужими почерками.' },
   ctools:     { id: 'ctools', name: 'Компактный набор инструментов', kind: 'tool', icon: 'ctools', price: 25, tool: 'Без него не разобрать механизм и не починить оружие в походе.', desc: 'Складные ключи, отвёртки и щупы в плоском кожаном свёртке. Помещается за пазухой.' },
   gauges:     { id: 'gauges', name: 'Измерительные инструменты', kind: 'tool', icon: 'gauges', price: 20, desc: 'Штангенциркуль, манометр, щупы и отвес в кожаном футляре.' },
-  flask:      { id: 'flask', name: 'Фляга', kind: 'tool', icon: 'flask', price: 3, desc: 'Солдатская фляга в суконном чехле. Вода во флягах всегда отдаёт железом.' },
   oillamp:    { id: 'oillamp', name: 'Масляный фонарь', kind: 'tool', icon: 'oillamp', lamp: 1, price: 15, tool: 'Свет вокруг отряда шире; в туман, дождь и бурю легче держать путь и замечать места.', desc: 'Жестяной фонарь со стеклом и фитилём. Коптит, пахнет жучьим жиром, но светит.' },
   elamp:      { id: 'elamp', name: 'Электрический фонарь', kind: 'tool', icon: 'elamp', lamp: 2, price: 90, rare: true, tool: 'Яркий луч: свет вокруг отряда намного шире; непогода почти не сбивает с пути, места видны издалека.', desc: 'Латунный фонарь с гальванической батареей. Редкая вещь: работает ровно и долго, и не гаснет на ветру.' },
   ritualkit:  { id: 'ritualkit', name: 'Ритуальные принадлежности', kind: 'tool', icon: 'ritual', price: 30, tool: 'Нужны для обрядов, в том числе для оккультного протеза.', desc: 'Мел, свечи из жучьего жира, сушёные травы, медная чаша.' },
@@ -143,18 +143,18 @@ export type Equip = Partial<Record<Slot, string>>;
 
 /** Стартовое снаряжение героя по профессии. */
 export const PROF_EQUIP: Record<ProfId, Equip> = {
-  soldier:    { main: 'rifle', side: 'bayonet', body: 'greatcoat' },
-  shooter:    { main: 'huntrifle', side: 'knife', body: 'clothes' },
-  saboteur:   { main: 'autopistol', side: 'knife', body: 'clothes' },
-  occultist:  { main: 'autopistol~w', side: 'rdagger', body: 'clothes' },
-  technician: { main: 'autopistol', body: 'clothes' },
-  medic:      { main: 'revolver', body: 'clothes' },
+  soldier:    { main: 'rifle', side: 'bayonet', head: 'helmet', body: 'greatcoat' },
+  shooter:    { main: 'huntrifle', side: 'knife', head: 'cap', body: 'clothes' },
+  saboteur:   { main: 'autopistol', side: 'knife', head: 'cap', body: 'clothes' },
+  occultist:  { main: 'autopistol~w', side: 'rdagger', head: 'tophat', body: 'clothes' },
+  technician: { main: 'autopistol', head: 'cap', body: 'clothes' },
+  medic:      { main: 'revolver', head: 'cap', body: 'clothes' },
 };
 /** Стартовые припасы, спецснаряжение и деньги по профессии. */
 export const PROF_START: Record<ProfId, { money: number; tools: string[]; cons: Partial<Record<ConsId, number>> }> = {
-  soldier:    { money: 15, tools: ['flask'], cons: { ammo_rifle: 10, bandage: 1 } },
+  soldier:    { money: 15, tools: [], cons: { ammo_rifle: 10, bandage: 1 } },
   shooter:    { money: 20, tools: [], cons: { ammo_rifle: 20 } },
-  saboteur:   { money: 25, tools: ['lockpicks', 'ctools'], cons: { ammo_pistol: 8 } },
+  saboteur:   { money: 25, tools: ['lockpicks', 'ctools'], cons: { ammo_pistol: 8, grenade: 1 } },
   occultist:  { money: 30, tools: ['grimoire', 'ritualkit'], cons: { ammo_pistol: 8 } },
   technician: { money: 20, tools: ['tools', 'gauges'], cons: { ammo_pistol: 8, parts: 3 } },
   medic:      { money: 20, tools: ['surgerykit'], cons: { ammo_pistol: 6, bandage: 3, antiseptic: 1 } },
@@ -172,11 +172,11 @@ export const START_STASH: string[] = [];
 export const ITEM_WT: Record<string, number> = {
   knife: 0.5, saber: 1.5, revolver: 1.2, autopistol: 1, carbine: 3.5, rifle: 4.5, huntrifle: 5, shotgun2: 3.5, sawnoff: 2.5,
   pumpshot: 4, mg: 11, flamer: 18, exprifle: 5, musket: 5, hammer: 6, wrench: 2, axe: 3, trenchclub: 1.5, spade: 1.5, rdagger: 0.4,
-  cap: 0.2, helmet: 1.2, steelhelm: 2.5, gasmask: 1, smask: 1, goggles: 0.3,
+  cap: 0.2, tophat: 0.3, helmet: 1.2, steelhelm: 2.5, gasmask: 1, smask: 1, goggles: 0.3,
   clothes: 1, greatcoat: 3, leather: 4, quilted: 6, cuirass: 10, sapper: 18, chitin: 4, apron: 2,
   gloves: 0.3, shootgloves: 0.2, boots: 1.5, greaves: 3,
   rabbitfoot: 0.1, wormwood: 0.1, locket: 0.1,
-  tools: 6, ctools: 1.5, gauges: 1, flask: 0.8, bayonet: 0.5, lockpicks: 0.3, surgerykit: 3, grimoire: 1.5, ritualkit: 2, oillamp: 1.5, elamp: 2,
+  tools: 6, ctools: 1.5, gauges: 1, bayonet: 0.5, lockpicks: 0.3, surgerykit: 3, grimoire: 1.5, ritualkit: 2, oillamp: 1.5, elamp: 2,
 };
 /** Вес одной штуки расходника, кг (патроны — за патрон). */
 export const CONS_WT: Record<ConsId, number> = {

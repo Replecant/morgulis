@@ -58,6 +58,7 @@ function drawItemIconVec(c: CanvasRenderingContext2D, icon: string, S = 52) {
     case 'hammer': L([16, 46, 30, 16], wood, 4); R(22, 6, 18, 12, '#555'); break;
     case 'wrench': L([14, 42, 36, 16], steel, 5); c.strokeStyle = steel; c.lineWidth = 4; c.beginPath(); c.arc(38, 13, 6, 0.6, 5.2); c.stroke(); break;
     case 'cap': c.fillStyle = '#2b1513'; c.beginPath(); c.ellipse(26, 24, 16, 8, 0, Math.PI, TAU); c.fill(); R(10, 24, 32, 6, '#2b1513'); R(26, 29, 18, 3, '#111'); R(24, 19, 4, 4, '#c09a52'); break;
+    case 'tophat': R(16, 8, 20, 26, '#18161a'); R(16, 26, 20, 4, '#5a3a3a'); R(8, 33, 36, 5, '#18161a'); R(18, 10, 3, 16, '#2e2a30'); break;
     case 'helmet': c.fillStyle = '#4a4e3a'; c.beginPath(); c.arc(26, 30, 13, Math.PI, TAU); c.fill(); c.beginPath(); c.ellipse(26, 30, 21, 4, 0, 0, TAU); c.fill(); break;
     case 'coat': c.fillStyle = '#4b4e3b'; c.beginPath(); c.moveTo(16, 10); c.lineTo(36, 10); c.lineTo(42, 44); c.lineTo(10, 44); c.closePath(); c.fill(); for (const y of [18, 26, 34]) R(25, y, 2, 2, '#c09a52'); L([16, 10, 8, 26], '#4b4e3b', 6); L([36, 10, 44, 26], '#4b4e3b', 6); break;
     case 'apron': c.fillStyle = '#5b3b22'; c.beginPath(); c.moveTo(18, 12); c.lineTo(34, 12); c.lineTo(38, 44); c.lineTo(14, 44); c.closePath(); c.fill(); L([18, 12, 22, 6, 30, 6, 34, 12], '#3a2414', 2); break;
@@ -72,7 +73,6 @@ function drawItemIconVec(c: CanvasRenderingContext2D, icon: string, S = 52) {
     case 'bayonet': L([16, 40, 40, 14], '#cfd0c8', 2.4); L([12, 44, 18, 38], '#3a3a36', 4); R(15, 36, 6, 2, '#888'); break;
     case 'ctools': R(8, 20, 36, 14, '#5a3a22'); R(8, 20, 36, 3, '#6a4a2a'); for (let i = 0; i < 5; i++) L([13 + i * 6, 24, 13 + i * 6, 12 + (i % 2) * 3], steel, 2); R(8, 33, 36, 3, '#3a2414'); break;
     case 'gauges': R(8, 22, 36, 16, '#3a2a1e'); c.fillStyle = '#d8d0b0'; c.beginPath(); c.arc(36, 18, 8, 0, TAU); c.fill(); L([36, 18, 40, 13], '#2a2622', 1.5); c.strokeStyle = '#8a6a30'; c.lineWidth = 2; c.beginPath(); c.arc(36, 18, 8, 0, TAU); c.stroke(); L([10, 12, 10, 30], steel, 2.5); L([10, 12, 22, 12], steel, 2.5); L([16, 12, 16, 20], steel, 2); break;
-    case 'flask': c.fillStyle = '#4a4e3a'; c.beginPath(); c.ellipse(26, 30, 13, 15, 0, 0, TAU); c.fill(); R(22, 8, 8, 8, '#7a7c78'); R(21, 6, 10, 3, '#3a3a36'); L([14, 22, 38, 22], '#3a2a1a', 2); c.fillStyle = '#5a5e48'; c.beginPath(); c.ellipse(22, 28, 4, 8, 0, 0, TAU); c.fill(); break;
     case 'parts': c.strokeStyle = steel; c.lineWidth = 2.5; c.beginPath(); for (let i = 0; i < 4; i++) { c.moveTo(10, 14 + i * 4); c.lineTo(22, 16 + i * 4); } c.stroke(); c.fillStyle = '#8a8a84'; c.beginPath(); c.arc(34, 20, 7, 0, TAU); c.fill(); c.fillStyle = '#2a2622'; c.beginPath(); c.arc(34, 20, 2.5, 0, TAU); c.fill(); L([14, 38, 40, 38], '#b08a40', 3); R(12, 34, 5, 8, '#9a9c98'); break;
     case 'carbine': L([10, 38, 40, 18], wood, 5); L([30, 25, 44, 15], steel, 2.5); R(20, 28, 4, 4, dark); break;
     case 'sawnoff': L([12, 36, 26, 28], wood, 7); L([24, 28, 40, 20], steel, 3); L([24, 32, 40, 24], steel, 3); break;
