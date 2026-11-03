@@ -186,8 +186,8 @@ export const DIALOGS: Record<string, DTree> = {
   oldpump: flavor('Заброшенная насосная: ржавые трубы, провалившаяся крыша, ящики с ломаными деталями. Скважина давно иссякла.'),
   ruin1: { start: (g) => (F(g).chest1 ? 'empty' : 'a'), nodes: {
     a: { s: 'nar', t: 'Пустой дом. На столе — недопитая чашка, покрытая пылью. Под кроватью — окованный сундук с висячим замком.', c: [
-      { t: '[Скрытность] Вскрыть замок отмычками', check: { skill: 'stealth', dc: 12, ok: 'open', fail: 'jam' }, if: () => G.stash.includes('lockpicks') },
-      { t: '[Атлетика] Сбить замок', check: { skill: 'athletics', dc: 15, ok: 'open', fail: 'nope' } },
+      { t: '[Скрытность] Вскрыть замок отмычками', check: { skill: 'stealth', dc: 15, ok: 'open', fail: 'jam' }, if: () => G.stash.includes('lockpicks') },
+      { t: '[Атлетика] Сбить замок', check: { skill: 'athletics', dc: 18, ok: 'open', fail: 'nope' } },
       { t: 'Оставить', go: 'bye' },
     ] },
     open: { s: 'nar', t: 'Замок поддаётся. В сундуке — завязанный узелком платок с монетами и коробка патронов. (Получено: 25 шиллингов, 12 пистолетных патронов.)', do: (g) => { F(g).chest1 = true; g.money += 25; g.supplies.ammo_pistol += 12; } },
@@ -263,8 +263,8 @@ export const DIALOGS: Record<string, DTree> = {
   scav: { start: 'a', nodes: {
     a: { s: 'ragged', t: 'У костра в развалинах сидят двое оборванцев — грязные, худые, в чужих обносках. Один нехотя поднимает старое ружьё. — Чего надо? Тут нечего брать. Иди, куда шёл.', c: [
       { t: 'Поделиться пайком (−1 паёк)', go: 'share', if: (g) => g.supplies.ration > 0 },
-      { t: '[Убеждение] Вам не нужна драка. Мне тоже. Расходимся.', check: { skill: 'persuasion', dc: 13, ok: 'leave', fail: 'angry' } },
-      { t: '[Внимание] (Присмотреться к ним)', check: { skill: 'perception', dc: 12, ok: 'look', fail: 'nolook' } },
+      { t: '[Убеждение] Вам не нужна драка. Мне тоже. Расходимся.', check: { skill: 'persuasion', dc: 15, ok: 'leave', fail: 'angry' } },
+      { t: '[Внимание] (Присмотреться к ним)', check: { skill: 'perception', dc: 15, ok: 'look', fail: 'nolook' } },
       { t: 'Убирайтесь отсюда.', act: 'battle_scav' },
       { t: '(Уйти)', go: 'bye' },
     ] },
@@ -272,7 +272,7 @@ export const DIALOGS: Record<string, DTree> = {
     share: { s: 'ragged', t: 'Оборванец ловит свёрток и разворачивает так быстро, будто его отнимут. — …Спасибо. Мы тут не со зла сидим. Идти просто некуда. Утром они уходят — костёр остаётся тлеть.', do: (g) => { g.supplies.ration -= 1; F(g).scavLeft = true; F(g).scavDone = true; } },
     angry: { s: 'ragged', t: '— Разговорчивый, а? Сид, держи его!', act: 'battle_scav' },
     look: { s: 'nar', t: 'Ружьё у первого — дульнозарядное, а пороховница пустая: выстрел у него один. Второй держит нож обратным хватом и прихрамывает на левую ногу.', c: [
-      { t: '[Убеждение] Вам не нужна драка. Мне тоже. Расходимся.', check: { skill: 'persuasion', dc: 11, ok: 'leave', fail: 'angry' } },
+      { t: '[Убеждение] Вам не нужна драка. Мне тоже. Расходимся.', check: { skill: 'persuasion', dc: 12, ok: 'leave', fail: 'angry' } },
       { t: 'Убирайтесь отсюда.', act: 'battle_scav' },
       { t: '(Уйти)', go: 'bye' },
     ] },
@@ -448,9 +448,9 @@ const WORLD_DIALOGS: Record<string, DTree> = {
       return 'Туман между елями шевелится — и из него выходят они. ' + (k ? k.map((x) => ({ imp: 'Бес скалится и подпрыгивает на кривых лапах.', demon: 'Рогатый демон в чёрном, выше человека, смотрит горящими глазами.', hound: 'Гончая — поджарая, багрово-чёрная, с шипами по хребту — роет мох и рычит.' } as Record<string, string>)[x]).filter((v, i, arr) => arr.indexOf(v) === i).join(' ') : 'Бесы, гончие, рогатые тени.') + ' Это слуги ковена, и они вышли на охоту.';
     }, c: [
       { t: 'Принять бой', act: 'battle_dsq' },
-      { t: '[Атлетика] Бежать', check: { skill: 'athletics', dc: 14, ok: 'ran', fail: 'caught' } },
-      { t: '[Скрытность] Затаиться в ельнике', check: { skill: 'stealth', dc: 13, ok: 'hid', fail: 'caught' } },
-      { t: '[Оккультизм] Отогнать знаком', check: { skill: 'occult', dc: 13, ok: 'warded', fail: 'caught' }, if: (g) => g.pc?.prof === 'occultist' },
+      { t: '[Атлетика] Бежать', check: { skill: 'athletics', dc: 18, ok: 'ran', fail: 'caught' } },
+      { t: '[Скрытность] Затаиться в ельнике', check: { skill: 'stealth', dc: 15, ok: 'hid', fail: 'caught' } },
+      { t: '[Оккультизм] Отогнать знаком', check: { skill: 'occult', dc: 15, ok: 'warded', fail: 'caught' }, if: (g) => g.pc?.prof === 'occultist' },
     ] },
     ran: { s: 'nar', t: 'Вы бежите, не разбирая дороги. За спиной — вой и треск веток… потом тишина. Они не уходят далеко от ковена.', act: 'dsq_lose' },
     hid: { s: 'nar', t: 'Вы замираете под еловыми лапами. Что-то проходит совсем рядом, принюхиваясь, — и уходит в туман.', act: 'dsq_lose' },
@@ -548,9 +548,9 @@ const WORLD_DIALOGS: Record<string, DTree> = {
   } },
   enc_loyal: { start: 'a', nodes: {
     a: { s: 'nar', t: 'Из ельника беззвучно выходят люди в выцветших сине-серых мундирах старой гвардии — заросшие, худые, с винтовками наготове. Лоялисты. Старший первым делом смотрит на ваш рукав — нет ли красной повязки. — Стоять. Ты из братьев? Или доносчик?', c: [
-      { t: '[Убеждение] Я никто. Ни с ними, ни с вами.', check: { skill: 'persuasion', dc: 12, ok: 'let', fail: 'nolet' } },
+      { t: '[Убеждение] Я никто. Ни с ними, ни с вами.', check: { skill: 'persuasion', dc: 15, ok: 'let', fail: 'nolet' } },
       { t: 'Отдать паёк (−1 паёк)', go: 'feed', if: (g) => g.supplies.ration > 0 },
-      { t: '[Скрытность] Отступить в чащу', check: { skill: 'stealth', dc: 13, ok: 'slip', fail: 'nolet' } },
+      { t: '[Скрытность] Отступить в чащу', check: { skill: 'stealth', dc: 15, ok: 'slip', fail: 'nolet' } },
       { t: 'Драться', act: 'battle_loyal' },
     ] },
     let: { s: 'loyal', t: '— Никто… — Офицер долго молчит. — Тогда иди, никто. И ты нас не видел. — Ветки смыкаются за их спинами, будто никого и не было.', act: 'loyal_calm' },
@@ -845,8 +845,8 @@ const WORLD_DIALOGS: Record<string, DTree> = {
 
   poi_airship: { start: (g: Flags) => (F(g).air1 && F(g).air2 ? 'empty' : 'a'), nodes: {
     a: { s: 'nar', t: 'Остов дирижабля лежит в пустоши, как скелет кита. Рёбра каркаса торчат к зелёному небу, ветер треплет клочья оболочки. Гондола завалилась набок.', c: [
-      { t: '[Внимание] Обыскать обломки вокруг', check: { skill: 'perception', dc: 12, ok: 'p_ok', fail: 'p_fail' }, if: (g) => !F(g).air1 },
-      { t: '[Атлетика] Забраться в гондолу', check: { skill: 'athletics', dc: 13, ok: 'a_ok', fail: 'a_fail' }, if: (g) => !F(g).air2 },
+      { t: '[Внимание] Обыскать обломки вокруг', check: { skill: 'perception', dc: 15, ok: 'p_ok', fail: 'p_fail' }, if: (g) => !F(g).air1 },
+      { t: '[Атлетика] Забраться в гондолу', check: { skill: 'athletics', dc: 15, ok: 'a_ok', fail: 'a_fail' }, if: (g) => !F(g).air2 },
       { t: 'Уйти', go: 'bye' },
     ] },
     p_ok: { s: 'nar', t: 'Под листом обшивки — разбитый ящик с красным кругом. Внутри уцелели склянки. (Получено: 2 антисептика, аптечка.)', do: (g) => { F(g).air1 = true; g.supplies.antiseptic += 2; g.supplies.medkit += 1; }, go: 'a' },
@@ -867,7 +867,7 @@ const WORLD_DIALOGS: Record<string, DTree> = {
 
   poi_lorry: { start: (g: Flags) => (F(g).lorryDone ? 'empty' : 'a'), nodes: {
     a: { s: 'nar', t: 'Остов имперского грузовика в ложбине — видно, съехал с тракта и завяз. Колёса со спицами вросли в землю, брезент на кузове истлел. Дизель давно растащили, но под рамой ещё что-то поблёскивает.', c: [
-      { t: '[Механика] Разобрать то, что осталось', check: { skill: 'mechanics', dc: 12, ok: 'ok', fail: 'fail' } },
+      { t: '[Механика] Разобрать то, что осталось', check: { skill: 'mechanics', dc: 15, ok: 'ok', fail: 'fail' } },
       { t: 'Уйти', go: 'bye' },
     ] },
     ok: { s: 'nar', t: 'Вы снимаете с рамы армейский подсумок, прикрученный проволокой, и вытаскиваете из бардачка пачку бинтов. (В обоз: подсумок гренадера. Получено: 1 бинт.)', do: (g) => { F(g).lorryDone = true; g.stash.push('grenadier'); g.supplies.bandage += 1; } },
@@ -884,8 +884,8 @@ const WORLD_DIALOGS: Record<string, DTree> = {
     a: { s: 'scav', t: 'Из-за холма выходят оборванцы с ружьями. — Далеко собрался? Сумку на землю, и разойдёмся.', c: [
       { t: 'Драться', act: 'battle_band' },
       { t: 'Откупиться (−1 паёк)', go: 'bribe', if: (g) => g.supplies.ration > 0 },
-      { t: '[Убеждение] Запугать', check: { skill: 'persuasion', dc: 14, ok: 'scared', fail: 'fight' } },
-      { t: '[Скрытность] Ускользнуть', check: { skill: 'stealth', dc: 12, ok: 'escaped', fail: 'fight' } },
+      { t: '[Убеждение] Запугать', check: { skill: 'persuasion', dc: 18, ok: 'scared', fail: 'fight' } },
+      { t: '[Скрытность] Ускользнуть', check: { skill: 'stealth', dc: 15, ok: 'escaped', fail: 'fight' } },
     ] },
     bribe: { s: 'scav', t: 'Мародёр ловит свёрток с едой и ухмыляется. — Умный. Иди.', do: (g) => (g.supplies.ration -= 1), act: 'band_calm' },
     scared: { s: 'scav', t: 'Мародёры переглядываются и пятятся. — Да ну его… Пошли, найдём кого попроще.', act: 'band_calm' },
@@ -898,7 +898,7 @@ const WORLD_DIALOGS: Record<string, DTree> = {
       { t: 'Просто путник. Ищу работу.', go: 'work' },
       { t: 'Что слышно на дорогах?', go: 'news' },
       { t: 'Как попасть в форт?', go: 'fort' },
-      { t: '[Убеждение] Не поделитесь пайком? Я третий день в пути.', check: { skill: 'persuasion', dc: 13, ok: 'ration', fail: 'noration' }, if: (g) => !F(g).patrolRation },
+      { t: '[Убеждение] Не поделитесь пайком? Я третий день в пути.', check: { skill: 'persuasion', dc: 15, ok: 'ration', fail: 'noration' }, if: (g) => !F(g).patrolRation },
       { t: '(Пройти мимо)', go: 'bye' },
     ] },
     work: { s: 'patrol', go: 'a', t: '— Работу… Её сейчас все ищут. В Эшфорде Ида Кроу вечно кого-то зовёт — руки там нужны. А по тракту без дела не шатайся.' },
@@ -915,8 +915,8 @@ const WORLD_DIALOGS: Record<string, DTree> = {
   enc_dead: { start: 'a', nodes: {
     a: { s: 'nar', t: 'Из тумана над воронками поднимаются фигуры в истлевших шинелях. Каски, пустые лица, зеленоватый блеск в глазницах. Мёртвые солдаты, павшие здесь в сражениях между баронами, бредут к вам — молча, неровной цепью, будто всё ещё идут в атаку.', c: [
       { t: 'Принять бой', act: 'battle_dead' },
-      { t: '[Атлетика] Бежать, не оглядываясь', check: { skill: 'athletics', dc: 12, ok: 'ran', fail: 'caught' } },
-      { t: '[Скрытность] Залечь в воронке и переждать', check: { skill: 'stealth', dc: 13, ok: 'hid', fail: 'caught' } },
+      { t: '[Атлетика] Бежать, не оглядываясь', check: { skill: 'athletics', dc: 15, ok: 'ran', fail: 'caught' } },
+      { t: '[Скрытность] Залечь в воронке и переждать', check: { skill: 'stealth', dc: 15, ok: 'hid', fail: 'caught' } },
     ] },
     ran: { s: 'nar', t: 'Вы бежите, спотыкаясь о колючую проволоку. Мертвецы медленны — их шаркающие шаги отстают и тонут в тумане.', act: 'dead_lose' },
     hid: { s: 'nar', t: 'Вы вжимаетесь в грязь на дне воронки. Сапоги проходят у самой головы, пахнет гнилью и газом. Потом — тишина.', act: 'dead_lose' },
@@ -927,7 +927,7 @@ const WORLD_DIALOGS: Record<string, DTree> = {
   } },
   poi_trenches: { start: (g: Flags) => (F(g).trenchDone ? 'empty' : 'a'), nodes: {
     a: { s: 'nar', t: 'Старые траншеи тянутся зигзагом до самого горизонта. Мешки с песком сгнили и осели, на дне — чёрная вода и прогнившие доски настила. В стенах — норы солдатских ниш, в некоторых ещё что-то лежит.', c: [
-      { t: '[Внимание] Осмотреть ниши вдоль траншеи', check: { skill: 'perception', dc: 12, ok: 'ok', fail: 'fail' } },
+      { t: '[Внимание] Осмотреть ниши вдоль траншеи', check: { skill: 'perception', dc: 15, ok: 'ok', fail: 'fail' } },
       { t: 'Уйти', go: 'bye' },
     ] },
     ok: { s: 'nar', t: 'В сухой нише, завёрнутые в клеёнку, лежат две ручные гранаты и пачка винтовочных патронов. Кто-то берёг их для последнего боя. (Получено: 2 гранаты, 10 винтовочных патронов.)', do: (g) => { F(g).trenchDone = true; g.supplies.grenade += 2; g.supplies.ammo_rifle += 10; } },
@@ -937,8 +937,8 @@ const WORLD_DIALOGS: Record<string, DTree> = {
   } },
   poi_bunker: { start: (g: Flags) => (F(g).bunkerDone ? 'empty' : 'a'), nodes: {
     a: { s: 'nar', t: 'Бетонный командный блиндаж врос в землю. Бронедверь на клёпках перекосило взрывом — она заклинила, но изнутри тянет сухим воздухом. Там, похоже, ничего не тронуто.', c: [
-      { t: '[Механика] Разобрать заклинивший запор', check: { skill: 'mechanics', dc: 13, ok: 'ok', fail: 'mfail' } },
-      { t: '[Атлетика] Выбить дверь', check: { skill: 'athletics', dc: 14, ok: 'ok', fail: 'afail' } },
+      { t: '[Механика] Разобрать заклинивший запор', check: { skill: 'mechanics', dc: 15, ok: 'ok', fail: 'mfail' } },
+      { t: '[Атлетика] Выбить дверь', check: { skill: 'athletics', dc: 18, ok: 'ok', fail: 'afail' } },
       { t: 'Уйти', go: 'bye' },
     ] },
     ok: { s: 'nar', t: 'Дверь со скрежетом поддаётся. Внутри — стол с истлевшими картами, каска на гвозде и ящик с противогазными фильтрами. В жестянке — несколько шиллингов. (В обоз: стальная каска. Получено: 2 фильтра, 20 шиллингов.)', do: (g) => { F(g).bunkerDone = true; g.stash.push('helmet'); g.supplies.filter += 2; g.money += 20; } },
@@ -949,7 +949,7 @@ const WORLD_DIALOGS: Record<string, DTree> = {
   } },
   poi_armorcar: { start: (g: Flags) => (F(g).acarDone ? 'empty' : 'a'), nodes: {
     a: { s: 'nar', t: 'Ржавая бронемашина стоит, уткнувшись в воронку. Клёпаный корпус изъеден рыжей коростой, колёса вросли в грязь, люк приоткрыт.', c: [
-      { t: '[Внимание] Обыскать машину', check: { skill: 'perception', dc: 11, ok: 'ok', fail: 'fail' } },
+      { t: '[Внимание] Обыскать машину', check: { skill: 'perception', dc: 12, ok: 'ok', fail: 'fail' } },
       { t: 'Уйти', go: 'bye' },
     ] },
     ok: { s: 'nar', t: 'Под сиденьем — подсумок с патронами и жестянка с шиллингами. (Получено: 8 винтовочных патронов, 10 шиллингов.)', do: (g) => { F(g).acarDone = true; g.supplies.ammo_rifle += 8; g.money += 10; } },
@@ -960,8 +960,8 @@ const WORLD_DIALOGS: Record<string, DTree> = {
   enc_demon: { start: 'a', nodes: {
     a: { s: 'nar', t: 'Из камыша с чавканьем поднимается тварь — на двух толстых задних лапах, выше человека на голову. Сутулая, лоснящаяся слизью, с гребнем вдоль хребта и тяжёлым хвостом, что волочится по грязи. Плоская голова, жабры судорожно раздуваются. Морской демон. Зоб у него набухает — и в воздухе пахнет гнилью и чем-то едким.', c: [
       { t: 'Принять бой', act: 'battle_demon' },
-      { t: '[Атлетика] Отбежать от воды', check: { skill: 'athletics', dc: 12, ok: 'ran', fail: 'caught' } },
-      { t: '[Скрытность] Замереть в камыше', check: { skill: 'stealth', dc: 13, ok: 'hid', fail: 'caught' } },
+      { t: '[Атлетика] Отбежать от воды', check: { skill: 'athletics', dc: 15, ok: 'ran', fail: 'caught' } },
+      { t: '[Скрытность] Замереть в камыше', check: { skill: 'stealth', dc: 15, ok: 'hid', fail: 'caught' } },
     ] },
     ran: { s: 'nar', t: 'Вы бежите прочь от берега. Тварь шлёпает следом несколько шагов — и, тяжело развернувшись, уходит обратно в воду.', act: 'demon_lose' },
     hid: { s: 'nar', t: 'Вы замираете в камыше, не дыша. Тварь проходит совсем рядом, оставляя на земле блестящую слизь, и исчезает в тёмной воде.', act: 'demon_lose' },
@@ -973,7 +973,7 @@ const WORLD_DIALOGS: Record<string, DTree> = {
   enc_hungry: { start: 'a', nodes: {
     a: { s: 'hungry', t: 'Навстречу бредут оборванцы — худые, с запавшими глазами, в обносках с чужого плеча. В руках нож и палка. — Дай поесть… или отдай сам. Нам терять нечего.', c: [
       { t: 'Отдать паёк (−1 паёк)', go: 'feed', if: (g) => g.supplies.ration > 0 },
-      { t: '[Убеждение] Уходите. Со мной вам не справиться.', check: { skill: 'persuasion', dc: 10, ok: 'scared', fail: 'fight' } },
+      { t: '[Убеждение] Уходите. Со мной вам не справиться.', check: { skill: 'persuasion', dc: 12, ok: 'scared', fail: 'fight' } },
       { t: 'Драться', act: 'battle_hungry' },
       { t: '(Уйти — они медленные)', go: 'away' },
     ] },

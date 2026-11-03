@@ -8,7 +8,7 @@ import { drawFigure, applyEquipLooks } from './gfx';
 import { Combat } from './combat';
 import { $ } from './util';
 import { clockText } from './worldmap';
-import { skillBonus, check, checkChance, SKILLS } from './rules';
+import { skillBonus, check, checkChance, SKILLS, DC_NAMES } from './rules';
 import { effMaxHp, woundsOf, bestHealer, bandageAmount, medkitAmount, bandage, useMedkit, surgery, rest } from './wounds';
 import { COURAGE_MAX } from './combat';
 
@@ -46,9 +46,12 @@ export const Dialog = {
     $('dtext').textContent = '';
     $('dchoices').innerHTML = '';
     const raw = typeof n.c === 'function' ? n.c(G) : n.c;
-    this.choices = (raw ?? []).filter((c) => !c.if || c.if(G));
+    this.choices = (raw ?? []).filter((c) => (!c.if || c.if(G)) && !(c.check && (G.checkLock[this.lockKey(c)] ?? -1) > G.clock));
     drawPortrait($('portrait') as HTMLCanvasElement, sp.kind);
   },
+
+  /** Ключ проверки для запрета повтора после провала. */
+  lockKey(c: Choice) { return `${this.tree}|${c.check!.skill}|${c.check!.ok}`; },
 
   get typing() { return this.shown < this.full.length; },
 
@@ -76,7 +79,7 @@ export const Dialog = {
         b.append(fmt(c.t));
         if (c.check && G.pc) {
           const bonus = skillBonus(G.pc, c.check.skill) + gearBonus(c.check.skill);
-          b.append(Object.assign(document.createElement('span'), { className: 'chk', textContent: ` (${SKILLS[c.check.skill].name}, КС ${c.check.dc} · шанс ${checkChance(bonus, c.check.dc)}%)` }));
+          b.append(Object.assign(document.createElement('span'), { className: 'chk', textContent: ` (${SKILLS[c.check.skill].name}, КС ${c.check.dc}${DC_NAMES[c.check.dc] ? ' — ' + DC_NAMES[c.check.dc] : ''} · шанс ${checkChance(bonus, c.check.dc)}%)` }));
         }
         b.onclick = (e) => { e.stopPropagation(); this.choose(i); };
         box.append(b);
@@ -95,6 +98,7 @@ export const Dialog = {
     if (c.check && G.pc) { // проверка навыка: d20 + бонус против КС
       const bonus = skillBonus(G.pc, c.check.skill) + gearBonus(c.check.skill), res = check(bonus, c.check.dc);
       const tag = `[${SKILLS[c.check.skill].name}: d20 (${res.roll}) ${bonus >= 0 ? '+' : '−'} ${Math.abs(bonus)} = ${res.total} против ${c.check.dc} — ${res.success ? 'успех' : 'провал'}] `;
+      if (!res.success) G.checkLock[this.lockKey(c)] = G.clock + 24; // провал: снова попробовать — не раньше чем через сутки
       return this.goto(res.success ? c.check.ok : c.check.fail, tag);
     }
     if (c.act) return this.close(c.act);

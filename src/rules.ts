@@ -194,8 +194,9 @@ export const meleeDamage = (c: Character) => Math.max(0, c.attrs.str) + (c.talen
 export const horrorSave = (c: Character) => c.attrs.wil + (c.talent === 'cold' ? 3 : 0);
 
 // ------------------------------------------------------------ проверки
-export const DC = { easy: 10, normal: 13, hard: 16, extreme: 19 } as const;
-export const DC_NAMES: Record<number, string> = { 10: 'Лёгкая', 13: 'Обычная', 16: 'Сложная', 19: 'Очень сложная' };
+/** Ступени сложности. Обученный специалист с сильной характеристикой на 1-м уровне берёт обычную примерно в половине случаев. */
+export const DC = { easy: 12, normal: 15, hard: 18, extreme: 21 } as const;
+export const DC_NAMES: Record<number, string> = { 12: 'лёгкая', 15: 'обычная', 18: 'сложная', 21: 'очень сложная' };
 
 export interface CheckResult { roll: number; bonus: number; total: number; dc: number; success: boolean; crit: boolean; fumble: boolean }
 /** Проверка: d20 + бонус ≥ КС. Натуральная 20 — всегда успех, 1 — всегда провал. */

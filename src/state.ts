@@ -15,6 +15,7 @@ export const G = {
   money: 0,                // шиллинги
   stash: [] as string[],   // общий обоз отряда (id предметов)
   known: [] as string[],   // изученные заклинания (occult.ts)
+  checkLock: {} as Record<string, number>, // проваленные проверки: до какого часа их нельзя повторить
   location: '',            // название места, где стоит игрок
   clock: 8,                // игровое время в часах с начала (день 1, 08:00)
   time: 0,
@@ -34,6 +35,7 @@ export function newSupplies(): Supplies {
 export function resetGame(pc: Character = newCharacter()) {
   G.known = [];
   G.flags = {};
+  G.checkLock = {};
   G.clock = 8;
   G.supplies = newSupplies();
   G.stash = [...START_STASH];
