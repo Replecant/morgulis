@@ -21,6 +21,8 @@ import { Weather } from './weather';
 import { SPELLS, SCHOOLS, STRAIN_MAX, knows, occultBonus, addStrain, strainCheck } from './occult';
 
 export const CT = 40, CW = 24, CH = 14;
+/** Прибавка к атакам в ближнем бою (под 3d6 Защита поднята на 3 ради стрельбы; врукопашную укрытий нет — возвращаем часть). */
+const MELEE_EDGE = 2;
 const W = CW * CT, H = CH * CT;
 
 const TILE: Record<string, { walk?: boolean; cover?: number; los?: boolean }> = {
@@ -214,7 +216,7 @@ export const Combat = {
     if (this.runes.some((r) => r.kind === 'guard' && r.x === t.x && r.y === t.y) && t.team === 'player') dc += 3;
     if (w.type === 'melee') {
       if (cheb(from, t) !== 1) return null;
-      bonus += att.atkM;
+      bonus += att.atkM + MELEE_EDGE; // вплотную укрытие не спасает — Защита, поднятая под 3d6, бьёт по рукопашной слабее
     } else {
       const d = dist(from, t);
       if (d > w.range! + 0.01 || !this.los(from, t)) return null;
@@ -298,7 +300,7 @@ export const Combat = {
       const W_ = WEAPONS[w];
       const ammo = W_.ammo ? ` ${u.ammo[w]}/${W_.ammo}` : '';
       const ab = (n: number) => (n >= 0 ? '+' : '') + n;
-      const desc = W_.type === 'melee' ? `Ближний бой · урон ${W_.dmg[0]}–${W_.dmg[1]} · атака ${ab(u.atkM + W_.atk)}` : `Дальность ${W_.range} · урон ${W_.dmg[0]}–${W_.dmg[1]} · атака ${ab(u.atkR + W_.atk)}`;
+      const desc = W_.type === 'melee' ? `Ближний бой · урон ${W_.dmg[0]}–${W_.dmg[1]} · атака ${ab(u.atkM + W_.atk + MELEE_EDGE)}` : `Дальность ${W_.range} · урон ${W_.dmg[0]}–${W_.dmg[1]} · атака ${ab(u.atkR + W_.atk)}`;
       out.push({ kind: 'w', key: w, label: W_.name + ammo, desc, disabled: false, active: this.action.type === 'w' && this.action.key === w });
     }
     const types = [...new Set(u.weapons.map((w) => WEAPONS[w].ammoType).filter(Boolean))] as string[];
