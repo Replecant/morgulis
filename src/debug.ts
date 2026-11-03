@@ -6,6 +6,7 @@
 import { h } from './book';
 import { $ } from './util';
 import { G } from './state';
+import { PROSTHESES, LIMB_ORDER, LIMB_NAMES, ROMAN, fits, install, loseLimb, limbState, modsText, type Limb } from './prosthetics';
 import { ITEMS, CONSUMABLES, CONS_ORDER, KIND_NAMES, ItemKind, withCond, itemName } from './items';
 
 export const Debug = {
@@ -17,7 +18,8 @@ export const Debug = {
   onTeleport: (_id: string) => {},
   onWeather: (_k: string) => {},
   onSpawn: () => {},   // обновить HUD и открытые окна после выдачи
-  tab: 'main' as 'main' | 'items',
+  tab: 'main' as 'main' | 'items' | 'prosth',
+  member: 0,           // вкладка «Протезы»: чей отряд
   kind: 'weapon' as ItemKind | 'cons',
   note: '',
   weathers: [] as { id: string; name: string }[],
@@ -38,6 +40,25 @@ export const Debug = {
   give(id: string) { G.stash.push(id); this.note = `В обоз: ${itemName(id)}`; this.onSpawn(); this.render(); },
   giveCons(id: keyof typeof CONSUMABLES, n: number) { G.supplies[id] += n; this.note = `${CONSUMABLES[id].name}: +${n} (всего ${G.supplies[id]})`; this.onSpawn(); this.render(); },
   giveMoney(n: number) { G.money += n; this.note = `Шиллинги: +${n} (всего ${G.money})`; this.onSpawn(); this.render(); },
+
+  /** Протезы: у любого бойца отнять часть тела, вернуть её или бесплатно поставить любой подходящий протез. */
+  prosthTab(): HTMLElement[] {
+    const b = G.squad[Math.min(this.member, G.squad.length - 1)];
+    if (!b) return [h('div', { class: 'dbg-note' }, 'Отряда нет.')];
+    const set = (f: () => void, note: string) => { f(); if (!Object.values(b.limbs ?? {}).some(Boolean)) delete b.limbs; this.note = note; this.onSpawn(); this.render(); };
+    const who = h('div', { class: 'dbg-row' }, ...G.squad.map((m, i) => h('button', { class: 'btn' + (m === b ? ' active' : ''), onclick: () => { this.member = i; this.render(); } }, m.name)));
+    const rows = LIMB_ORDER.map((l: Limb) => {
+      const st = limbState(b, l), cur = b.limbs?.[l];
+      const sel = h('select', { class: 'dbg-sel' }, ...Object.values(PROSTHESES).filter((p) => fits(p, l)).map((p) => h('option', { value: p.id, selected: cur === p.id }, `${ROMAN[p.cat]} ${p.name}`))) as HTMLSelectElement;
+      return h('div', { class: 'dbg-limb' },
+        h('div', {}, h('b', {}, LIMB_NAMES[l]), ' — ', st.text),
+        h('div', { class: 'dbg-item' }, sel,
+          h('button', { class: 'btn', title: 'Поставить выбранный протез (бесплатно, без предметов)', onclick: () => set(() => install(b, l, sel.value, G.clock), `${b.name}: ${LIMB_NAMES[l]} — ${PROSTHESES[sel.value].name}${modsText(PROSTHESES[sel.value].mods) ? ' (' + modsText(PROSTHESES[sel.value].mods) + ')' : ''}`) }, 'Поставить'),
+          h('button', { class: 'btn', disabled: cur === 'lost', onclick: () => set(() => loseLimb(b, l), `${b.name}: ${LIMB_NAMES[l]} — утрачена`) }, 'Отнять'),
+          h('button', { class: 'btn', disabled: !cur, onclick: () => set(() => { if (b.limbs) delete b.limbs[l]; }, `${b.name}: ${LIMB_NAMES[l]} — своя, целая`) }, 'Вернуть')));
+    });
+    return [who, h('div', { class: 'dbg-items' }, ...rows), h('div', { class: 'dbg-note' }, this.note || 'Протезы ставятся сразу и бесплатно; нужные для обряда предметы не тратятся.')];
+  },
 
   itemsTab(): HTMLElement[] {
     const kinds: (ItemKind | 'cons')[] = ['weapon', 'head', 'face', 'body', 'hands', 'legs', 'charm', 'tool', 'cons'];
@@ -76,10 +97,11 @@ export const Debug = {
     const groups = [...new Set(this.places.map((p) => p.group))];
     const tp = groups.map((g) => h('div', { class: 'dbg-tpg' }, h('em', {}, g),
       ...this.places.filter((p) => p.group === g).map((p) => h('button', { class: 'btn', onclick: () => this.onTeleport(p.id) }, p.name))));
-    const tabs = h('div', { class: 'dbg-tabs' }, ...([['main', 'Общее'], ['items', 'Предметы']] as const).map(([k, label]) =>
+    const tabs = h('div', { class: 'dbg-tabs' }, ...([['main', 'Общее'], ['items', 'Предметы'], ['prosth', 'Протезы']] as const).map(([k, label]) =>
       h('button', { class: 'btn' + (this.tab === k ? ' active' : ''), onclick: () => { this.tab = k; this.render(); } }, label)));
     const top = h('div', { class: 'dbg-top' }, h('b', {}, 'Отладка'), h('button', { class: 'btn', onclick: () => this.close() }, '✕ [F2]'));
     if (this.tab === 'items') { $('debug').replaceChildren(h('div', { class: 'dbg-box' }, top, tabs, ...this.itemsTab())); return; }
+    if (this.tab === 'prosth') { $('debug').replaceChildren(h('div', { class: 'dbg-box' }, top, tabs, ...this.prosthTab())); return; }
     $('debug').replaceChildren(h('div', { class: 'dbg-box' },
       top, tabs,
       flag('Не голодать', 'noHunger', 'Пайки не тратятся, голод не отнимает ОЗ.'),

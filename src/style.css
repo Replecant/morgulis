@@ -636,3 +636,9 @@ body { font-family: 'Old Standard TT', Georgia, serif; color: var(--text); }
 .psaves .mitem { font-size: 17px; padding: 3px 0; line-height: 1.2; }
 .psave small { display: block; font-size: 11px; color: var(--dim); font-style: italic; margin-top: 2px; }
 .pause-box .mitem[disabled] { opacity: 0.45; cursor: default; }
+
+/* отладка: протезы */
+.dbg-limb { padding: 4px 0; border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 12px; }
+.dbg-sel { flex: 1; min-width: 0; background: #14180f; color: #d8d0b0; border: 1px solid #4a4a3a; font-size: 11px; }
+.dbg-limb .dbg-item { flex-wrap: wrap; }
+.dbg-limb .dbg-sel { flex: 1 0 100%; margin-bottom: 3px; }
