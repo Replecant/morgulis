@@ -21,6 +21,7 @@ export interface Weapon {
   poison?: boolean;    // попадание отравляет (лёгкое ранение «Отравление газом»)
   shot?: boolean;      // дробь: −1 урона за клетку дальше оптимальной
   pierce?: boolean;    // пробивает броню
+  breath?: number;     // дыхание: бьёт всех в полосе на столько клеток вперёд и вешает слабость
 }
 
 export const WEAPONS: Record<string, Weapon> = {
@@ -45,7 +46,7 @@ export const WEAPONS: Record<string, Weapon> = {
   buttstock: { name: 'Приклад', type: 'melee', atk: -1, dmg: [1, 3] },
   // оружие траншейных мертвецов
   cudgel:    { name: 'Дубина', type: 'melee', atk: 0, dmg: [1, 3] },
-  breath:    { name: 'Пагубное дыхание', type: 'ranged', range: 4, opt: 4, atk: 2, dmg: [2, 4], ignoreCover: true, splash: [1, 2], poison: true },
+  breath:    { name: 'Зловонное дыхание', type: 'ranged', range: 4, opt: 4, atk: 2, dmg: [2, 4], ignoreCover: true, breath: 4 },
   salbite:   { name: 'Укус', type: 'melee', atk: 2, dmg: [3, 6] },
   rustbayonet: { name: 'Ржавый штык', type: 'melee', atk: 0, dmg: [2, 4] },
   oldrifle:  { name: 'Гнилая винтовка', type: 'ranged', range: 9, opt: 5, atk: -1, dmg: [3, 5] },

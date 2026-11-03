@@ -161,7 +161,11 @@ const HUNGRY_START: [number, number][] = [[700, 650], [1350, 560], [950, 1100]];
 // морские демоны: двое бродят по берегу озера баронессы
 interface LakeDemon { id: number; x: number; y: number; tx: number; ty: number; alive: boolean; respawn: number; calm: number; seen: boolean; a: number }
 const lakeRing = (a: number, k: number) => ({ x: -1650 + Math.cos(a) * 250 * k, y: 420 + Math.sin(a) * 140 * k });
-const nearLake = (q: Pt) => { const d = Math.hypot((q.x + 1650) / 250, (q.y - 420) / 140); return d > 0.95 && d < 1.9; };
+const lakeD = (q: Pt) => Math.hypot((q.x + 1650) / 250, (q.y - 420) / 140);
+/** Где морской демон может быть: у самой воды, не у дорог и не у деревни. */
+const demonOk = (q: Pt, far = 1.22) => { const d = lakeD(q); return d > 0.95 && d < far && !nearRoad(q, 55) && dist(q, { x: -1640, y: 640 }) > 170; };
+/** Отряд в зоне демонов — у берега, но не на дороге и не у Бриммора: только тогда они идут на него. */
+const nearLake = (q: Pt) => demonOk(q, 1.4);
 const inBaronLand = (q: Pt) => q.x > 200 && q.x < 1650 && q.y > 120 && q.y < SOUTH_Y - 120;
 const inNorth = (q: Pt) => q.y < NORTH_Y;
 // лоялисты старого режима: редкие группы прячутся в лесу, подальше от дорог
@@ -188,10 +192,56 @@ function segDist(p: Pt, a: number[], b: number[]) {
 const nearRoad = (p: Pt, d: number) => ROADS.some((r) => r.some((pt, i) => i > 0 && segDist(p, r[i - 1], pt) < d));
 const onRoad = (p: Pt) => nearRoad(p, 14);
 
+// ============================================================ вода: по озеру и рекам не пройти, мосты — там, где дорога или рельсы
+const railNear = (q: Pt, d: number) => [RAIL, WF_RAIL].some((r) => r.some((pt, i) => i > 0 && segDist(q, r[i - 1], pt) < d));
+/** pad — запас вокруг воды (для сетки обхода, чтобы путь не проскальзывал сквозь узкую реку между клетками). */
+function waterAt(q: Pt, pad = 0) {
+  const a = Math.atan2((q.y - LAKE.y) / LAKE.ry, (q.x - LAKE.x) / LAKE.rx), wob = 1 + Math.sin(a * 5) * 0.06 + Math.sin(a * 11 + 1) * 0.03;
+  const inLake = Math.hypot((q.x - LAKE.x) / LAKE.rx, (q.y - LAKE.y) / LAKE.ry) / wob < 1.02 + pad / LAKE.ry;
+  const inRiver = !inLake && RIVERS.some((rv) => rv.some((pt, i) => i > 0 && segDist(q, rv[i - 1], pt) < 8 + pad));
+  if (!inLake && !inRiver) return false;
+  return !nearRoad(q, 12) && !railNear(q, 12); // мосты и броды
+}
+// сетка проходимости для обхода воды (клетка 16 пикселей карты); строится один раз
+const GC = 16, GW = Math.ceil((WW - WX0) / GC), GH = Math.ceil((WH - WY0) / GC);
+let gridWet: Uint8Array | null = null;
+function wetGrid() {
+  if (gridWet) return gridWet;
+  gridWet = new Uint8Array(GW * GH);
+  for (let gy = 0; gy < GH; gy++) for (let gx = 0; gx < GW; gx++) gridWet[gy * GW + gx] = waterAt({ x: WX0 + gx * GC + GC / 2, y: WY0 + gy * GC + GC / 2 }, GC * 0.75) ? 1 : 0;
+  return gridWet;
+}
+const cellOf = (q: Pt) => ({ x: clamp(Math.floor((q.x - WX0) / GC), 0, GW - 1), y: clamp(Math.floor((q.y - WY0) / GC), 0, GH - 1) });
+const centerOf = (c: Pt) => ({ x: WX0 + c.x * GC + GC / 2, y: WY0 + c.y * GC + GC / 2 });
+function lineDry(a: Pt, b: Pt) { const n = Math.ceil(dist(a, b) / 3); for (let i = 1; i <= n; i++) if (waterAt({ x: a.x + ((b.x - a.x) * i) / n, y: a.y + ((b.y - a.y) * i) / n })) return false; return true; }
+/** Путь в обход воды: BFS по сетке, затем срезаем углы, где по прямой сухо. Пусто — если идти можно напрямую. */
+function dryRoute(from: Pt, to: Pt): Pt[] {
+  if (lineDry(from, to)) return [];
+  const wet = wetGrid(), s0 = cellOf(from), t0 = cellOf(to), prev = new Int32Array(GW * GH).fill(-1);
+  const start = s0.y * GW + s0.x; prev[start] = start;
+  const q = [start]; let best = start, bestD = Infinity;
+  for (let h = 0; h < q.length; h++) {
+    const cur = q[h], cx = cur % GW, cy = (cur - cx) / GW, dd = Math.hypot(cx - t0.x, cy - t0.y);
+    if (dd < bestD) { bestD = dd; best = cur; if (dd === 0) break; }
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]]) {
+      const nx = cx + dx, ny = cy + dy; if (nx < 0 || ny < 0 || nx >= GW || ny >= GH) continue;
+      const k = ny * GW + nx; if (prev[k] !== -1 || wet[k]) continue;
+      prev[k] = cur; q.push(k);
+    }
+  }
+  const cells: Pt[] = []; for (let k = best; k !== start; k = prev[k]) cells.push(centerOf({ x: k % GW, y: Math.floor(k / GW) }));
+  cells.reverse();
+  if (bestD === 0) cells[cells.length - 1] = { x: to.x, y: to.y }; // цель сухая — идём точно в неё
+  const out: Pt[] = []; let at = from; // срезаем углы
+  for (let i = 0; i < cells.length; i++) { if (i === cells.length - 1 || !lineDry(at, cells[i + 1])) { out.push(cells[i]); at = cells[i]; } }
+  return out;
+}
+
 export const World = {
   bg: null as HTMLCanvasElement | null,
   view: null as PixelView | null,
   party: { x: 430, y: 790, tx: 430, ty: 790, moving: false, flip: false },
+  route: [] as Pt[], // путь в обход воды (точки после текущей цели)
   pending: null as Loc | null,
   hover: null as Loc | null,
   cam: { x: 0, y: 0 },
@@ -231,7 +281,7 @@ export const World = {
     this.clouds = [[300, 1520], [-700, 1660], [1100, 2120], [-1500, 2000], [600, 2210], [-300, 1750], [200, 300], [760, 1080], [1250, 560], [-300, 420], [-650, 900], [1560, 1120], [900, 180], [-1250, 220], [-2050, 950], [-1500, 1150], [-2300, 380]].map(([x, y], i) => ({
       x, y, r: 70 + ((i * 37) % 50), vx: 9 + (i % 3) * 3, vy: ((i % 2) * 2 - 1) * 2, seed: i * 1.9 }));
     this.inGas = false; this.gasDose = 0; this.filterUse = 0;
-    this.demons = [0.6, 3.6].map((a, i) => { const q = lakeRing(a, 1.25); return { id: i, x: q.x, y: q.y, tx: q.x, ty: q.y, alive: true, respawn: 0, calm: 0, seen: false, a }; });
+    this.demons = [0.6, 3.6].map((a, i) => { const q = lakeRing(a, 1.1); return { id: i, x: q.x, y: q.y, tx: q.x, ty: q.y, alive: true, respawn: 0, calm: 0, seen: false, a }; });
     this.hungry = HUNGRY_START.map(([x, y], i) => ({ id: i, kinds: i % 2 ? ['hungry2', 'hungry', 'hungry'] : ['hungry', 'hungry2'], x, y, tx: x, ty: y, alive: true, respawn: 0, calm: 0, seen: false }));
     this.dead = DEAD_START.map(([id, kinds, x, y]) => ({ id, kinds, x, y, tx: x, ty: y, alive: true, respawn: 0, calm: 0, seen: false }));
     this.patrols = PATROL_PATHS.map((path, i) => { const len = polyLen(path); return { path, len, s: i === 0 ? len * 0.2 : i >= 3 ? len * ((0.15 + (i - 3) * 0.3) % 1) : 0, dir: 1 as const, wait: 0, speed: PATROL_OWNER[i] === 'wfcar' ? PATROL_SPEED * 2 : i ? PATROL_SPEED * 1.15 : PATROL_SPEED * 0.9, owner: PATROL_OWNER[i] }; });
@@ -284,11 +334,13 @@ export const World = {
     }
     // клик по патрулю — подойти и заговорить
     const pt = this.patrolNear({ x, y: y + 8 }, 22);
-    if (pt) { this.pending = null; this.pendingPatrol = pt; const q = this.patrolPos(pt); this.party.tx = q.x; this.party.ty = q.y; this.party.moving = true; return; }
+    if (pt) { this.route = []; this.pending = null; this.pendingPatrol = pt; const q = this.patrolPos(pt); this.party.tx = q.x; this.party.ty = q.y; this.party.moving = true; return; }
     this.pendingPatrol = null;
     const l = this.locAt(x, y);
     if (l) { this.pending = l; this.party.tx = l.x; this.party.ty = l.y + (l.kind === 'fort' ? 60 : 0); }
     else { this.pending = null; this.party.tx = clamp(x, WX0 + 10, WW - 10); this.party.ty = clamp(y, WY0 + 10, WH - 10); }
+    this.route = dryRoute(this.party, { x: this.party.tx, y: this.party.ty }); // через воду не идём — в обход, к мосту
+    if (this.route.length) { const n = this.route.shift()!; this.party.tx = n.x; this.party.ty = n.y; }
     this.party.moving = true;
   },
   hoverAt(mx: number, my: number) { this.hover = this.locAt(mx + this.cam.x, my + this.cam.y); },
@@ -315,14 +367,22 @@ export const World = {
     let moved = 0;
     const speed = SPEED * (onRoad(p) ? ROAD_BONUS : inNorth(p) ? 0.7 : 1) * HOURS_PER_SEC * Debug.speed * Weather.speedK();
     if (vx || vy) {
-      const n = Math.hypot(vx, vy);
-      p.x = clamp(p.x + (vx / n) * speed * dt, WX0 + 10, WW - 10); p.y = clamp(p.y + (vy / n) * speed * dt, WY0 + 10, WH - 10);
+      const n = Math.hypot(vx, vy), sx = (vx / n) * speed * dt, sy = (vy / n) * speed * dt;
+      // в воду не шагнуть: пробуем целиком, потом скольжение вдоль берега по одной оси
+      const tryAt = (x: number, y: number) => { const q = { x: clamp(x, WX0 + 10, WW - 10), y: clamp(y, WY0 + 10, WH - 10) }; if (waterAt(q, -3) && !waterAt(p, -3)) return false; p.x = q.x; p.y = q.y; return true; };
+      if (!tryAt(p.x + sx, p.y + sy) && !tryAt(p.x + sx, p.y)) tryAt(p.x, p.y + sy);
+      this.route = [];
       if (vx) p.flip = vx < 0;
       p.moving = false; this.pending = null; this.pendingPatrol = null; moved = speed * dt;
     } else if (p.moving) {
       const d = Math.hypot(p.tx - p.x, p.ty - p.y), stepLen = Math.min(d, speed * dt);
-      if (d > 0.5) { p.x += ((p.tx - p.x) / d) * stepLen; p.y += ((p.ty - p.y) / d) * stepLen; if (Math.abs(p.tx - p.x) > 1) p.flip = p.tx < p.x; moved = stepLen; }
-      if (d - stepLen < 1) {
+      if (d > 0.5) {
+        const nx = p.x + ((p.tx - p.x) / d) * stepLen, ny = p.y + ((p.ty - p.y) / d) * stepLen;
+        if (waterAt({ x: nx, y: ny }, -3) && !waterAt(p, -3) && !this.pendingPatrol) { p.moving = false; this.route = []; this.pending = null; } // упёрлись в воду
+        else { p.x = nx; p.y = ny; if (Math.abs(p.tx - p.x) > 1) p.flip = p.tx < p.x; moved = stepLen; }
+      }
+      if (p.moving && d - stepLen < 1 && this.route.length) { const n = this.route.shift()!; p.tx = n.x; p.ty = n.y; }
+      else if (p.moving && d - stepLen < 1) {
         p.moving = false;
         if (this.pending) { const l = this.pending; this.pending = null; this.onArrive(l); }
       }
@@ -409,14 +469,19 @@ export const World = {
     const p = this.party, hours = dt * HOURS_PER_SEC;
     for (const g of this.demons) {
       if (!g.alive) {
-        if (G.clock >= g.respawn) { const q = lakeRing(g.a, 1.25); if (dist(q, p) > 400) { g.alive = true; g.x = g.tx = q.x; g.y = g.ty = q.y; } }
+        if (G.clock >= g.respawn) { const q = lakeRing(g.a, 1.1); if (demonOk(q) && dist(q, p) > 400) { g.alive = true; g.x = g.tx = q.x; g.y = g.ty = q.y; } }
         continue;
       }
       const d = dist(g, p);
       g.seen = d < 300;
       const chase = !Debug.invisible && d < 160 && G.clock >= g.calm && nearLake(p);
       if (chase) { g.tx = p.x; g.ty = p.y; }
-      else if (dist(g, { x: g.tx, y: g.ty }) < 4) { g.a += 0.5 + Math.random() * 0.6; const q = lakeRing(g.a, 1.1 + Math.random() * 0.35); g.tx = q.x; g.ty = q.y; }
+      else if (dist(g, { x: g.tx, y: g.ty }) < 4 || !demonOk({ x: g.tx, y: g.ty })) {
+        for (let k = 0; k < 12; k++) { // следующая точка вдоль берега, в обход дорог и деревни
+          const a = g.a + (0.35 + Math.random() * 0.5) * (k % 2 ? -1 : 1), q = lakeRing(a, 1.03 + Math.random() * 0.15);
+          if (demonOk(q)) { g.a = a; g.tx = q.x; g.ty = q.y; break; }
+        }
+      }
       const sp = (chase ? 34 : 14) * hours, dd = dist(g, { x: g.tx, y: g.ty });
       if (dd > 0.5) { g.x += ((g.tx - g.x) / dd) * Math.min(sp, dd); g.y += ((g.ty - g.y) / dd) * Math.min(sp, dd); }
       if (chase && d < 22) { p.moving = false; this.pending = null; G.keys.clear(); this.demonHit = g; this.onDemon(); return; }
@@ -483,7 +548,7 @@ export const World = {
     this.loyalHit = null;
   },
   killDemon() { const g = this.demonHit; if (g) { g.alive = false; g.respawn = G.clock + 72; } this.demonHit = null; },
-  calmDemon(hours: number) { const g = this.demonHit; if (g) { g.calm = G.clock + hours; g.a += 1.5; const q = lakeRing(g.a, 1.2); g.tx = q.x; g.ty = q.y; } this.demonHit = null; },
+  calmDemon(hours: number) { const g = this.demonHit; if (g) { g.calm = G.clock + hours; for (let k = 0; k < 12; k++) { g.a += 0.6; const q = lakeRing(g.a, 1.08); if (demonOk(q)) { g.tx = q.x; g.ty = q.y; break; } } } this.demonHit = null; },
 
   killHungry() { const g = this.hungryHit; if (g) { g.alive = false; g.respawn = G.clock + 36; } this.hungryHit = null; },
   calmHungry(hours: number) {

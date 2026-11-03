@@ -54,7 +54,7 @@ export interface Unit {
 
 type Action = { type: 'w' | 'a' | 'c' | 's'; key: string };
 export interface BtnInfo { kind: 'w' | 'a' | 'c' | 's' | 'm'; key: string; label: string; desc: string; disabled: boolean; active: boolean }
-interface Fx { type: 'tracer' | 'proj' | 'ring'; x1: number; y1: number; x2: number; y2: number; color: string; life: number; max: number; k?: number }
+interface Fx { type: 'tracer' | 'proj' | 'ring' | 'breath'; cells?: Pt[]; x1: number; y1: number; x2: number; y2: number; color: string; life: number; max: number; k?: number }
 interface Particle { x: number; y: number; vx: number; vy: number; life: number; max: number; color: string; size: number; g: number }
 interface Float { x: number; y: number; text: string; color: string; t: number }
 
@@ -196,6 +196,7 @@ export const Combat = {
     let bonus = w.atk + extra, dc = t.def - (t.exposed ? 2 : 0);
     // оккультные состояния
     if (att.st.hex) bonus -= 3;
+    if (att.st.weak) bonus -= 2; // слабость от зловонного дыхания
     if (att.st.pact) bonus += 2;
     if (att.st.stars) bonus += 1;
     if (att.st.fortune) bonus += 4;
@@ -821,6 +822,7 @@ export const Combat = {
   // ---------------------------------------------------------- действия
   async attack(a: Unit, t: Unit, wkey: string, bonus = 0, opts: { dmg?: number; adv?: boolean } = {}) {
     const w = WEAPONS[wkey];
+    if (w.breath) return this.breathAttack(a, t, wkey, bonus);
     if (t.x !== a.x) a.flip = t.x < a.x;
     const once = { fortune: !!a.st.fortune, omen: !!a.st.omen };
     if (a.st.pact) opts = { ...opts, dmg: (opts.dmg ?? 0) + 2 }; // демонический договор
@@ -845,7 +847,8 @@ export const Combat = {
     else if (w.magic) { await this.projectile(a, t, '#9fef6a', 320); this.burst(t.px, t.py - 12, '#9fef6a', 26, 90); }
     else { this.muzzle(a, t, hit); await sleep(140); }
     if (hit) {
-      let d = randInt(w.dmg[0], w.dmg[1]) + (w.type === 'melee' ? a.dmgM : 0) + (opts.dmg ?? 0);
+      let d = randInt(w.dmg[0], w.dmg[1]) + (w.type === 'melee' ? a.dmgM : 0) + (opts.dmg ?? 0) - (a.st.weak ? 1 : 0);
+      d = Math.max(1, d);
       if (w.shot) d = Math.max(1, d - Math.max(0, Math.floor(dist(a, t) - w.opt!))); // дробь теряет силу
       const crit = roll.crit; // натуральная 20: полуторный урон, броня не спасает
       if (crit) d = Math.ceil(d * 1.5);
@@ -869,6 +872,36 @@ export const Combat = {
       if (!r.success) { a.hp = Math.max(1, a.hp - 1); this.float(a, '−1 (разряд)', '#d8ff70'); this.hooks.log(`Отдача разряда: ${a.name} теряет 1 ОЗ [Сила: d20 ${r.roll}${str >= 0 ? '+' : ''}${str} против 12].`); }
       else this.hooks.log(`${a.name} выдерживает отдачу разряда [Сила: d20 ${r.roll}${str >= 0 ? '+' : ''}${str} против 12].`);
     }
+  },
+
+  /** Зловонное дыхание: облако на w.breath клеток вперёд по направлению к цели; каждый в полосе — бросок атаки, урон и слабость. */
+  async breathAttack(a: Unit, t: Unit, wkey: string, bonus: number) {
+    const w = WEAPONS[wkey], n = w.breath!;
+    if (t.x !== a.x) a.flip = t.x < a.x;
+    const dx = t.x - a.x, dy = t.y - a.y, m = Math.max(1, Math.abs(dx), Math.abs(dy));
+    const cells: Pt[] = [];
+    for (let k = 1; k <= n; k++) {
+      const c = { x: Math.round(a.x + (dx * k) / m), y: Math.round(a.y + (dy * k) / m) };
+      if (c.x < 0 || c.y < 0 || c.x >= CW || c.y >= CH || this.map[c.y][c.x] === '#') break; // в стену облако не идёт
+      cells.push(c);
+    }
+    this.hooks.log(`${a.name} извергает зловонное дыхание!`);
+    this.fx.push({ type: 'breath', x1: a.px, y1: a.py, x2: 0, y2: 0, color: '#8a9a3a', life: 1.8, max: 1.8, cells });
+    this.shake = Math.max(this.shake, 2.5);
+    await sleep(420);
+    for (const c of cells) {
+      const v = this.units.find((u) => !u.dead && u !== a && u.x === c.x && u.y === c.y);
+      if (!v) continue;
+      const info = this.attackInfo(a, a, v, wkey, bonus) ?? { bonus: w.atk + bonus, dc: v.def, chance: 0 };
+      const roll = check(info.bonus, info.dc), rt = `d20: ${roll.roll}${info.bonus >= 0 ? '+' : ''}${info.bonus} против ${info.dc}`;
+      if (!roll.success) { this.float(v, 'Увернулся', '#b8b8a8'); this.hooks.log(`${v.name} успевает отвернуться от облака [${rt}]`); continue; }
+      const d = randInt(w.dmg[0], w.dmg[1]);
+      this.hooks.log(`${a.name} → ${v.name}: ${w.name}, ${d} урона, слабость на 2 раунда (−2 к атакам, −1 к урону) [${rt}]`);
+      await this.damage(v, d, false);
+      if (!v.dead) { v.st.weak = 3; this.float(v, 'Слабость', '#a8b860'); }
+      await sleep(120);
+    }
+    await sleep(300);
   },
 
   async damage(u: Unit, d: number, crit: boolean) {
@@ -1107,6 +1140,23 @@ export const Combat = {
       const a = Math.max(0, f.life / f.max);
       if (f.type === 'tracer' && a > 0.3) pline(lc, f.x1 / PS, f.y1 / PS, f.x2 / PS, f.y2 / PS, f.color);
       if (f.type === 'ring') { const rr = ((1 - a) * 50 + 5) / PS; for (let i = 0; i < 40; i++) { const ang = (i / 40) * TAU; ppx(lc, f.x1 / PS + Math.cos(ang) * rr, f.y1 / PS + Math.sin(ang) * rr, f.color); } }
+      if (f.type === 'breath' && f.cells) { // клубы зловонного облака: расползаются от пасти по полосе и медленно тают
+        const age = 1 - a, BAY = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
+        f.cells.forEach((c, i) => {
+          const grow = Math.min(1, Math.max(0, age * 4 - i * 0.45)); if (grow <= 0) return;
+          const cx = (c.x * CT + CT / 2) / PS, cy = (c.y * CT + CT / 2) / PS - 4, fade = a < 0.35 ? a / 0.35 : 1;
+          for (let k = 0; k < 4; k++) {
+            const ox = Math.sin(t * 2 + i * 1.7 + k * 2.1) * 5, oy = Math.cos(t * 1.6 + i + k * 1.3) * 3 - k * 2, r = (9 + k * 2 + i) * grow;
+            const col = ['#6a7a2a', '#8a9a3a', '#a4ae50', '#5a5a30'][k];
+            for (let yy = -r; yy <= r; yy++) for (let xx = -r; xx <= r; xx++) {
+              const d = Math.hypot(xx, yy) / r; if (d >= 1) continue;
+              const px = Math.round(cx + ox + xx), py = Math.round(cy + oy + yy * 0.7);
+              if (0.95 * fade * (1 - d * d * 0.7) > (BAY[(py & 3) * 4 + (px & 3)] + 0.5) / 16) ppx(lc, px, py, col);
+            }
+          }
+          if (grow > 0.6 && (Math.floor(t * 9) + i) % 3 === 0) ppx(lc, cx + Math.sin(t * 5 + i) * 5, cy - 7, '#d0d890'); // капли слизи
+        });
+      }
       if (f.type === 'proj') { const x = lerp(f.x1, f.x2, f.k!) / PS, y = lerp(f.y1, f.y2, f.k!) / PS; prect(lc, x - 1, y - 1, 3, 3, f.color); ppx(lc, x, y, '#ffffff'); }
     }
     for (const p of this.parts) if (p.life / p.max > 0.15) prect(lc, p.x / PS, p.y / PS, p.size > 2.5 ? 2 : 1, p.size > 2.5 ? 2 : 1, p.color);
@@ -1189,7 +1239,7 @@ export const Combat = {
       }
       if (u.terror) { c.fillStyle = '#b58cff'; c.font = 'bold 12px serif'; c.fillText('◉', x + bw + 2, y + 4); }
       { // оккультные состояния — значки над полоской здоровья
-        const ICON: Record<string, [string, string]> = { hex: ['✥', '#9fef6a'], rot: ['☠', '#9fef6a'], ward: ['✥', '#e8e0b0'], pact: ['⛧', '#e05030'], commanded: ['⛧', '#e05030'], fortune: ['☉', '#f0e090'], omen: ['☾', '#b58cff'], stars: ['✶', '#f0e090'], bound: ['ᛟ', '#c8a0ff'] };
+        const ICON: Record<string, [string, string]> = { weak: ['☣', '#a8b860'], hex: ['✥', '#9fef6a'], rot: ['☠', '#9fef6a'], ward: ['✥', '#e8e0b0'], pact: ['⛧', '#e05030'], commanded: ['⛧', '#e05030'], fortune: ['☉', '#f0e090'], omen: ['☾', '#b58cff'], stars: ['✶', '#f0e090'], bound: ['ᛟ', '#c8a0ff'] };
         let ix = x; c.font = 'bold 11px serif';
         for (const k of Object.keys(u.st)) { const ic = ICON[k]; if (!ic) continue; c.fillStyle = ic[1]; c.fillText(ic[0], ix, y - 8); ix += 10; }
         if (u.summon) { c.fillStyle = '#e05030'; c.fillText(`⛧${u.summon}`, ix, y - 8); }
