@@ -877,6 +877,7 @@ export const Combat = {
     else if (w.magic) { await this.projectile(a, t, '#9fef6a', 320); this.burst(t.px, t.py - 12, '#9fef6a', 26, 90); }
     else { this.muzzle(a, t, hit); await sleep(140); }
     if (hit) {
+      if (w.type === 'melee') Sfx.hit(wkey);
       let d = randInt(w.dmg[0], w.dmg[1]) + (w.type === 'melee' ? a.dmgM : 0) + (opts.dmg ?? 0) - (a.st.weak ? 1 : 0);
       if (w.type === 'melee' && a.worn.includes(wkey)) d -= 1; // затупилось, расшаталось
       if (w.antiDemon && t.demonic) d += w.antiDemon;
