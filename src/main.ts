@@ -30,13 +30,14 @@ import { Character, newCharacter, quickCharacter, PROF_ORDER, ProfId } from './r
 import { rest } from './wounds';
 import { $ } from './util';
 import { Save, type Slot } from './save';
+import { Crawl } from './crawl';
 installI18n(); // английский: перевод текста в DOM и на холсте
 
 const cv = $('cv') as HTMLCanvasElement;
 const ctx = cv.getContext('2d')!;
 
 /** Куда вернуться после боя. */
-let returnMode: 'world' | 'explore' = 'world';
+let returnMode: 'world' | 'explore' | 'crawl' = 'world';
 
 // ---------------------------------------------------------------- переходы между режимами
 // Александр: реакции на крупные форты и край мира (показываются, когда окно разговора свободно)
@@ -80,6 +81,7 @@ function toScene(id: string, at?: { x: number; y: number }) {
   Save.auto(); // и при входе в сцену
 }
 function hint() {
+  if (G.mode === 'crawl') { $('hint').textContent = 'WASD / стрелки или клик — идти по траншеям · E / Пробел — осмотреть развилку · Q — лечение · I — снаряжение · C — персонаж · Esc — меню · наверх — по лестнице у входа'; return; }
   if (G.mode === 'world') $('hint').textContent = 'Клик — идти · клик по месту — войти · WASD — идти · E — войти рядом · Q — лечение и лагерь · I — снаряжение · C — персонаж · O — оккультизм · M — карта · Esc — меню';
   else exploreHint();
 }
@@ -108,7 +110,8 @@ Combat.hooks = {
     if (id.startsWith('loyal')) { World.killLoyal(); Dialog.start('after_loyal'); }
     if (id === 'coven') Dialog.start('after_coven');
     if (id.startsWith('dsq_')) { World.killDsq(); Dialog.start('after_dsq'); }
-    if (id.startsWith('trench')) { World.killDead(); World.deadHit = null; Dialog.start('after_dead'); }
+    if (id.startsWith('trench') && returnMode === 'crawl') Dialog.start('crawl_after_dead'); // засада в траншеях краулинга
+    else if (id.startsWith('trench')) { World.killDead(); World.deadHit = null; Dialog.start('after_dead'); }
     if (Combat.wearNotes.length) toast(Combat.wearNotes.join(' '));
     refreshHud();
   },
@@ -139,7 +142,7 @@ function restoreSnapshot() {
   G.supplies = d.sup;
 }
 function startBattle(id: string) {
-  if (G.mode === 'world' || G.mode === 'explore') returnMode = G.mode;
+  if (G.mode === 'world' || G.mode === 'explore' || G.mode === 'crawl') returnMode = G.mode;
   snapshot = JSON.stringify({ sq: G.squad.map((s) => ({ hp: s.hp, wounds: s.wounds ?? [] })), sup: G.supplies });
   G.mode = 'combat';
   combatShow(true);
@@ -148,6 +151,9 @@ function startBattle(id: string) {
 
 // ---------------------------------------------------------------- связки модулей
 Explore.onInteract = (d) => Dialog.start(d);
+// траншейный краулинг: вход в развилку (засада, газ) и осмотр точки интереса
+Crawl.onRoom = (r) => { if (!r.done && r.kind === 'dead') Dialog.start('crawl_dead'); else if (!r.done && r.kind === 'gas') Dialog.start('crawl_gas'); else if (!r.done && r.kind !== 'empty' && r.kind !== 'ladder') toast('Развилка. E — осмотреть.'); };
+Crawl.onInteract = (r) => Dialog.start(r.kind === 'ladder' ? 'crawl_ladder' : r.kind === 'empty' ? 'crawl_empty' : r.done ? 'crawl_done' : ({ cache: 'crawl_cache', corpse: 'crawl_corpse', dugout: 'crawl_dugout', dead: 'crawl_dead', gas: 'crawl_gas' } as const)[r.kind]);
 Explore.onLocation = () => refreshHud();
 Explore.onExit = (scene) => toWorld(scene);
 World.onArrive = (l) => { if (l.id === 'deadend') alexSee('deadend'); Dialog.start(l.talk); };
@@ -207,6 +213,10 @@ Dialog.onAction = (act) => {
   else if (act === 'battle_scav') startBattle('ruins');
   else if (act === 'recruit_alex') { if (!G.squad.some((s) => s.id === 'alex')) { G.squad.push(makeAlex()); applyEquipLooks(G.squad); if (G.mode === 'explore') Explore.enter(Explore.scene, Explore.player); toast('Александр в отряде'); refreshHud(); } }
   else if (act === 'alex_to_coven' || act === 'alex_sold') alexRemove();
+  else if (act === 'crawl_enter') { Save.auto(); Crawl.enter(); G.mode = 'crawl'; G.keys.clear(); hint(); refreshHud(); toast('Вы спускаетесь в траншеи. Наверх — по лестнице у входа.'); }
+  else if (act === 'crawl_leave') { G.mode = 'world'; World.updateLocation(); G.keys.clear(); hint(); refreshHud(); }
+  else if (act === 'crawl_fight') startBattle(Crawl.room?.dead ?? 'trench1');
+  else if (act === 'crawl_retreat') Crawl.retreat();
   else if (act === 'alex_grown') { G.flags.alexGrown = true; const b = G.squad.find((x) => x.id === 'alex'); if (b) { b.maxHp += 2; b.hp += 2; b.atkM += 1; b.atkR += 1; } refreshHud(); }
   else if (act === 'battle_band') startBattle('band_' + (World.bandHit?.kinds.join('+') ?? 'bandit_gun+bandit_axe'));
   else if (act === 'band_calm') World.calmBand(24);
@@ -299,7 +309,7 @@ function toCanvas(e: MouseEvent) {
   const r = cv.getBoundingClientRect();
   return { x: ((e.clientX - r.left) * 960) / r.width, y: ((e.clientY - r.top) * 640) / r.height };
 }
-const roaming = () => G.mode === 'explore' || G.mode === 'world';
+const roaming = () => G.mode === 'explore' || G.mode === 'world' || G.mode === 'crawl';
 
 window.addEventListener('keydown', (e) => {
   if (e.code === 'F2') { e.preventDefault(); if (G.mode !== 'title' && G.mode !== 'create') Debug.toggle(); return; }
@@ -314,13 +324,13 @@ window.addEventListener('keydown', (e) => {
     if (G.mode !== 'combat' || plain) { G.keys.clear(); Pause.show(() => { combatShow(false); showTitle(); }, { load: (s) => { combatShow(false); loadGame(s); } }); return; }
   }
   if (MapWin.open) { if (e.code === 'Escape' || e.code === 'KeyM') MapWin.close(); else { e.preventDefault(); MapWin.key(e.code, true); } return; }
-  if (e.code === 'KeyM' && roaming() && !Dialog.active && !Trade.open && !ProsthShop.open && !OccultMenu.open && !Inventory.open && !Sheet.open && !squadOpen()) {
+  if (e.code === 'KeyM' && roaming() && G.mode !== 'crawl' && !Dialog.active && !Trade.open && !ProsthShop.open && !OccultMenu.open && !Inventory.open && !Sheet.open && !squadOpen()) {
     G.keys.clear(); MapWin.show(() => { refreshHud(); hint(); }); return;
   }
   if (Dialog.active) { e.preventDefault(); Dialog.key(e); return; }
   if (Trade.open) { if (e.code === 'Escape') Trade.close(); return; }
   if (ProsthShop.open) { if (e.code === 'Escape') ProsthShop.close(); return; }
-  if (e.code === 'KeyO' && roaming() && !squadOpen() && !Inventory.open && !Sheet.open) {
+  if (e.code === 'KeyO' && roaming() && G.mode !== 'crawl' && !squadOpen() && !Inventory.open && !Sheet.open) {
     if (OccultMenu.open) OccultMenu.close(); else { G.keys.clear(); OccultMenu.show(() => { refreshHud(); hint(); }); }
     return;
   }
@@ -347,7 +357,7 @@ window.addEventListener('keydown', (e) => {
   if (roaming()) {
     if (['Space', 'KeyE', 'Enter'].includes(e.code)) {
       e.preventDefault();
-      if (performance.now() - Dialog.closedAt > 200) (G.mode === 'world' ? World : Explore).interactKey();
+      if (performance.now() - Dialog.closedAt > 200) (G.mode === 'world' ? World : G.mode === 'crawl' ? Crawl : Explore).interactKey();
       return;
     }
     if (e.code.startsWith('Arrow')) e.preventDefault();
@@ -377,6 +387,7 @@ cv.addEventListener('mousedown', (e) => {
   const p = toCanvas(e);
   if (Dialog.active) { Dialog.advance(); return; }
   if (G.mode === 'explore') Explore.click(p.x, p.y);
+  else if (G.mode === 'crawl') Crawl.click(p.x, p.y);
   else if (G.mode === 'world') World.click(p.x, p.y);
   else if (G.mode === 'combat') Combat.click(p.x, p.y, e.button === 2);
 });
@@ -400,10 +411,12 @@ function frame(now: number) {
   const free = !Dialog.active && !squadOpen() && !Inventory.open && !Trade.open && !Sheet.open && !Pause.open && !ProsthShop.open && !OccultMenu.open;
   if (alexPending && free && (G.mode === 'explore' || G.mode === 'world')) { const d = alexPending; alexPending = ''; Dialog.start(d); }
   if (G.mode === 'explore' && free) Explore.update(dt);
+  if (G.mode === 'crawl' && free) Crawl.update(dt);
   if (G.mode === 'world' && free) World.update(dt);
   if (G.mode === 'combat') { Combat.update(dt); Combat.draw(ctx, G.time); }
   else if (G.mode === 'title' || G.mode === 'create') drawMenuBg(ctx, G.time);
   else if (G.mode === 'world') World.draw(ctx, G.time);
+  else if (G.mode === 'crawl') Crawl.draw(ctx, G.time);
   else Explore.draw(ctx, G.time);
   if (G.mode === 'world' && (hudT += dt) > 0.5) { hudT = 0; refreshHud(); }
   Music.update(dt, G.mode === 'combat', G.mode === 'title' || G.mode === 'create');
@@ -421,5 +434,5 @@ requestAnimationFrame(frame);
 
 // отладка: ?debug в адресе даёт доступ к состоянию из консоли
 if (new URLSearchParams(location.search).has('debug')) {
-  (window as any).morgulis = { G, Combat, Explore, World, Dialog, startBattle, newGame, newCharacter, openSquad, Inventory, Trade, Sheet, Music, Pause, ProsthShop, OccultMenu, Debug, Weather, charSprite, toScene, toWorld };
+  (window as any).morgulis = { G, Combat, Crawl, Explore, World, Dialog, startBattle, newGame, newCharacter, openSquad, Inventory, Trade, Sheet, Music, Pause, ProsthShop, OccultMenu, Debug, Weather, charSprite, toScene, toWorld };
 }
