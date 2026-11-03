@@ -162,7 +162,7 @@ export function showMainMenu(host: HTMLElement, hd: MenuHandlers) {
   const item = (label: string, fn: () => void) => h('button', { class: 'mitem', onclick: fn }, h('span', { class: 'orn' }, '❦'), label, h('span', { class: 'orn r' }, '❦'));
   const arch = h('div', { class: 'arch' },
     h('div', { class: 'arch-content' },
-      h('h1', { class: 'mtitle' }, 'Моргулис'),
+      h('h1', { class: 'mtitle' }, 'Мортелис'),
       h('div', { class: 'msub' }, 'ролевая песочница'),
       h('div', { class: 'mrule' }, '✦'),
       h('nav', { class: 'mnav' },
@@ -192,7 +192,7 @@ export function showAbout(host: HTMLElement, onBack: () => void) {
   host.replaceChildren(h('div', { class: 'menu' },
     h('div', { class: 'about' },
       h('h2', {}, 'Об игре'),
-      h('p', {}, 'Моргулис — самостоятельный вымышленный мир. Его звезда почти перестала светить и стала тусклой и зеленоватой. Пакс-Империя рухнула, на её руинах делят власть остатки имперской армии и нефтяные бароны.'),
+      h('p', {}, 'Мортелис — самостоятельный вымышленный мир. Его звезда почти перестала светить и стала тусклой и зеленоватой. Пакс-Империя рухнула, на её руинах делят власть остатки имперской армии и нефтяные бароны.'),
       h('p', {}, 'Это прототип ролевой песочницы: создание персонажа по системе 3d6, регион с тремя деревнями и фортом Олдриджа — глобальная карта, исследование, диалоги, торговля за шиллинги и пошаговые тактические бои.'),
       h('p', { class: 'note' }, 'Управление: WASD / стрелки или клик — движение · E — говорить · I — снаряжение · Q — лечение · в бою: клик, 1–9, Tab, Enter.'),
       h('button', { class: 'mitem', onclick: onBack }, '‹ Назад'),
@@ -207,7 +207,7 @@ export function openRules(host: HTMLElement, onClose: () => void) {
       title: 'Основа',
       left: () => h('div', {},
         h('div', { class: 'chapter' }, 'Глава I'), h('h1', {}, 'Основа'),
-        h('p', { class: 'drop' }, 'Ролевая система Моргулиса — облегчённая система на трёх шестигранных костях (3d6) с духом старой школы: мало правил, быстрые проверки, опасный мир.'),
+        h('p', { class: 'drop' }, 'Ролевая система Мортелиса — облегчённая система на трёх шестигранных костях (3d6) с духом старой школы: мало правил, быстрые проверки, опасный мир.'),
         h('p', { class: 'formula' }, '3d6 + черта + мастерство ≥ КС'),
         P('Мастерство добавляется, только если навык обучен. Натуральная 20 — всегда успех, натуральная 1 — всегда провал.'),
         h('div', { class: 'dcs' }, ...Object.values(DC).map((d) => h('span', {}, DC_NAMES[d], ' ', String(d)))),
@@ -257,7 +257,7 @@ export function openRules(host: HTMLElement, onClose: () => void) {
       ),
     },
   ];
-  const book = new Book(host, spreads, { heading: 'Правила Моргулиса', onClose });
+  const book = new Book(host, spreads, { heading: 'Правила Мортелиса', onClose });
   book.maxReached = spreads.length - 1; // все главы открыты сразу
   book.render();
   return book;

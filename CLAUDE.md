@@ -1,4 +1,4 @@
-# Моргулис
+# Мортелис
 
 Браузерная игра на TypeScript + Vite (`npm run dev`, `npm run build`). Публикуется на GitHub Pages workflow-ом при пуше в `main`: https://replecant.github.io/morgulis/ — в каждом отчёте автору давать эту ссылку.
 
