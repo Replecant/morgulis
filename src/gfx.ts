@@ -62,7 +62,7 @@ export const STYLES: Record<string, Style> = {
   // солдаты барона: мундир хаки, плоская каска с широкими полями, ремни с подсумками, обмотки
   guard: { coat: '#6b6345', legs: '#5e573c', belt: '#9a906a', webbing: '#a89c74', puttees: '#9a9070', hat: 'brodie', hatC: '#5c5a40', skin: '#c0a488', weapon: 'rifle' },
   // траншейные мертвецы — павшие солдаты старой войны
-  dead_soldier: { coat: '#4a4c3a', legs: '#2a2a22', belt: '#3a2a1a', hat: 'helmet', hatC: '#3e4232', skin: '#8a9a78', undead: true, weapon: 'rifle' },
+  dead_soldier: { coat: '#4a4c3a', legs: '#2a2a22', belt: '#3a2a1a', hat: 'helmet', hatC: '#3e4232', skin: '#8a9a78', undead: true },
   dead_rifle: { coat: '#45473a', legs: '#28281f', belt: '#3a2a1a', hat: 'cap', hatC: '#2e3024', skin: '#90a080', undead: true, weapon: 'rifle' },
   dead_gas: { coat: '#3a3e34', legs: '#24261f', hat: 'helmet', hatC: '#33372b', skin: '#8a9a78', mask: true, tanks: true, undead: true },
   dead_sapper: { coat: '#3a3a34', legs: '#222220', hat: 'helmet', hatC: '#55585a', skin: '#7e8e6e', cuirass: true, undead: true, weapon: 'shovel', scale: 1.15 },

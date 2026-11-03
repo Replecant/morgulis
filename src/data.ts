@@ -19,6 +19,7 @@ export interface Weapon {
   magic?: boolean;
   ammoType?: 'ammo_pistol' | 'ammo_rifle' | 'ammo_shell' | 'ammo_mg'; // чем перезаряжается (нет — заряды только на бой)
   poison?: boolean;    // попадание отравляет (лёгкое ранение «Отравление газом»)
+  gas?: boolean;       // газовая атака: противогаз полностью защищает
   shot?: boolean;      // дробь: −1 урона за клетку дальше оптимальной
   pierce?: boolean;    // пробивает броню
   closePen?: number;   // штраф к попаданию в упор (соседняя клетка); по умолчанию у огнестрела 3, у пистолетов 1, у дробовиков 0
@@ -55,7 +56,8 @@ export const WEAPONS: Record<string, Weapon> = {
   salbite:   { name: 'Укус', type: 'melee', atk: 2, dmg: [3, 6] },
   rustbayonet: { name: 'Ржавый штык', type: 'melee', atk: 0, dmg: [2, 4] },
   oldrifle:  { name: 'Гнилая винтовка', type: 'ranged', range: 9, opt: 5, atk: -1, dmg: [3, 5] },
-  gasbreath: { name: 'Газовый выдох', type: 'ranged', closePen: 0, range: 3, opt: 3, atk: 1, dmg: [2, 3], ignoreCover: true, splash: [1, 2] },
+  gasbreath: { name: 'Газовый выдох', type: 'ranged', closePen: 0, range: 3, opt: 3, atk: 1, dmg: [2, 3], ignoreCover: true, splash: [1, 2], poison: true, gas: true },
+  deadfist:  { name: 'Кулаки', type: 'melee', atk: 1, dmg: [2, 3] },
   trenchclub:{ name: 'Траншейная дубинка', type: 'melee', atk: 1, dmg: [3, 5] },
   spade:     { name: 'Сапёрная лопатка', type: 'melee', atk: 0, dmg: [3, 6] },
   rdagger:   { name: 'Ритуальный кинжал', type: 'melee', atk: 1, dmg: [2, 4], antiDemon: 3 },
@@ -175,9 +177,10 @@ export const ENEMIES: Record<string, UnitBase> = {
   loyalist2: E('loyalist2', 'Лоялист', 'loyalist2', 8, 4, ['carbine', 'bayonet'], 'ranged', 2, 11),
   loyal_off: E('loyal_off', 'Офицер старой гвардии', 'loyal_off', 12, 4, ['revolver', 'saber'], 'ranged', 3, 12),
   // траншейные мертвецы: медленные, упрямые, бьют больно
-  dead_soldier: E('dead_soldier', 'Окопный мертвец', 'dead_soldier', 9, 3, ['rustbayonet'], 'melee', 2, 9),
+  dead_soldier: E('dead_soldier', 'Окопный мертвец', 'dead_soldier', 9, 3, ['deadfist'], 'melee', 2, 9),
   dead_rifle:   E('dead_rifle', 'Мертвец-стрелок', 'dead_rifle', 7, 3, ['oldrifle', 'rustbayonet'], 'ranged', 1, 9),
-  dead_gas:     E('dead_gas', 'Газовый мертвец', 'dead_gas', 9, 3, ['gasbreath'], 'ranged', 1, 9),
+  // газовый мертвец — смертник: бредёт на отряд, выдыхает газ, а убитый — лопается облаком газа на соседние клетки
+  dead_gas:     E('dead_gas', 'Газовый мертвец', 'dead_gas', 9, 3, ['gasbreath'], 'melee', 1, 9),
   dead_sapper:  E('dead_sapper', 'Мертвец-сапёр в панцире', 'dead_sapper', 16, 2, ['spade'], 'melee', 3, 10, { armor: 2 }),
 };
 

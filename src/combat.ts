@@ -124,6 +124,7 @@ export const Combat = {
   view: null as PixelView | null,
   circle: null as { x: number; y: number; r: number } | null,
   smoke: [] as { x: number; y: number; turns: number }[],
+  gasClouds: [] as { x: number; y: number; turns: number }[], // газ из лопнувших газовых мертвецов: 3×3, травит всех без противогаза
   runes: [] as { x: number; y: number; kind: 'guard' | 'glyph'; turns: number }[], // руны на клетках
   magic: false,       // панель показывает заклинания
 
@@ -133,7 +134,7 @@ export const Combat = {
     this.def = def;
     this.map = def.map.map((r) => r.padEnd(CW, '.').slice(0, CW).split(''));
     this.units = []; this.fx = []; this.parts = []; this.floats = []; this.anims = [];
-    this.ended = false; this.busy = false; this.round = 1; this.sel = null; this.reach = null; this.smoke = []; this.runes = []; this.magic = false;
+    this.ended = false; this.busy = false; this.round = 1; this.sel = null; this.reach = null; this.smoke = []; this.gasClouds = []; this.runes = []; this.magic = false;
     G.squad.forEach((s, i) => {
       const [x, y] = def.players[i];
       const u = mkUnit(s, 'player', x, y);
@@ -231,6 +232,7 @@ export const Combat = {
     if (this.round > 1) await this.tickOccult();
     for (const s of this.smoke) s.turns--;
     this.smoke = this.smoke.filter((s) => s.turns > 0);
+    if (this.round > 1) await this.tickGas();
     for (const u of this.alive('player')) {
       u.exposed = false;
       u.ap = u.terror ? 1 : 2;
@@ -911,7 +913,10 @@ export const Combat = {
     if (w.type === 'melee') await this.lunge(a, t);
     else if (w.magic) { await this.projectile(a, t, '#9fef6a', 320); this.burst(t.px, t.py - 12, '#9fef6a', 26, 90); }
     else { this.muzzle(a, t, hit); await sleep(140); }
-    if (hit) {
+    if (hit && w.gas && t.gas) { // противогаз держит газ целиком
+      this.float(t, 'Противогаз', '#a8b860');
+      this.hooks.log(`${a.name} → ${t.name}: ${w.name} — противогаз держит, газ не действует [${rollTxt}]`);
+    } else if (hit) {
       if (w.type === 'melee') Sfx.hit(wkey);
       let d = randInt(w.dmg[0], w.dmg[1]) + (w.type === 'melee' ? a.dmgM : 0) + (opts.dmg ?? 0) - (a.st.weak ? 1 : 0);
       if (w.type === 'melee' && a.worn.includes(wkey)) d -= 1; // затупилось, расшаталось
@@ -928,7 +933,10 @@ export const Combat = {
       if (crit) this.gainCourage(a, 'точный удар');
       if (t.dead && t.team === 'enemy') this.gainCourage(a, 'враг повержен');
       if (w.splash) {
-        for (const o of this.units.filter((o) => !o.dead && o !== t && cheb(o, t) === 1)) await this.damage(o, Math.max(1, randInt(w.splash[0], w.splash[1]) - (o.splinter ? 1 : 0)), false);
+        for (const o of this.units.filter((o) => !o.dead && o !== t && cheb(o, t) === 1)) {
+          if (w.gas) { await this.gasHit(o); continue; } // газ задевает соседей — противогаз спасает
+          await this.damage(o, Math.max(1, randInt(w.splash[0], w.splash[1]) - (o.splinter ? 1 : 0)), false);
+        }
       }
     } else {
       this.float(t, 'Промах', '#b8b8a8');
@@ -1047,8 +1055,33 @@ export const Combat = {
     }
   },
 
+  /** Газ травит всех в облаке, кроме мертвецов и тех, кто в противогазе. */
+  async gasHit(o: Unit) {
+    if (o.dead || o.base.id.startsWith('dead_')) return;
+    if (o.gas) { this.float(o, 'Противогаз', '#a8b860'); return; }
+    await this.damage(o, randInt(1, 2), false);
+    if (!o.dead && this.isSquad(o) && addWoundId(o.base, 'gassed')) { this.float(o, 'Отравление', '#a8c890'); this.hooks.log(`${o.name}: газ — «Отравление газом».`); }
+  },
+  /** Начало раунда: газовые облака травят стоящих в них и редеют. */
+  async tickGas() {
+    for (const g of this.gasClouds) {
+      for (const o of this.units.filter((o) => !o.dead && cheb(o, g) <= 1)) await this.gasHit(o);
+      g.turns--;
+    }
+    this.gasClouds = this.gasClouds.filter((g) => g.turns > 0);
+  },
+
   async kill(u: Unit) {
     u.dead = true;
+    if (u.base.id === 'dead_gas') { // смертник: лопается — газ на соседние клетки
+      this.gasClouds.push({ x: u.x, y: u.y, turns: 2 });
+      this.burst(u.px, u.py - 10, '#9aaa40', 34, 90); this.burst(u.px, u.py - 6, '#6a7a2a', 20, 50);
+      this.float(u, 'Газ!', '#b8c860'); this.shake = Math.max(this.shake, 5);
+      this.hooks.log(`${u.name} лопается — облако газа накрывает соседние клетки!`);
+      await sleep(250);
+      for (const o of this.units.filter((o) => o !== u && !o.dead && cheb(o, u) <= 1)) await this.gasHit(o);
+      return;
+    }
     if (u.kind === 'imp') { // бес не оставляет тела — рассыпается в прах
       u.fled = true;
       this.burst(u.px, u.py - 10, '#6a5a50', 26, 70);
@@ -1254,6 +1287,13 @@ export const Combat = {
     if (this.circle) { // пульсирующий круг призыва — точками
       const { x, y, r } = this.circle, n = 48, on = Math.floor(t * 6);
       for (let i = 0; i < n; i++) { const a = (i / n) * TAU; if ((i + on) % 3) ppx(lc, x / PS + Math.cos(a) * r / PS, y / PS + Math.sin(a) * r / PS, '#a8f070'); }
+    }
+    for (const g of this.gasClouds) { // газ лопнувшего мертвеца — жёлто-зелёные растровые клубы
+      const shift = Math.floor(t * 2);
+      for (let yy = (g.y - 1) * T - 3; yy < (g.y + 2) * T + 2; yy++) for (let xx = (g.x - 1) * T - 3; xx < (g.x + 2) * T + 3; xx++) {
+        const d = Math.hypot((xx - (g.x + 0.5) * T) / (1.6 * T), (yy - (g.y + 0.5) * T) / (1.5 * T));
+        if (d < 1 && ((xx + yy + shift) % (d < 0.55 ? 2 : 3) === 0)) ppx(lc, xx, yy, d < 0.5 ? '#a8b850' : '#7a8a3a');
+      }
     }
     for (const sm of this.smoke) { // дым — растровые клубы
       const shift = Math.floor(t * 3);
