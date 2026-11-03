@@ -10,6 +10,7 @@ import { $ } from './util';
 import { clockText } from './worldmap';
 import { skillBonus, check, checkChance, SKILLS, DC_NAMES } from './rules';
 import { tr } from './i18n';
+import skullUrl from './assets/narrator-skull.webp';
 import { effMaxHp, woundsOf, bestHealer, bandageAmount, medkitAmount, bandage, useMedkit, surgery, rest } from './wounds';
 import { COURAGE_MAX } from './combat';
 
@@ -133,17 +134,16 @@ export const Dialog = {
   },
 };
 
+const SKULL = new Image(); SKULL.src = skullUrl; SKULL.decode?.().catch(() => {});
 function drawPortrait(cv: HTMLCanvasElement, kind: string | null, scale = 3) {
   const c = cv.getContext('2d')!;
   const w = cv.width, h = cv.height;
   const g = c.createRadialGradient(w / 2, h * 0.35, 4, w / 2, h / 2, w * 0.75);
   g.addColorStop(0, '#2c3a22'); g.addColorStop(1, '#0b0f09');
   c.fillStyle = g; c.fillRect(0, 0, w, h);
-  if (!kind) {
-    c.fillStyle = 'rgba(185,217,146,0.8)';
-    c.beginPath(); c.arc(w / 2, h / 2, w * 0.18, 0, Math.PI * 2); c.fill();
-    c.fillStyle = 'rgba(60,90,40,0.7)';
-    c.beginPath(); c.ellipse(w / 2, h / 2, w * 0.05, w * 0.1, 0, 0, Math.PI * 2); c.fill();
+  if (!kind) { // рассказчик — череп в каске (картинка автора)
+    const draw = () => { const k = Math.min((w - 6) / SKULL.width, (h - 6) / SKULL.height); c.imageSmoothingEnabled = true; c.drawImage(SKULL, (w - SKULL.width * k) / 2, (h - SKULL.height * k) / 2, SKULL.width * k, SKULL.height * k); };
+    if (SKULL.complete && SKULL.naturalWidth) draw(); else SKULL.onload = () => { if (Dialog.active) draw(); };
     return;
   }
   const big = kind === 'smith' ? 0.88 : kind === 'boy' ? 1.25 : 1;

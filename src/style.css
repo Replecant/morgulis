@@ -43,9 +43,19 @@ body { font-family: 'Old Standard TT', Georgia, serif; color: var(--text); }
 #dialog {
   position: absolute; left: 30px; right: 30px; bottom: 24px; min-height: 150px;
   display: flex; gap: 14px; padding: 14px 16px;
-  background: var(--panel); border: 1px solid var(--line); box-shadow: 0 0 0 1px #000, 0 8px 30px #000c;
+  /* латунная рамка как у окон с рамками автора: тёмная кромка, латунная полоса с бликом, заклёпки по углам */
+  --rivet: radial-gradient(circle, #f4dc96 0 1.5px, #b88a3a 2px 3px, #4a3412 3.5px, transparent 4.5px);
+  background:
+    var(--rivet) left 3px top 3px / 10px 10px no-repeat, var(--rivet) right 3px top 3px / 10px 10px no-repeat,
+    var(--rivet) left 3px bottom 3px / 10px 10px no-repeat, var(--rivet) right 3px bottom 3px / 10px 10px no-repeat,
+    var(--panel);
+  border: 3px solid #9a7434;
+  box-shadow: 0 0 0 1px #0c0a06, 0 0 0 2px #5a4320, inset 0 0 0 1px #e0c07a, inset 0 0 0 3px #2a1e0c, 0 8px 30px #000c;
 }
-#portrait { width: 96px; height: 96px; flex: none; border: 1px solid var(--line); background: #10140d; }
+#portrait {
+  width: 96px; height: 96px; flex: none; background: #10140d;
+  border: 2px solid #b08a40; box-shadow: 0 0 0 1px #0c0a06, inset 0 0 0 1px #3a2a10, 0 0 0 3px #5a4320;
+}
 .dbody { flex: 1; min-width: 0; }
 #dname { color: var(--brass); font-weight: 700; font-size: 15px; letter-spacing: 1px; margin-bottom: 6px; min-height: 18px; }
 #dtext { font-size: 17px; line-height: 1.4; min-height: 48px; }
