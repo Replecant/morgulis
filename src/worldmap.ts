@@ -78,6 +78,9 @@ export const LOCS: Loc[] = [
   { id: 'wfcustoms', name: 'Пограничная контора', kind: 'poi', x: 1470, y: 1240, talk: 'poi_wfcustoms', desc: 'Будка, шлагбаум и стол с печатями на въезде в земли Винферда.' },
   { id: 'wfcustoms2', name: 'Пограничная контора', kind: 'poi', x: -1730, y: 1250, talk: 'poi_wfcustoms', desc: 'Будка, шлагбаум и стол с печатями на въезде в земли Винферда.' },
   { id: 'deadend', name: 'Край Траншейного Ада', kind: 'poi', x: 2235, y: 850, talk: 'poi_deadend', desc: 'Здесь обрываются тракт и рельсы. Дальше — Траншейный Ад.' },
+  // ---------------- Траншейный Ад: найти можно только самому
+  { id: 'volnitsa', name: 'Вольница', kind: 'village', hidden: true, x: 2600, y: 1150, talk: 'loc_volnitsa', scene: 'volnitsa', desc: 'Круглые траншеи, землянки и воронки с грибами. Здесь собираются бандиты, анархисты и прочие сомнительные личности.' },
+  { id: 'post314', name: 'Пост 314', kind: 'village', hidden: true, x: 2960, y: 1760, talk: 'loc_post314', scene: 'post314', desc: 'Бетонные бункеры остатков имперской армии. Солдаты с семьями несут вечный дозор и ждут связи со столицей.' },
   { id: 'flare', name: 'Газовый факел', kind: 'poi', x: 230, y: 640, talk: 'poi_flare', desc: 'Вечный огонь над старой скважиной.' },
 ];
 const ROADS: number[][][] = [
@@ -979,7 +982,7 @@ export const World = {
     const lights: PLight[] = [];
     const L = (wx: number, wy: number, r: number, a: number, color?: string) => lights.push({ x: X(wx), y: Y(wy), r, a, color });
     for (const l of LOCS) {
-      if (l.kind === 'village' && this.known(l)) L(l.x, l.y, l.id === 'einbow' ? 30 : 48, l.id === 'einbow' ? 0.3 : 0.55, l.id === 'fenmor' ? '#a8f070' : l.id === 'einbow' ? '#c86a40' : l.id === 'coven' ? '#9adf50' : '#f0c070');
+      if (l.kind === 'village' && this.known(l)) L(l.x, l.y, l.id === 'einbow' ? 30 : 48, l.id === 'einbow' ? 0.3 : 0.55, l.id === 'fenmor' ? '#a8f070' : l.id === 'einbow' ? '#c86a40' : l.id === 'coven' ? '#9adf50' : l.id === 'volnitsa' ? '#e08a40' : '#f0c070');
       if (l.kind === 'fort') L(l.x, l.y - 30, 100, 0.6, '#e8d090');
     }
     L(fl.x, fl.y - 30, 80, 0.7 + Math.sin(t * 9) * 0.08, '#ff9a40');
@@ -1996,6 +1999,25 @@ function drawLocIcon(c: CanvasRenderingContext2D, l: Loc, r: () => number) {
         prect(s, 29, 17, 3, 3, '#9adf50'); ppx(s, 30, 15, '#d8ff90'); ppx(s, 30, 16, '#9adf50');
         for (const [hx, hy] of [[2, 4], [44, 2], [4, 20]]) { prect(s, hx + 1, hy + 5, 9, 6, '#3a3428'); for (let k = 0; k < 5; k++) prect(s, hx + k + (k % 2), hy + 5 - k, 11 - k * 2, 1, '#2a3022'); ppx(s, hx + 3, hy + 7, '#9adf50'); }
         for (const [tx, ty] of [[18, 6], [42, 22], [56, 16], [14, 32]]) { prect(s, tx, ty - 7, 1, 7, '#1c1a15'); ppx(s, tx - 1, ty - 5, '#1c1a15'); ppx(s, tx + 1, ty - 6, '#1c1a15'); ppx(s, tx, ty - 8, '#d0ccc0'); }
+      });
+      break;
+    case 'volnitsa': // Вольница: два кольца траншей вокруг ямы с костром, воронки, чёрная тряпка на жерди
+      stamp(c, x, y + 12, 52, 34, (s) => {
+        pellipse(s, 26, 17, 25, 15, '#2a2218');
+        for (const [rx, ry] of [[22, 13], [13, 8]]) for (let k = 0; k < 64; k++) { const a = (k / 64) * TAU; ppx(s, Math.round(26 + Math.cos(a) * rx), Math.round(17 + Math.sin(a) * ry), k % 5 ? '#5a4632' : '#120e0a'); }
+        pellipse(s, 26, 17, 5, 3, '#43382a'); ppx(s, 26, 17, '#f0a040'); ppx(s, 26, 16, '#f8d070');
+        for (const [bx, by] of [[6, 6], [45, 9], [10, 28]]) { pellipse(s, bx, by, 3, 2, '#1a160e'); ppx(s, bx, by - 1, '#a8f070'); }
+        prect(s, 21, 2, 1, 12, '#4a3a26'); prect(s, 22, 2, 5, 3, '#141210');
+        for (const [hx, hy] of [[38, 22], [14, 20], [33, 5]]) { prect(s, hx, hy, 3, 2, '#120e0a'); prect(s, hx, hy - 1, 3, 1, '#5a4226'); }
+      });
+      break;
+    case 'post314': // Пост 314: кольцо мешков, горбы бункеров, радиомачта, выцветшее знамя
+      stamp(c, x, y + 10, 50, 40, (s) => {
+        pellipse(s, 25, 26, 23, 12, '#2e2a22');
+        for (let k = 0; k < 60; k++) { const a = (k / 60) * TAU; ppx(s, Math.round(25 + Math.cos(a) * 22), Math.round(26 + Math.sin(a) * 11), k % 2 ? '#8a7a58' : '#6e5e42'); }
+        for (const [bx, by] of [[8, 20], [30, 18], [16, 30], [34, 30]]) { prect(s, bx, by, 9, 4, '#6a6a62'); prect(s, bx, by - 1, 9, 1, '#3a3022'); prect(s, bx + 1, by + 1, 3, 1, '#0e0e0c'); ppx(s, bx + 7, by + 2, '#e0a050'); }
+        prect(s, 42, 1, 1, 24, '#6a6a62'); ppx(s, 42, 0, '#ff5040'); pline(s, 42, 4, 36, 24, '#3a3a34'); pline(s, 42, 4, 48, 24, '#3a3a34');
+        prect(s, 24, 6, 1, 13, '#3a3428'); prect(s, 25, 6, 6, 4, '#a8a290'); prect(s, 25, 6, 6, 1, '#9a8048');
       });
       break;
     case 'deadend': // тупик: упор на рельсах, баррикада из шпал и мешков, знак

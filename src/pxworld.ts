@@ -65,6 +65,26 @@ export function paintTile(c: Ctx, X: number, Y: number, g: string, r: () => numb
   if (g === 'm' && r() < 0.2) { const x = X + 4 + r() * 12, y = Y + 6 + r() * 10; ppx(c, x, y + 1, '#d8d0b0'); prect(c, x - 1, y, 3, 1, '#c8c0a0'); }
 }
 
+/** Траншейный Ад: земля над траншеей (стенка хода) — перепаханная грязь; у края хода — бруствер.
+ *  fl(dx, dy) — есть ли проход (дно траншеи, площадка) в соседней клетке. */
+export function paintTrenchEarth(c: Ctx, X: number, Y: number, r: () => number, fl: (dx: number, dy: number) => boolean) {
+  prect(c, X, Y, T, T, '#2a2219');
+  for (let i = 0; i < 6; i++) ppx(c, X + r() * T, Y + r() * T, r() < 0.5 ? '#2e261a' : '#16120c');
+  if (r() < 0.18) pellipse(c, X + 4 + r() * 12, Y + 4 + r() * 12, 2 + r() * 2, 1, '#2a2a1c');
+  if (fl(0, 1)) { for (let k = 0; k < 4; k++) { prect(c, X + k * 5, Y + T - 6, 5, 6, k % 2 ? '#7a6a4c' : '#6e5e42'); ppx(c, X + k * 5, Y + T - 6, '#8a7a58'); } prect(c, X, Y + T - 1, T, 1, '#2e2618'); }
+  if (fl(0, -1)) { prect(c, X, Y, T, 4, '#4a3e2c'); prect(c, X, Y + 4, T, 1, '#0c0a07'); }
+  if (fl(1, 0)) { prect(c, X + T - 5, Y, 5, T, '#5a4c38'); prect(c, X + T - 1, Y, 1, T, '#0c0a07'); }
+  if (fl(-1, 0)) { prect(c, X, Y, 5, T, '#5a4c38'); prect(c, X, Y, 1, T, '#7a6a4c'); }
+}
+/** Дно траншеи: грязь и настил из досок вдоль хода (horiz — ход идёт по x). */
+export function paintTrenchFloor(c: Ctx, X: number, Y: number, r: () => number, horiz: boolean) {
+  prect(c, X, Y, T, T, '#2a2016');
+  for (let i = 0; i < 4; i++) ppx(c, X + r() * T, Y + r() * T, '#3a2e1f');
+  if (horiz) for (let k = 0; k < T; k += 4) prect(c, X + k, Y + 3, 3, T - 6, r() < 0.12 ? '#3a2e1f' : '#6e5438');
+  else for (let k = 0; k < T; k += 4) prect(c, X + 3, Y + k, T - 6, 3, r() < 0.12 ? '#3a2e1f' : '#6e5438');
+  if (r() < 0.15) pellipse(c, X + 6 + r() * 8, Y + 6 + r() * 8, 3, 1, '#34402e'); // лужа
+}
+
 export function paintRail(c: Ctx, X: number, Y: number) {
   for (let x = 0; x < T; x += 5) prect(c, X + x + 1, Y + 4, 3, 12, '#3a2c1e');
   prect(c, X, Y + 6, T, 1, '#8a8a82'); prect(c, X, Y + 13, T, 1, '#8a8a82');
@@ -77,7 +97,7 @@ const TOP: Record<string, number> = {
   house: 16, ruin: 16, farm: 16, station: 20, pumphouse: 28, slaughter: 16, barn: 14, hut: 16,
   tank: 18, watertower: 44, wagon: 14, lamp: 30, tree: 26, rock: 6, barrel: 6, fence: 10, feed: 8, chitin: 6,
   cellar: 10, adit: 26, shroombed: 6, bigshroom: 18, rack: 14, wall: 30, gate: 40, railgate: 36, tower: 56,
-  sign: 16, fountain: 34, sandbags: 8, wire: 8, cell: 16, orecart: 8, boat: 4, nets: 20, scrapheap: 16, banner: 46, poster: 24, statue: 44, horn: 40, keep: 76, barracks: 22, laundry: 22, handcart: 12, crates: 14, coalheap: 8, standpipe: 18, noticeboard: 22, sacks: 8, vent: 4, clinic: 30, shack: 18, factory: 64, tenement: 30, stall: 18, workshop: 26, theatre: 70, school: 44, tent: 12, wbanner: 46, acar: 14, totem: 44, cauldron: 10, sawdust: 10, gallows: 56, gibbet: 84, burnt: 26, pine: 46, logs: 8, stump: 2, rbanner: 46, rposter: 24, sawpit: 14, crater: 0, bones: 0, wallruin: 14, skeleton: 14, milestone: 14, lorry: 12,
+  sign: 16, fountain: 34, sandbags: 8, wire: 8, cell: 16, orecart: 8, boat: 4, nets: 20, scrapheap: 16, banner: 46, poster: 24, statue: 44, horn: 40, keep: 76, barracks: 22, laundry: 22, handcart: 12, crates: 14, coalheap: 8, standpipe: 18, noticeboard: 22, sacks: 8, vent: 4, clinic: 30, shack: 18, factory: 64, tenement: 30, stall: 18, workshop: 26, theatre: 70, school: 44, tent: 12, wbanner: 46, acar: 14, totem: 44, cauldron: 10, sawdust: 10, gallows: 56, gibbet: 84, burnt: 26, pine: 46, logs: 8, stump: 2, rbanner: 46, rposter: 24, sawpit: 14, bunker: 16, antenna: 66, dugout: 8, raincatch: 18, ibanner: 46, blkbanner: 46, gun: 12, crater: 0, bones: 0, wallruin: 14, skeleton: 14, milestone: 14, lorry: 12,
 };
 
 export interface ObjLike { kind: string; x: number; y: number; w: number; h: number; seed: number; ruinKind?: string; boarded?: boolean }
@@ -578,6 +598,83 @@ export function objSprite(o: ObjLike, neighbors?: { horizFence: boolean }) {
       for (const x of [6, W - 8]) { L(x - 3, H, x + 3, H - 12, '#3a2a1c', 2); L(x + 3, H, x - 3, H - 12, '#3a2a1c', 2); }
       R(0, H - 12, W, 4, '#7a5636'); R(0, H - 12, W, 1, '#9a7448'); R(W - 2, H - 12, 2, 4, '#a07a4a');
       L(W / 2, H - 14, W / 2 + 4, H - 4, '#9a9a90'); R(W / 2 - 1, H - 16, 3, 2, '#5a3a22');
+      break;
+    }
+    case 'bunker': { // бетонный бункер: насыпь из земли на крыше, бетонный фасад с амбразурой и стальной дверью
+      const wy = H - 20;
+      R(1, H, W, 2, 'rgba(0,0,0,0.5)');
+      // насыпь: земляной горб на всю глубину, края скошены
+      for (let y = -10; y < wy; y++) {
+        const k = (y + 10) / (wy + 10), inset = Math.round((1 - Math.min(1, k * 3)) * 6);
+        R(inset - 1, y, W - inset * 2 + 2, 1, y < -6 ? '#3e3424' : (y + o.seed) % 5 === 0 ? '#2e2618' : '#3a3022');
+      }
+      for (let i = 0; i < W / 3; i++) { const x = 3 + r() * (W - 6), y = -6 + r() * (wy + 4); P(x, y, r() < 0.5 ? '#4a5a32' : '#2a2216'); }
+      for (let k = 0; k < Math.floor(W / 9); k++) pellipse(c, 6 + k * 9, wy - 2, 4, 2, k % 2 ? '#7a6a4c' : '#6e5e42');   // мешки по краю крыши
+      // фасад
+      R(0, wy, W, 20, '#6a6a62'); R(0, wy, W, 1, '#8a8a80'); R(0, H - 2, W, 2, '#4a4a44');
+      for (let x = 6; x < W; x += 9 + Math.floor(r() * 4)) R(x, wy + 1, 1, 18, '#5a5a52');                        // швы опалубки
+      for (let i = 0; i < 6; i++) { const x = r() * (W - 4), y = wy + 2 + r() * 14; R(x, y, 2 + Math.floor(r() * 3), 1, '#4a4a44'); } // сколы
+      for (let i = 0; i < 4; i++) { const x = r() * W; R(x, wy + 1, 1, 3 + Math.floor(r() * 7), '#4e5a3a'); }   // потёки и мох
+      const sw = W > 120 ? 16 : 10;
+      R(5, wy + 5, sw, 3, '#0e0e0c'); R(5, wy + 8, sw, 1, '#9a9a90');                                             // амбразура
+      const dx = W - 14;
+      R(dx, H - 15, 9, 15, '#3a3c38'); R(dx, H - 15, 9, 1, '#5a5c56'); R(dx + 1, H - 14, 7, 14, '#4a4c46');     // стальная дверь
+      P(dx + 7, H - 7, BRASS); R(dx + 1, H - 11, 7, 1, '#3a3c38'); R(dx + 1, H - 5, 7, 1, '#3a3c38');
+      if (r() < 0.7) { R(W - 30, wy + 6, 4, 3, '#e0a050'); lights.push({ x: W - 28, y: wy + 7, r: 20, color: '#e0a050', a: 0.55 }); }
+      R(12, -14, 3, 8, '#2a2a26'); R(12, -15, 3, 1, '#4a4a44');                                                  // труба печки
+      break;
+    }
+    case 'antenna': { // радиомачта на растяжках: решётчатая стойка, изоляторы, провод вниз
+      R(6, H - 2, 8, 2, 'rgba(0,0,0,0.45)');
+      R(8, -62, 1, H + 62, '#7a7a70'); R(11, -62, 1, H + 62, '#5a5a52');
+      for (let y = -60; y < H - 2; y += 6) { L(8, y, 11, y + 3, '#6a6a62'); L(11, y + 3, 8, y + 6, '#6a6a62'); }
+      R(4, -54, 12, 1, '#7a7a70'); R(5, -40, 10, 1, '#7a7a70'); R(6, -26, 8, 1, '#7a7a70');
+      for (const x of [4, 15]) { P(x, -55, '#d8d0b8'); P(x, -53, '#d8d0b8'); }
+      L(9, -50, -6, H - 1, '#4a4a44'); L(10, -50, 26, H - 1, '#4a4a44');                                         // растяжки
+      R(9, -65, 2, 2, '#c84030'); lights.push({ x: 10, y: -64, r: 12, color: '#ff5040', a: 0.7 });
+      doOutline = false;
+      break;
+    }
+    case 'dugout': { // вход в землянку в стенке траншеи: бревенчатая рама, мешки, полог из брезента
+      const dw = Math.min(14, W - 6), dx = Math.round(W / 2 - dw / 2);
+      R(dx - 2, H - 16, dw + 4, 16, '#1a140e');
+      R(dx - 3, H - 18, 3, 18, '#5a4226'); R(dx + dw, H - 18, 3, 18, '#5a4226'); R(dx - 4, H - 20, dw + 8, 3, '#4a3620');
+      R(dx, H - 15, dw, 15, '#4a4436'); for (let k = 0; k < dw; k += 3) R(dx + k, H - 15, 1, 15, '#3a3428');     // полог
+      R(dx + 2, H - 15, 3, 15, '#0e0b08');                                                                      // отогнутый край
+      for (let k = 0; k < 3; k++) pellipse(c, dx - 6 + k * 3, H - 3, 2, 1, '#7a6a4c');
+      if (r() < 0.6) lights.push({ x: dx + 3, y: H - 8, r: 14, color: '#e0a050', a: 0.45 });
+      break;
+    }
+    case 'raincatch': { // дождесборник: брезентовая воронка на кольях над бочкой
+      R(4, H - 1, 14, 1, 'rgba(0,0,0,0.5)');
+      R(6, H - 11, 8, 11, '#2e2e28'); R(6, H - 9, 8, 1, '#6a4422'); R(6, H - 4, 8, 1, '#6a4422'); R(7, H - 11, 1, 11, '#44443c');
+      R(7, H - 12, 6, 1, '#1e2a2a');                                                                            // вода
+      for (const x of [1, 18]) R(x, H - 22, 1, 18, '#3a2c1e');
+      for (let k = 0; k < 6; k++) R(1 + k * 1.5, H - 21 + k, 18 - k * 3, 1, k % 2 ? '#6a6656' : '#7a7462');     // воронка
+      R(9, H - 15, 2, 3, '#5a5a4e');
+      doOutline = false;
+      break;
+    }
+    case 'ibanner': { // выцветшее имперское знамя: когда-то белое полотнище, потускневшая золотая кайма, бахрома
+      R(9, -44, 2, H + 44, '#3a3428'); P(9, -46, BRASS); P(10, -46, BRASS); P(9, -47, BRASS);
+      R(11, -42, 9, 20, '#a8a290'); R(11, -42, 9, 1, '#9a8048'); R(11, -23, 9, 1, '#9a8048'); R(19, -42, 1, 20, '#9a8048');
+      R(13, -36, 5, 7, '#7a6a40'); R(14, -35, 3, 5, '#3a3a36'); P(15, -33, '#9a8048');                         // щиток: герб стёрся
+      for (let x = 11; x < 20; x += 2) P(x, -21, '#9a8048');
+      for (let i = 0; i < 4; i++) P(12 + r() * 7, -40 + r() * 16, '#8a8474');                                    // пятна копоти и сырости
+      break;
+    }
+    case 'blkbanner': { // чёрная тряпка на жерди
+      R(9, -44, 2, H + 44, '#4a3a26'); P(10, -46, '#5a4a30');
+      R(11, -42, 9, 16, '#141210'); R(11, -42, 9, 1, '#2a2622'); R(17, -26, 3, 3, '#141210'); R(12, -27, 2, 2, '#141210');
+      for (let i = 0; i < 3; i++) P(12 + r() * 7, -40 + r() * 12, '#24201c');
+      break;
+    }
+    case 'gun': { // старое полевое орудие: колёса, щит, ствол в небо
+      R(1, H - 2, W - 2, 2, 'rgba(0,0,0,0.45)');
+      L(10, H - 8, W - 4, H - 22, '#3a3c34', 3); L(10, H - 9, W - 4, H - 23, '#5a5c52');                         // ствол
+      R(6, H - 16, 10, 9, '#4a4c42'); R(6, H - 16, 10, 1, '#6a6c60');                                            // щит
+      for (const x of [4, 15]) { pellipse(c, x, H - 5, 4, 4, '#2a2418'); pellipse(c, x, H - 5, 3, 3, '#4a3a26'); P(x, H - 5, '#8a7a50'); }
+      L(4, H - 4, -4, H - 1, '#3a2c1e', 2);                                                                     // станина
       break;
     }
     case 'rbanner': { // красное знамя Собрания — без герба и знаков

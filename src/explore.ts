@@ -8,7 +8,7 @@ import { bfs, pathTo, DIRS4, lerp, seeded, TAU, Pt, clamp } from './util';
 import { flicker } from './gfx';
 import { PixelView, applyLight, PLight, T, LW, LH, PS, ppx, pline } from './px';
 import { drawSprite, beetleSprite } from './sprites';
-import { paintTile, paintRail, objSprite, drawPumpjack, drawCampfire } from './pxworld';
+import { paintTile, paintRail, paintTrenchEarth, paintTrenchFloor, objSprite, drawPumpjack, drawCampfire } from './pxworld';
 import { FOLK, FolkDef } from './folk';
 import { Debug } from './debug';
 import { Weather } from './weather';
@@ -16,10 +16,10 @@ import { tr } from './i18n';
 
 /** Клетка на экране (низкое разрешение ×2). */
 export const ET = T * PS;
-export const MW = 1060, MH = 72; // восточнее x=103 — форт Олдриджа; с x=188 — сцены земель баронессы; с x=412 — север (земли Собрания)
+export const MW = 1172, MH = 72; // восточнее x=103 — форт Олдриджа; с x=188 — сцены земель баронессы; с x=412 — север (земли Собрания)
 const VW = LW, VH = LH; // видимая область в пикселях низкого разрешения
 
-type Ground = 'w' | 'g' | 'r' | 'p' | 'o' | 'k' | 'f' | 'm' | 'x' | 'l';
+type Ground = 'w' | 'g' | 'r' | 'p' | 'o' | 'k' | 'f' | 'm' | 'x' | 'l' | 't' | 'd'; // t — земля над траншеей (стенка хода, не пройти), d — дно траншеи
 // w — пустошь, g — деревенская земля, r — дорога, p — загон (грязь), o — пропитанная маслом земля, k — дощатый перрон, f — за стеной форта,
 // m — мшистая болотная земля, x — болотная вода (непроходима)
 
@@ -78,9 +78,17 @@ export const SCENES: Record<string, { name: string; x0: number; y0: number; x1: 
   wf1:         { name: 'Торговый город', x0: 960, y0: 6, x1: 1009, y1: 67, entry: { x: 985, y: 64 } },
   wf2:         { name: 'Верхний ярус', x0: 1013, y0: 6, x1: 1056, y1: 67, entry: { x: 1034, y: 64 } },
   coven:     { name: 'Ковен ведьм', x0: 642, y0: 12, x1: 690, y1: 56, entry: { x: 666, y: 53 } },
+  // Траншейный Ад: места, которые отряд находит сам
+  volnitsa:  { name: 'Вольница', x0: 1062, y0: 10, x1: 1114, y1: 62, entry: { x: 1096, y: 60 } },
+  post314:   { name: 'Пост 314', x0: 1118, y0: 8, x1: 1168, y1: 64, entry: { x: 1146, y: 62 } },
   svoboda:   { name: 'Форт Свобода', x0: 583, y0: 4, x1: 638, y1: 67, entry: { x: 610, y: 63 } },
   fort2:    { name: 'Средний город', x0: 144, y0: 31, x1: 184, y1: 67, entry: { x: 147, y: 49 } },
 };
+// Вольница: центр Круга, воронки с грибами и жилые ямы — на внешнем кольце
+const VOL_C = { x: 1088, y: 35 };
+const onRingAt = (deg: number, d: number): [number, number] => [Math.round(VOL_C.x + Math.cos(deg * Math.PI / 180) * d), Math.round(VOL_C.y + Math.sin(deg * Math.PI / 180) * d)];
+const VOL_CRATERS = [-145, -35, 120].map((a) => onRingAt(a, 23));
+const VOL_PITS = [-90, 10, 165].map((a) => onRingAt(a, 22));
 const PENS = [{ x0: 62, y0: 9, x1: 73, y1: 17, gx: 67 }, { x0: 77, y0: 10, x1: 88, y1: 18, gx: 82 }, { x0: 296, y0: 18, x1: 307, y1: 27, gx: 301 }, { x0: 461, y0: 13, x1: 472, y1: 21, gx: 466 }, { x0: 477, y0: 13, x1: 488, y1: 21, gx: 482 }, { x0: 790, y0: 15, x1: 803, y1: 24, gx: 796 }, { x0: 808, y0: 15, x1: 823, y1: 24, gx: 815 }]; // ещё два — выпас в Брэмли // третий — загон в Мосслее, четвёртый и пятый — в Хоули
 
 const BAYER4 = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5].map((q) => (q + 0.5) / 16);
@@ -180,6 +188,29 @@ export const Explore = {
     fill('m', 643, 13, 47, 43); fill('p', 652, 21, 29, 26);                         // ковен: болотистый лес, вытоптанная поляна
     for (const [x, y, rr] of [[648, 46, 2], [684, 22, 2], [646, 26, 1], [686, 44, 1], [656, 51, 1]]) blob('x', x, y, rr);
     fill('f', 583, 4, 56, 64); fill('p', 585, 6, 52, 61); fill('k', 599, 24, 23, 13); fill('p', 606, 67, 8, 1); // форт Свобода: улицы, площадь, проём ворот
+    // ---------------- Траншейный Ад: земля изрыта, ходят только по дну траншей
+    const ring = (g: Ground, cx: number, cy: number, r0: number, r1: number) => { const R1 = Math.ceil(r1) + 1; for (let y = cy - R1; y <= cy + R1; y++) for (let x = cx - R1; x <= cx + R1; x++) { const d = Math.hypot(x - cx, y - cy); if (this.inMap(x, y) && d >= r0 && d <= r1) this.ground[y][x] = g; } };
+    const ditch = (pts: number[][]) => { // ход шириной в две клетки по ломаной из прямых отрезков
+      for (let i = 0; i < pts.length - 1; i++) {
+        const [x0, y0] = pts[i], [x1, y1] = pts[i + 1];
+        for (let y = Math.min(y0, y1); y <= Math.max(y0, y1) + 1; y++) for (let x = Math.min(x0, x1); x <= Math.max(x0, x1) + 1; x++) if (this.inMap(x, y) && this.ground[y][x] === 't') this.ground[y][x] = 'd';
+      }
+    };
+    // Вольница: два кольца траншей вокруг выдолбленной площадки, лучи-ходы между ними, воронки с грибами, жилые ямы
+    fill('t', 1062, 10, 53, 53);
+    { const cx = 1088, cy = 35;
+      for (let y = cy - 6; y <= cy + 6; y++) for (let x = cx - 6; x <= cx + 6; x++) if (Math.hypot(x - cx, y - cy) <= 5.6) this.ground[y][x] = 'p'; // Круг
+      ring('d', cx, cy, 10.4, 12.3); ring('d', cx, cy, 19.2, 21.1);
+      ditch([[cx - 1, cy - 11], [cx - 1, cy - 5]]); ditch([[cx - 1, cy + 5], [cx - 1, cy + 11]]);        // к Кругу — с севера и юга
+      ditch([[cx + 12, cy - 1], [cx + 19, cy - 1]]); ditch([[cx - 20, cy - 1], [cx - 12, cy - 1]]);      // между кольцами — с востока и запада
+      ditch([[cx + 7, cy + 18], [cx + 7, 62]]);                                                           // выход на юг, к краю
+      for (const [x, y] of VOL_CRATERS) for (let yy = y - 4; yy <= y + 4; yy++) for (let xx = x - 4; xx <= x + 4; xx++) if (Math.hypot(xx - x, yy - y) <= 3.1) this.ground[yy][xx] = 'm'; // воронки
+      for (const [x, y] of VOL_PITS) for (let yy = y - 2; yy <= y + 2; yy++) for (let xx = x - 3; xx <= x + 3; xx++) if (Math.abs(xx - x) + Math.abs(yy - y) * 1.3 <= 3.6) this.ground[yy][xx] = 'p'; // жилые ямы
+    }
+    // Пост 314: двор, вырытый в земле и обнесённый мешками, бетонные бункеры по краям; к краю ведёт ход зигзагом
+    fill('t', 1118, 8, 51, 57);
+    fill('o', 1123, 13, 41, 38);
+    ditch([[1142, 50], [1142, 54], [1136, 54], [1136, 58], [1146, 58], [1146, 63]]);
 
     // дороги
     const road = (pts: number[][], wdt = 1) => {
@@ -325,7 +356,7 @@ export const Explore = {
     const taken = (x: number, y: number, w: number, h: number) => {
       for (let yy = y; yy < y + h; yy++) for (let xx = x; xx < x + w; xx++) {
         const g = this.ground[yy]?.[xx];
-        if (!g || g === 'r' || g === 'f') return true;
+        if (!g || g === 'r' || g === 'f' || g === 't') return true;
       }
       return this.objs.some((o) => x < o.x + o.w && x + w > o.x && y < o.y + o.h && y + h > o.y);
     };
@@ -711,9 +742,70 @@ export const Explore = {
       else if (free(x, y, 1, 1)) add({ kind: 'bones', x, y, w: 1, h: 1, block: false });
     }
 
+    // ======================= ВОЛЬНИЦА — круглые траншеи, землянки, воронки с грибами
+    { const { x: cx, y: cy } = VOL_C;
+      B('campfire', cx, cy, 1, 1, { dynamic: true, name: 'Костёр Круга', talk: 'vol_fire' });
+      B('blkbanner', cx - 4, cy - 4, 1, 1, { name: 'Чёрная тряпка на жерди', talk: 'vol_flag' });
+      B('logs', cx - 3, cy + 3, 2, 1, { name: 'Брёвна вокруг костра', talk: 'vol_logs' });
+      B('logs', cx + 2, cy + 3, 2, 1, { name: 'Брёвна вокруг костра', talk: 'vol_logs' });
+      B('crates', cx + 4, cy - 3, 1, 1, { name: 'Ящики с общим добром', talk: 'vol_crates' });
+      B('raincatch', cx + 4, cy + 1, 1, 1, { name: 'Дождесборник', talk: 'vol_rain' });
+      B('raincatch', cx - 5, cy, 1, 1, { name: 'Дождесборник', talk: 'vol_rain' });
+      for (const [x, y] of VOL_CRATERS) {
+        add({ kind: 'crater', x: x - 1, y: y - 1, w: 3, h: 3, block: false });
+        B('shroombed', x - 2, y + 2, 3, 1, { name: 'Грибы в воронке', talk: 'vol_shrooms' });
+        B('bigshroom', x + 2, y - 1, 1, 1, { name: 'Светящийся гриб', talk: 'bigshroom' });
+        B('bigshroom', x - 2, y - 2, 1, 1, { name: 'Светящийся гриб', talk: 'bigshroom' });
+      }
+      VOL_PITS.forEach(([x, y], i) => {
+        if (i === 0) B('shack', x - 3, y - 2, 3, 2, { name: 'Лавка барыги', talk: 'vol_stash' });
+        else B('tent', x - 3, y - 2, 2, 2, { name: 'Латаная палатка', talk: 'vol_tent' });
+        B('raincatch', x + 2, y - 1, 1, 1, { name: 'Дождесборник', talk: 'vol_rain' });
+        if (i === 2) B('laundry', x - 1, y + 1, 3, 1, { name: 'Бельевая верёвка', talk: 'laundry' });
+        else B('crates', x - 1, y + 1, 1, 1, { name: 'Ящики', talk: 'crates' });
+      });
+      // землянки — в стенках колец, где дно траншеи прямо под ними
+      const cand: [number, number][] = [];
+      for (let y = 12; y < 60; y++) for (let x = 1064; x < 1112; x++) {
+        const fl = (xx: number, yy: number) => this.ground[yy][xx] === 'd';
+        if (this.ground[y][x] === 't' && this.ground[y][x + 1] === 't' && fl(x, y + 1) && fl(x + 1, y + 1) && Math.hypot(x - cx, y - cy) > 7) cand.push([x, y]);
+      }
+      const dug: [number, number][] = [];
+      for (const k of cand.map((q) => ({ q, v: r() })).sort((a, b) => a.v - b.v)) {
+        const [x, y] = k.q;
+        if (dug.length < 12 && dug.every(([a, b]) => Math.hypot(a - x, b - y) > 6)) dug.push([x, y]);
+      }
+      for (const [x, y] of dug) B('dugout', x, y, 2, 1, { name: 'Землянка', talk: 'vol_dugout' });
+      B('sign', cx + 9, 59, 1, 1, { name: 'Доска у входа', talk: 'vol_sign' });
+    }
+    // ======================= ПОСТ 314 — бетонные бункеры, двор за мешками, вечный дозор
+    { // бункеры по краям двора; у командного — знамя, у радийного — мачта
+      for (const [x, y, w] of [[1125, 14, 6], [1132, 14, 6], [1151, 14, 6], [1157, 22, 6], [1125, 24, 6], [1125, 34, 6], [1157, 34, 6], [1125, 43, 6], [1156, 43, 6]] as [number, number, number][])
+        B('bunker', x, y, w, 3, { name: 'Жилой бункер', talk: 'p314_bunker' });
+      B('bunker', 1140, 14, 9, 3, { name: 'Командный бункер', talk: 'p314_cmdbunker' });
+      B('bunker', 1146, 24, 7, 3, { name: 'Радиобункер', talk: 'p314_radiobunker' });
+      B('antenna', 1153, 25, 1, 1, { name: 'Радиомачта', talk: 'p314_antenna' });
+      B('ibanner', 1143, 19, 1, 1, { name: 'Имперское знамя', talk: 'p314_flag' });
+      // плац: знамя посередине, вокруг — быт
+      B('ibanner', 1143, 31, 1, 1, { name: 'Имперское знамя', talk: 'p314_flag' });
+      B('campfire', 1134, 31, 1, 1, { dynamic: true, name: 'Полевая кухня', talk: 'p314_kitchen' });
+      B('laundry', 1133, 38, 4, 1, { name: 'Бельевая верёвка', talk: 'p314_laundry' });
+      B('laundry', 1150, 38, 4, 1, { name: 'Бельевая верёвка', talk: 'p314_laundry' });
+      for (const x of [1149, 1153]) B('shroombed', x, 31, 3, 1, { name: 'Грибная грядка', talk: 'p314_shrooms' });
+      for (const [x, y] of [[1133, 22], [1153, 46], [1132, 46]]) B('raincatch', x, y, 1, 1, { name: 'Дождесборник', talk: 'p314_rain' });
+      for (const [x, y] of [[1137, 22], [1138, 22], [1131, 21], [1160, 30]]) B('crates', x, y, 1, 1, { name: 'Армейские ящики', talk: 'p314_crates' });
+      B('noticeboard', 1139, 28, 2, 1, { name: 'Доска приказов', talk: 'p314_orders' });
+      // южный вал: мешки, проволока, проход; орудие смотрит в Ад
+      for (let x = 1124; x < 1163; x++) if (x < 1140 || x > 1145) B(x % 7 === 3 ? 'wire' : 'sandbags', x, 50, 1, 1, x % 7 === 3 ? { name: 'Колючая проволока', talk: 'wire' } : { name: 'Мешки с песком', talk: 'p314_sandbags' });
+      B('gun', 1148, 47, 2, 1, { name: 'Полевое орудие', talk: 'p314_gun' });
+      for (const [x, y] of [[1124, 49], [1162, 49]]) B('sandbags', x, y, 1, 1, { name: 'Пулемётное гнездо', talk: 'p314_nest' });
+      B('sign', 1144, 52, 1, 1, { name: 'Табличка', talk: 'p314_sign' });
+      for (const [x, y] of [[1140, 49], [1146, 49], [1137, 28], [1149, 28]]) B('lamp', x, y, 1, 1, { name: 'Фонарь', talk: 'lamp' });
+    }
+
     // блокировка клеток
     for (const o of this.objs) if (o.block) for (let y = o.y; y < o.y + o.h; y++) for (let x = o.x; x < o.x + o.w; x++) if (this.inMap(x, y)) this.block[y][x] = true;
-    for (let y = 0; y < MH; y++) for (let x = 0; x < MW; x++) if (this.ground[y][x] === 'f' || this.ground[y][x] === 'x' || this.ground[y][x] === 'l') this.block[y][x] = true;
+    for (let y = 0; y < MH; y++) for (let x = 0; x < MW; x++) if (this.ground[y][x] === 'f' || this.ground[y][x] === 't' || this.ground[y][x] === 'x' || this.ground[y][x] === 'l') this.block[y][x] = true;
 
     // ---------------- жители
     const NPC = (id: string, name: string, kind: string, x: number, y: number, talk: string, cond?: () => boolean) => this.npcs.push({ id, name, kind, x, y, talk, cond, seed: this.npcs.length * 1.7 });
@@ -779,6 +871,18 @@ export const Explore = {
     NPC('coven_d1', 'Рогатый', 'demon', 664, 28, 'coven_demon', coven);
     NPC('coven_d2', 'Рогатая', 'demon2', 669, 36, 'coven_demon', coven);
     NPC('alex_coven', 'Александр', 'alex', 663, 35, 'alex_coven', () => !!G.flags.alexCoven && !G.flags.alexCovenGone);
+    // Вольница
+    NPC('arthur', 'Артур Сильвер', 'arthur', 1091, 33, 'arthur');
+    NPC('vol_orator', 'Оратор', 'vol_orator', 1084, 33, 'vol_orator');
+    NPC('vol_fence', 'Барыга', 'vol_fence', 1089, 15, 'vol_fence');
+    NPC('vol_water', 'Водяная', 'vol_water', 1066, 43, 'vol_water');
+    NPC('vol_grower', 'Грибник', 'vol_grower', 1108, 23, 'vol_grower');
+    // Пост 314
+    NPC('p314_gate', 'Часовой', 'imp_sold', 1141, 50, 'p314_gate');
+    NPC('p314_cmd', 'Комендант поста', 'imp_cmd', 1145, 18, 'p314_cmd');
+    NPC('p314_radio', 'Радист', 'imp_radio', 1150, 27, 'p314_radio');
+    NPC('p314_qm', 'Каптенармус', 'imp_qm', 1132, 26, 'p314_qm');
+    NPC('p314_cook', 'Повариха', 'imp_wife', 1136, 32, 'p314_cook');
     NPC('wise_fen', 'Шептунья', 'wise_fen', 4, 26, 'wise_fen');
     NPC('wise_moss', 'Знахарь', 'wise_moss', 289, 48, 'wise_moss');
     NPC('wise_wood', 'Лесная знахарка', 'wise_wood', 503, 43, 'wise_wood');
@@ -1238,7 +1342,9 @@ export const Explore = {
       const x = gx * CSZ + tx, y = gy * CSZ + ty, X = tx * T, Y = ty * T;
       if (!this.inMap(x, y)) { c.fillStyle = '#0c0d0a'; c.fillRect(X, Y, T, T); continue; }
       const g = this.ground[y][x];
-      paintTile(c, X, Y, g, r, this.ground[y][x - 1] === 'r' || this.ground[y][x + 1] === 'r');
+      if (g === 't') { const fl = (dx: number, dy: number) => { const n = this.ground[y + dy]?.[x + dx]; return !!n && n !== 't'; }; paintTrenchEarth(c, X, Y, r, fl); }
+      else if (g === 'd') { const t = (dx: number, dy: number) => this.ground[y + dy]?.[x + dx] === 't'; paintTrenchFloor(c, X, Y, r, t(0, -1) || t(0, 1) || !(t(-1, 0) || t(1, 0))); }
+      else paintTile(c, X, Y, g, r, this.ground[y][x - 1] === 'r' || this.ground[y][x + 1] === 'r');
       if (this.rail[y][x]) paintRail(c, X, Y);
     }
     // стрелки — поверх земли, после всех клеток чанка: шпалы поперёк, два рельса

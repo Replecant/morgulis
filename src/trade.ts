@@ -41,6 +41,17 @@ export const SHOPS: Record<string, Shop> = {
     items: { knife: 1 },
     cons: ['ration', 'bandage'],
   },
+  // ---------------- Траншейный Ад
+  volnitsa: {
+    name: 'Барыга — Вольница', greet: 'С чужого плеча, без вопросов. Сломанное — дешевле, целое — дороже, краденое — как повезёт.',
+    items: { sawnoff: 1, 'revolver~w': 1, 'rifle~w': 1, 'carbine~b': 1, trenchclub: 1, knife: 1, leather: 1, smask: 1, lockpicks: 1, oillamp: 1 },
+    cons: ['ammo_pistol', 'ammo_rifle', 'ammo_shell', 'dynamite', 'ration', 'bandage', 'painkiller'],
+  },
+  post314: {
+    name: 'Каптенармус — Пост 314', greet: 'Старое имперское снаряжение. Каждая вещь — по ведомости, каждая пуговица учтена.',
+    items: { rifle: 1, 'rifle~w': 1, bayonet: 2, spade: 1, steelhelm: 1, helmet: 2, gasmask: 1, greatcoat: 2, boots: 1, 'mg~w': 1 },
+    cons: ['ammo_rifle', 'ammo_mg', 'grenade', 'filter', 'ration', 'bandage', 'antiseptic'], repair: true,
+  },
   hailstone: {
     name: 'Скупщик лома — Хейлстоун', greet: 'Всё, что звенит, — ко мне. Кое-что из найденного продам.',
     items: { helmet: 1, tools: 1, ctools: 1, gauges: 1, smask: 1, spade: 1, 'carbine~w': 1, 'rifle~w': 1, 'mg~b': 1 },
