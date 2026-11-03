@@ -147,7 +147,7 @@ const PATROL_PATHS: number[][][] = [[...ROADS[2].slice().reverse(), ...ROADS[0].
 export type PatrolOwner = 'baron' | 'baroness' | 'revo' | 'winford' | 'wfcar';
 const PATROL_OWNER: PatrolOwner[] = ['baron', 'baron', 'baroness', 'revo', 'revo', 'revo', 'winford', 'wfcar', 'wfcar'];
 const PATROL_SPEED = 36;   // пикселей карты в час
-interface Patrol { path: number[][]; len: number; s: number; dir: 1 | -1; wait: number; speed: number; owner: PatrolOwner }
+interface Patrol { path: number[][]; len: number; s: number; dir: 1 | -1; wait: number; speed: number; owner: PatrolOwner; off?: Pt } // off — сошёл с дороги в погоню
 const polyLen = (pts: number[][]) => pts.reduce((a, pt, i) => (i ? a + Math.hypot(pt[0] - pts[i - 1][0], pt[1] - pts[i - 1][1]) : 0), 0);
 function polyAt(pts: number[][], s: number): Pt & { dx: number } {
   for (let i = 1; i < pts.length; i++) {
@@ -367,11 +367,16 @@ export const World = {
     this.dsq = DSQ_START.map(([x, y, kinds], i) => ({ id: i, kinds, x, y, tx: x, ty: y, alive: true, respawn: 0, calm: 0, seen: false }));
     this.loyal = LOYAL_START.map(([x, y], i) => ({ id: i, kinds: i === 1 ? ['loyal_off', 'loyalist', 'loyalist'] : ['loyalist', 'loyalist2'], x, y, tx: x, ty: y, alive: true, respawn: 0, calm: 0, seen: false }));
   },
-  patrolPos(pt: Patrol) { return polyAt(pt.path, pt.s); },
+  patrolPos(pt: Patrol) { const q = polyAt(pt.path, pt.s); return pt.off ? { ...q, x: q.x + pt.off.x, y: q.y + pt.off.y } : q; },
   /** Патрули идут по дорогам туда и обратно, на концах отдыхают. Сами отряд не останавливают — с ними можно заговорить. */
   updatePatrols(dt: number) {
     const hours = dt * HOURS_PER_SEC, p = this.party;
     for (const pt of this.patrols) {
+      if (pt.off && !this.inClash(pt)) { // погоня кончилась — возвращается на дорогу
+        const d = Math.hypot(pt.off.x, pt.off.y), k = Math.max(0, d - 60 * hours) / Math.max(1, d);
+        pt.off = d < 2 ? undefined : { x: pt.off.x * k, y: pt.off.y * k };
+        continue;
+      }
       if (pt.wait > 0) pt.wait -= hours;
       else {
         pt.s += pt.dir * pt.speed * hours;
@@ -518,19 +523,33 @@ export const World = {
       const t = foes.find((g) => g.alive && !this.inClash(g) && dist(g, q) < 230);
       if (t) this.startClash(this.sideOf(pt), this.sideOf(t));
     }
-    // стороны сходятся: патруль стоит на дороге, отряды подходят к нему (или друг к другу); перестрелка — только вблизи
+    // погоня: охотник (патруль или бандиты) идёт на добычу; кто слабее — бежит, кто сильнее — принимает бой.
+    // Перестрелка начинается, только когда сошлись вплотную; ушли далеко — погоня брошена.
     const hours = _dt * HOURS_PER_SEC;
-    for (const c of this.clashes) {
-      const pa = this.sidePos(c.a), pb = this.sidePos(c.b), d = dist(pa, pb);
+    for (const c of [...this.clashes]) {
       if (!c.met) {
-        const step = 50 * hours;
-        for (const [me, other] of [[c.a, pb], [c.b, pa]] as [ClashSide, Pt][]) {
-          if (me.kind === 'patrol') continue;
-          const r = me.ref as { x: number; y: number; tx: number; ty: number }, dd = dist(r, other), k = Math.min(1, step / Math.max(1, dd));
-          if (dd > 30) { r.x += (other.x - r.x) * k; r.y += (other.y - r.y) * k; r.tx = r.x; r.ty = r.y; }
+        const hunter = c.a, prey = c.b, hp = this.sidePos(hunter), pp = this.sidePos(prey);
+        const brave = strength(prey.units) >= strength(hunter.units) * 0.8; // сильная шайка не бежит от патруля
+        // охотник
+        if (hunter.kind === 'patrol') {
+          const pt = hunter.ref as Patrol, base = polyAt(pt.path, pt.s), off = pt.off ?? { x: 0, y: 0 }, dd = dist(hp, pp), k = Math.min(1, (75 * hours) / Math.max(1, dd));
+          pt.off = { x: off.x + (pp.x - hp.x) * k, y: off.y + (pp.y - hp.y) * k };
+          if (Math.hypot(pt.off.x, pt.off.y) > 320 || dist(base, pp) > 360) { this.clashes = this.clashes.filter((x) => x !== c); continue; } // дальше от дороги не пойдут
+        } else {
+          const r = hunter.ref as { x: number; y: number; tx: number; ty: number }, dd = dist(r, pp), k = Math.min(1, (70 * hours) / Math.max(1, dd));
+          r.x += (pp.x - r.x) * k; r.y += (pp.y - r.y) * k; r.tx = r.x; r.ty = r.y;
         }
-        if (dist(this.sidePos(c.a), this.sidePos(c.b)) <= 34) { c.met = true; c.until = G.clock + 1.5 + Math.random() * 1.5; }
-        else if (d > 420) { this.clashes = this.clashes.filter((x) => x !== c); continue; } // разошлись
+        // добыча: бежит прочь (голодные — медленнее) или идёт навстречу
+        {
+          const r = prey.ref as { x: number; y: number; tx: number; ty: number }, h2 = this.sidePos(hunter), dd = Math.max(1, dist(r, h2));
+          const sp = (brave ? 40 : prey.kind === 'hungry' ? 30 : 42) * hours, dir = brave ? 1 : -1;
+          const nx = r.x + ((h2.x - r.x) / dd) * sp * dir, ny = r.y + ((h2.y - r.y) / dd) * sp * dir;
+          if (!waterAt({ x: nx, y: ny }, 10) && !peaksAt({ x: nx, y: ny }, 10)) { r.x = nx; r.y = ny; }
+          r.tx = r.x; r.ty = r.y;
+        }
+        const d = dist(this.sidePos(c.a), this.sidePos(c.b));
+        if (d <= 34) { c.met = true; c.until = G.clock + 1.5 + Math.random() * 1.5; }
+        else if (d > 380) { this.clashes = this.clashes.filter((x) => x !== c); continue; } // ушли
       }
       const qa = this.sidePos(c.a), qb = this.sidePos(c.b);
       c.x = (qa.x + qb.x) / 2; c.y = (qa.y + qb.y) / 2;
@@ -541,7 +560,7 @@ export const World = {
       this.endClash(c, Math.random() < sa / (sa + sb) ? 'a' : 'b');
     }
     if (!Debug.invisible && !this.clashHit) {
-      const c = this.clashes.find((x) => x.met && !x.offered && dist(x, p) < 80);
+      const c = this.clashes.find((x) => x.met && !x.offered && dist(x, p) < 36); // вплотную: подошли или кликнули прямо на перестрелку
       if (c) { c.offered = true; p.moving = false; this.pending = null; G.keys.clear(); this.clashHit = c; this.onClash(); }
     }
   },
@@ -993,8 +1012,9 @@ export const World = {
     }
     for (const b of this.bands) {
       if (!b.alive || !b.seen) continue;
-      const who = b.fac === 'deserter' ? 'Дезертиры' : 'Бандиты';
-      const lbl = G.clock < b.calm ? `${who} (отстали)` : dist(b, p) < 250 ? `${who} — преследуют!` : who;
+      const who = b.fac === 'deserter' ? 'Дезертиры' : 'Бандиты', ch = this.clashes.find((c) => c.a.ref === b || c.b.ref === b);
+      if (ch?.met) continue; // в перестрелке — подпись у стычки
+      const lbl = ch ? (ch.b.ref === b ? (strength(ch.b.units) >= strength(ch.a.units) * 0.8 ? `${who} — принимают бой` : `${who} — уходят от погони`) : `${who} — в погоне`) : G.clock < b.calm ? `${who} (отстали)` : dist(b, p) < 250 ? `${who} — преследуют!` : who;
       c.font = 'italic 12px "Old Standard TT", serif'; c.textAlign = 'center';
       c.fillStyle = 'rgba(0,0,0,0.85)'; c.fillText(lbl, b.x - cx + 1, b.y - cy - 39);
       c.fillStyle = '#e07060'; c.fillText(lbl, b.x - cx, b.y - cy - 40);
@@ -1018,7 +1038,9 @@ export const World = {
     }
     for (const g of this.loyal) {
       if (!g.alive || !g.seen) continue;
-      const lbl = G.clock < g.calm ? 'Лоялисты (скрылись)' : dist(g, p) < 150 && !onRoad(p) ? 'Лоялисты — выходят к вам' : 'Лоялисты';
+      const chl = this.clashes.find((c) => c.b.ref === g);
+      if (chl?.met) continue;
+      const lbl = chl ? 'Лоялисты — уходят от погони' : G.clock < g.calm ? 'Лоялисты (скрылись)' : dist(g, p) < 150 && !onRoad(p) ? 'Лоялисты — выходят к вам' : 'Лоялисты';
       c.font = 'italic 12px "Old Standard TT", serif'; c.textAlign = 'center';
       c.fillStyle = 'rgba(0,0,0,0.85)'; c.fillText(lbl, g.x - cx + 1, g.y - cy - 39);
       c.fillStyle = '#a8b0d0'; c.fillText(lbl, g.x - cx, g.y - cy - 40);
@@ -1026,7 +1048,9 @@ export const World = {
     }
     for (const g of this.hungry) {
       if (!g.alive || !g.seen) continue;
-      const lbl = G.clock < g.calm ? 'Голодные бандиты (ушли)' : dist(g, p) < 170 ? 'Голодные бандиты — идут к вам' : 'Голодные бандиты';
+      const chg = this.clashes.find((c) => c.b.ref === g);
+      if (chg?.met) continue;
+      const lbl = chg ? 'Голодные бандиты — бегут' : G.clock < g.calm ? 'Голодные бандиты (ушли)' : dist(g, p) < 170 ? 'Голодные бандиты — идут к вам' : 'Голодные бандиты';
       c.font = 'italic 12px "Old Standard TT", serif'; c.textAlign = 'center';
       c.fillStyle = 'rgba(0,0,0,0.85)'; c.fillText(lbl, g.x - cx + 1, g.y - cy - 39);
       c.fillStyle = '#c8a878'; c.fillText(lbl, g.x - cx, g.y - cy - 40);
