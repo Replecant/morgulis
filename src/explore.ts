@@ -795,6 +795,7 @@ export const Explore = {
       for (const [x, y] of [[1133, 22], [1153, 46], [1132, 46]]) B('raincatch', x, y, 1, 1, { name: 'Дождесборник', talk: 'p314_rain' });
       for (const [x, y] of [[1137, 22], [1138, 22], [1131, 21], [1160, 30]]) B('crates', x, y, 1, 1, { name: 'Армейские ящики', talk: 'p314_crates' });
       B('noticeboard', 1139, 28, 2, 1, { name: 'Доска приказов', talk: 'p314_orders' });
+      B('shrine', 1158, 15, 3, 1, { name: 'Место для молитвы', talk: 'p314_shrine' }); // в углу двора, за командным бункером
       // южный вал: мешки, проволока, проход; орудие смотрит в Ад
       for (let x = 1124; x < 1163; x++) if (x < 1140 || x > 1145) B(x % 7 === 3 ? 'wire' : 'sandbags', x, 50, 1, 1, x % 7 === 3 ? { name: 'Колючая проволока', talk: 'wire' } : { name: 'Мешки с песком', talk: 'p314_sandbags' });
       B('gun', 1148, 47, 2, 1, { name: 'Полевое орудие', talk: 'p314_gun' });
@@ -883,6 +884,7 @@ export const Explore = {
     NPC('p314_radio', 'Радист', 'imp_radio', 1150, 27, 'p314_radio');
     NPC('p314_qm', 'Каптенармус', 'imp_qm', 1132, 26, 'p314_qm');
     NPC('p314_cook', 'Повариха', 'imp_wife', 1136, 32, 'p314_cook');
+    NPC('p314_chap', 'Капеллан', 'imp_chaplain', 1160, 17, 'p314_chap');
     NPC('wise_fen', 'Шептунья', 'wise_fen', 4, 26, 'wise_fen');
     NPC('wise_moss', 'Знахарь', 'wise_moss', 289, 48, 'wise_moss');
     NPC('wise_wood', 'Лесная знахарка', 'wise_wood', 503, 43, 'wise_wood');

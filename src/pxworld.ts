@@ -97,7 +97,7 @@ const TOP: Record<string, number> = {
   house: 16, ruin: 16, farm: 16, station: 20, pumphouse: 28, slaughter: 16, barn: 14, hut: 16,
   tank: 18, watertower: 44, wagon: 14, lamp: 30, tree: 26, rock: 6, barrel: 6, fence: 10, feed: 8, chitin: 6,
   cellar: 10, adit: 26, shroombed: 6, bigshroom: 18, rack: 14, wall: 30, gate: 40, railgate: 36, tower: 56,
-  sign: 16, fountain: 34, sandbags: 8, wire: 8, cell: 16, orecart: 8, boat: 4, nets: 20, scrapheap: 16, banner: 46, poster: 24, statue: 44, horn: 40, keep: 76, barracks: 22, laundry: 22, handcart: 12, crates: 14, coalheap: 8, standpipe: 18, noticeboard: 22, sacks: 8, vent: 4, clinic: 30, shack: 18, factory: 64, tenement: 30, stall: 18, workshop: 26, theatre: 70, school: 44, tent: 12, wbanner: 46, acar: 14, totem: 44, cauldron: 10, sawdust: 10, gallows: 56, gibbet: 84, burnt: 26, pine: 46, logs: 8, stump: 2, rbanner: 46, rposter: 24, sawpit: 14, bunker: 16, antenna: 66, dugout: 8, raincatch: 18, ibanner: 46, blkbanner: 46, gun: 12, crater: 0, bones: 0, wallruin: 14, skeleton: 14, milestone: 14, lorry: 12,
+  sign: 16, fountain: 34, sandbags: 8, wire: 8, cell: 16, orecart: 8, boat: 4, nets: 20, scrapheap: 16, banner: 46, poster: 24, statue: 44, horn: 40, keep: 76, barracks: 22, laundry: 22, handcart: 12, crates: 14, coalheap: 8, standpipe: 18, noticeboard: 22, sacks: 8, vent: 4, clinic: 30, shack: 18, factory: 64, tenement: 30, stall: 18, workshop: 26, theatre: 70, school: 44, tent: 12, wbanner: 46, acar: 14, totem: 44, cauldron: 10, sawdust: 10, gallows: 56, gibbet: 84, burnt: 26, pine: 46, logs: 8, stump: 2, rbanner: 46, rposter: 24, sawpit: 14, bunker: 16, antenna: 66, dugout: 8, raincatch: 18, ibanner: 46, blkbanner: 46, gun: 12, shrine: 26, crater: 0, bones: 0, wallruin: 14, skeleton: 14, milestone: 14, lorry: 12,
 };
 
 export interface ObjLike { kind: string; x: number; y: number; w: number; h: number; seed: number; ruinKind?: string; boarded?: boolean }
@@ -667,6 +667,16 @@ export function objSprite(o: ObjLike, neighbors?: { horizFence: boolean }) {
       R(9, -44, 2, H + 44, '#4a3a26'); P(10, -46, '#5a4a30');
       R(11, -42, 9, 16, '#141210'); R(11, -42, 9, 1, '#2a2622'); R(17, -26, 3, 3, '#141210'); R(12, -27, 2, 2, '#141210');
       for (let i = 0; i < 3; i++) P(12 + r() * 7, -40 + r() * 12, '#24201c');
+      break;
+    }
+    case 'shrine': { // наспех собранное место для молитвы: ящики-алтарь, брезент, плошки в гильзах, доска с именами
+      R(1, H - 2, W - 2, 2, 'rgba(0,0,0,0.45)');
+      R(6, H - 26, W - 12, 18, '#4a3a26'); R(6, H - 26, W - 12, 1, '#6a5236'); R(7, H - 27, W - 14, 1, '#3a2c1e'); // доска с именами
+      for (let y = H - 23; y < H - 10; y += 3) for (let x = 9; x < W - 10; x += 6 + Math.floor(r() * 4)) R(x, y, 3 + Math.floor(r() * 3), 1, r() < 0.3 ? '#8a7a5a' : '#c8b88a');
+      R(4, H - 12, W - 8, 10, '#5a4a30'); R(4, H - 12, W - 8, 1, '#7a6440'); for (let x = 4; x < W - 4; x += 12) R(x, H - 11, 1, 9, '#3a2c1e'); // снарядные ящики
+      R(14, H - 13, W - 28, 3, '#6a6656'); R(14, H - 13, W - 28, 1, '#7a7462');                                     // брезент
+      R(W / 2 - 3, H - 16, 6, 3, '#3a2a22'); R(W / 2 - 3, H - 16, 6, 1, '#5a4030');                                  // книга
+      for (const x of [10, 22, W - 24, W - 12]) { R(x, H - 15, 2, 3, BRASS); P(x, H - 16, '#f8d070'); lights.push({ x: x + 1, y: H - 16, r: 18, color: '#f0b050', a: 0.55 }); } // плошки в гильзах
       break;
     }
     case 'gun': { // старое полевое орудие: колёса, щит, ствол в небо

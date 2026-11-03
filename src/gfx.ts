@@ -148,6 +148,7 @@ export const STYLES: Record<string, Style> = {
   imp_wife2: { coat: '#44443e', dress: true, apron: '#6a6458', skin: '#c8ac90', hair: '#3a2a1a', longHair: true },
   imp_kid: { coat: '#424a38', legs: '#2e3228', hat: 'cap', hatC: '#323a2a', skin: '#d8c0a0', scale: 0.74 },
   imp_kidgirl: { coat: '#4a4a40', dress: true, skin: '#d8c0a0', hair: '#8a6a3a', longHair: true, scale: 0.74 },
+  imp_chaplain: { coat: '#33382e', legs: '#24281e', belt: '#2a1d12', collar: true, trim: '#8a7a50', hat: 'cap', hatC: '#2a2e24', skin: '#c8b4a0', hair: '#9a968c', beard: '#9a968c', weapon: 'book' },
   imp_old: { coat: '#3e4636', legs: '#2c3026', trim: '#a08a4a', hat: 'cap', hatC: '#323a2a', skin: '#c4b09c', beard: '#d0ccc0', weapon: 'pole' },
   crone: { coat: '#2a2622', dress: true, apron: '#3a3226', skin: '#a8a494', hair: '#d0ccc0', longHair: true, eyes: '#c8ff60', weapon: 'staff' },
   crone2: { coat: '#1e1c1e', dress: true, hood: true, weapon: 'staff' },
