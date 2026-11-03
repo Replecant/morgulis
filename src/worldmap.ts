@@ -562,7 +562,8 @@ export const World = {
       const q = this.patrolPos(pt);
       const foes: (Band | Hungry | Loyal)[] = pt.owner === 'baron' ? [...this.bands.filter((b) => b.fac === 'bandit'), ...this.hungry]
         : pt.owner === 'revo' ? this.loyal : this.bands.filter((b) => b.fac === 'deserter');
-      const t = foes.find((g) => g.alive && !this.inClash(g) && dist(g, q) < 230);
+      // бросаются в погоню, только если враг у самой дороги
+      const road = polyAt(pt.path, pt.s), t = foes.find((g) => g.alive && !this.inClash(g) && dist(g, q) < 150 && dist(g, road) < 110);
       if (t) this.startClash(this.sideOf(pt), this.sideOf(t));
     }
     // траншейное море: мертвецы и культ враждуют — заметив друг друга, сходятся насмерть
@@ -582,7 +583,7 @@ export const World = {
         if (hunter.kind === 'patrol') {
           const pt = hunter.ref as Patrol, base = polyAt(pt.path, pt.s), off = pt.off ?? { x: 0, y: 0 }, dd = dist(hp, pp), k = Math.min(1, (75 * hours) / Math.max(1, dd));
           pt.off = { x: off.x + (pp.x - hp.x) * k, y: off.y + (pp.y - hp.y) * k };
-          if (Math.hypot(pt.off.x, pt.off.y) > 320 || dist(base, pp) > 360) { this.clashes = this.clashes.filter((x) => x !== c); continue; } // дальше от дороги не пойдут
+          if (Math.hypot(pt.off.x, pt.off.y) > 150 || dist(base, pp) > 190) { this.clashes = this.clashes.filter((x) => x !== c); continue; } // далеко от дороги не пойдут
         } else {
           const r = hunter.ref as { x: number; y: number; tx: number; ty: number }, dd = dist(r, pp), k = Math.min(1, (70 * hours) / Math.max(1, dd));
           r.x += (pp.x - r.x) * k; r.y += (pp.y - r.y) * k; r.tx = r.x; r.ty = r.y;
@@ -1018,8 +1019,9 @@ export const World = {
         armoredCar(lc, X(pos.x) - 11, Y(pos.y) - 11, fl, true);
         continue;
       }
+      const off = pt.off ?? { x: 0, y: 0 }; // в погоне патруль сошёл с дороги — рисуем там, где он есть
       for (let k = 2; k >= 0; k--) {
-        const q = polyAt(pt.path, clamp(pt.s + back * k * 9, 0, pt.len));
+        const q0 = polyAt(pt.path, clamp(pt.s + back * k * 9, 0, pt.len)), q = { x: q0.x + off.x, y: q0.y + off.y };
         mini(pt.owner === 'winford' ? (k === 0 ? 'wfofficer' : 'wfguard') : pt.owner === 'baroness' ? 'bguard' : pt.owner === 'revo' ? (k === 0 ? 'brother_off' : k === 1 ? 'brother' : 'brother2') : 'guard', X(q.x), Y(q.y), fl, fr(walk, k * 1.3));
       }
     }
