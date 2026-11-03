@@ -1235,12 +1235,15 @@ const WORLD_DIALOGS: Record<string, DTree> = {
     a: { s: 'nar', t: () => {
       const c = World.clashHit; if (!c) return 'Впереди было слышно стрельбу, но всё уже стихло.';
       const what = c.b.kind === 'hungry' && c.a.kind === 'band' ? 'Бандиты гонят оборванцев, как зверьё, — те отбиваются чем попало.'
-        : c.a.kind === 'patrol' ? `${c.a.name} наткнулся на ${c.b.kind === 'hungry' ? 'голодных бандитов' : c.b.kind === 'loyal' ? 'лоялистов' : c.b.name.toLowerCase()} — бьют залпами из-за кочек, те огрызаются.` : '';
-      return `Впереди трещат выстрелы. ${c.a.name} и ${c.b.name.toLowerCase()} сцепились насмерть. ${what} Вас пока не заметили.`;
+        : c.a.kind === 'patrol' ? `${c.a.name} наткнулся на ${c.b.kind === 'hungry' ? 'голодных бандитов' : c.b.kind === 'loyal' ? 'лоялистов' : c.b.name === 'Дезертиры' ? 'дезертиров' : 'бандитов'} — бьют залпами из-за кочек, те огрызаются.` : '';
+      const both = c.a.kind !== 'patrol' && c.b.kind !== 'patrol';
+      return `Впереди трещат выстрелы. ${c.a.name} и ${c.b.name.toLowerCase()} сцепились насмерть. ${what} Вас пока не заметили.` + (both ? ' Помогать тут некому: и те и другие перережут вам горло, стоит подойти.' : '');
     }, c: () => {
       const c = World.clashHit; if (!c) return [{ t: 'Идти дальше', go: 'bye' }];
-      const out: { t: string; act?: string; go?: string }[] = [{ t: `Вступить в бой на стороне: ${c.a.name}`, act: 'clash_a' }];
-      if (c.a.kind !== 'patrol') out.push({ t: `Вступить в бой на стороне: ${c.b.name}`, act: 'clash_b' }); // против патрулей господ — не вступаемся
+      // как в Mount & Blade: вступить можно только за тех, кто вам не враг, — за патрули. Бандиты, дезертиры, голодные и лоялисты сами нападают на отряд.
+      const out: { t: string; act?: string; go?: string }[] = [];
+      if (c.a.kind === 'patrol') out.push({ t: `Вступить в бой на стороне: ${c.a.name}`, act: 'clash_a' });
+      if (c.b.kind === 'patrol') out.push({ t: `Вступить в бой на стороне: ${c.b.name}`, act: 'clash_b' });
       out.push({ t: 'Обойти стороной', go: 'bye' });
       return out;
     } },

@@ -182,7 +182,7 @@ const inNorth = (q: Pt) => q.y < NORTH_Y;
 // ------------------------------------------------------------ стычки между отрядами
 // Патрули бьют тех, кого их господин считает разбойниками; бандиты гоняют голодных. Отряд может вступить за одну из сторон.
 export interface ClashSide { kind: 'patrol' | 'band' | 'hungry' | 'loyal'; name: string; units: string[]; ref: object }
-export interface Clash { x: number; y: number; a: ClashSide; b: ClashSide; until: number; offered: boolean; seed: number }
+export interface Clash { x: number; y: number; a: ClashSide; b: ClashSide; until: number; offered: boolean; seed: number; met: boolean } // met — стороны сошлись, идёт перестрелка
 const PATROL_UNITS: Record<PatrolOwner, string[]> = {
   baron: ['baron_soldier', 'baron_soldier', 'baron_soldier'], baroness: ['bsoldier', 'bsoldier', 'bsoldier'],
   winford: ['wf_soldier', 'wf_soldier', 'wf_soldier'], wfcar: ['wf_soldier', 'wf_soldier', 'wf_soldier', 'wf_soldier'], revo: ['brother_fighter', 'brother_fighter', 'brother_fighter'],
@@ -491,9 +491,11 @@ export const World = {
     if (this.hungry.includes(ref as Hungry)) return { kind: 'hungry', name: 'Голодные бандиты', units: (ref as Hungry).kinds, ref };
     return { kind: 'loyal', name: 'Лоялисты', units: (ref as Loyal).kinds, ref };
   },
+  /** Где сейчас сторона стычки. */
+  sidePos(sd: ClashSide): Pt { return sd.kind === 'patrol' ? this.patrolPos(sd.ref as Patrol) : (sd.ref as Pt); },
   startClash(a: ClashSide, b: ClashSide) {
-    const pa = 'owner' in a.ref ? this.patrolPos(a.ref as Patrol) : (a.ref as Pt), pb = b.ref as Pt;
-    this.clashes.push({ x: (pa.x + pb.x) / 2, y: (pa.y + pb.y) / 2, a, b, until: G.clock + 1.5 + Math.random() * 1.5, offered: false, seed: Math.random() * 100 });
+    const pa = this.sidePos(a), pb = this.sidePos(b);
+    this.clashes.push({ x: (pa.x + pb.x) / 2, y: (pa.y + pb.y) / 2, a, b, until: 0, offered: false, seed: Math.random() * 100, met: false });
   },
   /** Стычка закончилась: проигравшие разбиты (патруль не гибнет — отходит зализывать раны). */
   endClash(c: Clash, winner: 'a' | 'b') {
@@ -516,13 +518,30 @@ export const World = {
       const t = foes.find((g) => g.alive && !this.inClash(g) && dist(g, q) < 230);
       if (t) this.startClash(this.sideOf(pt), this.sideOf(t));
     }
+    // стороны сходятся: патруль стоит на дороге, отряды подходят к нему (или друг к другу); перестрелка — только вблизи
+    const hours = _dt * HOURS_PER_SEC;
+    for (const c of this.clashes) {
+      const pa = this.sidePos(c.a), pb = this.sidePos(c.b), d = dist(pa, pb);
+      if (!c.met) {
+        const step = 50 * hours;
+        for (const [me, other] of [[c.a, pb], [c.b, pa]] as [ClashSide, Pt][]) {
+          if (me.kind === 'patrol') continue;
+          const r = me.ref as { x: number; y: number; tx: number; ty: number }, dd = dist(r, other), k = Math.min(1, step / Math.max(1, dd));
+          if (dd > 30) { r.x += (other.x - r.x) * k; r.y += (other.y - r.y) * k; r.tx = r.x; r.ty = r.y; }
+        }
+        if (dist(this.sidePos(c.a), this.sidePos(c.b)) <= 34) { c.met = true; c.until = G.clock + 1.5 + Math.random() * 1.5; }
+        else if (d > 420) { this.clashes = this.clashes.filter((x) => x !== c); continue; } // разошлись
+      }
+      const qa = this.sidePos(c.a), qb = this.sidePos(c.b);
+      c.x = (qa.x + qb.x) / 2; c.y = (qa.y + qb.y) / 2;
+    }
     for (const c of [...this.clashes]) {
-      if (c === this.clashHit || G.clock < c.until) continue;
+      if (c === this.clashHit || !c.met || G.clock < c.until) continue;
       const sa = strength(c.a.units), sb = strength(c.b.units);
       this.endClash(c, Math.random() < sa / (sa + sb) ? 'a' : 'b');
     }
     if (!Debug.invisible && !this.clashHit) {
-      const c = this.clashes.find((x) => !x.offered && dist(x, p) < 80);
+      const c = this.clashes.find((x) => x.met && !x.offered && dist(x, p) < 80);
       if (c) { c.offered = true; p.moving = false; this.pending = null; G.keys.clear(); this.clashHit = c; this.onClash(); }
     }
   },
@@ -538,7 +557,7 @@ export const World = {
       b.raid = false; b.tx = b.x; b.ty = b.y;
     };
     for (const b of this.bands) {
-      if (b.alive && this.inClash(b)) continue; // в перестрелке
+      if (b.alive && this.inClash(b)) { b.seen = dist(b, p) < 340 * Weather.sightK(); continue; } // в перестрелке — стоит, но видна
       if (!b.alive) {
         if (G.clock >= b.respawn) {
           for (let k = 0; k < 200; k++) {
@@ -572,7 +591,7 @@ export const World = {
   updateHungry(dt: number) {
     const p = this.party, hours = dt * HOURS_PER_SEC;
     for (const g of this.hungry) {
-      if (g.alive && this.inClash(g)) continue;
+      if (g.alive && this.inClash(g)) { g.seen = dist(g, p) < 300; continue; }
       if (!g.alive) {
         if (G.clock >= g.respawn) {
           const s0 = HUNGRY_START[g.id];
@@ -623,7 +642,7 @@ export const World = {
     const p = this.party, hours = dt * HOURS_PER_SEC;
     const ok = (q: Pt) => inNorth(q) && q.y > WY0 + 140 && q.x > 120 && q.x < OLD_E - 140 && !nearRoad(q, 70) && !LOCS.some((l) => l.kind !== 'poi' && dist(l, q) < 170);
     for (const g of this.loyal) {
-      if (g.alive && this.inClash(g)) continue;
+      if (g.alive && this.inClash(g)) { g.seen = dist(g, p) < 240 * Weather.sightK(); continue; }
       if (!g.alive) {
         if (G.clock >= g.respawn) { const s0 = LOYAL_START[g.id]; if (dist({ x: s0[0], y: s0[1] }, p) > 450) { g.alive = true; g.x = g.tx = s0[0]; g.y = g.ty = s0[1]; } }
         continue;
@@ -868,6 +887,7 @@ export const World = {
     };
     // стычки: вспышки выстрелов между сторонами
     for (const c of this.clashes) {
+      if (!c.met) continue;
       const sx = X(c.x), sy = Y(c.y), on = Math.floor(t * 9 + c.seed);
       for (let k = 0; k < 4; k++) { const a = c.seed + k * 1.7 + on * 0.9; if ((on + k) % 3 === 0) { ppx(lc, sx + Math.cos(a) * 9, sy - 6 + Math.sin(a) * 4, '#ffd070'); ppx(lc, sx + Math.cos(a) * 9 + 1, sy - 6 + Math.sin(a) * 4, '#ff9040'); } }
     }
@@ -1023,14 +1043,16 @@ export const World = {
       const q = this.patrolPos(pt), sx = q.x - cx, sy = q.y - cy;
       if (sx < -60 || sx > VW + 60 || sy < -40 || sy > VH + 60) return;
       if (this.patrols.slice(0, i).some((o) => dist(this.patrolPos(o), q) < 60)) return; // два патруля рядом — одна подпись
+      if (this.clashes.some((c) => c.met && c.a.ref === pt)) return; // в стычке — подпись у стычки
       c.font = 'italic 12px "Old Standard TT", serif'; c.textAlign = 'center';
-      const lbl = pt.owner === 'baroness' ? 'Патруль баронессы' : pt.owner === 'revo' ? 'Братья свободы' : pt.owner === 'winford' ? 'Патруль Винферда' : pt.owner === 'wfcar' ? 'Бронемашина Винферда' : 'Патруль барона';
+      const lbl = PATROL_NAME[pt.owner];
       const ly = sy - (pt.owner === 'wfcar' ? 28 : 40);
       c.fillStyle = 'rgba(0,0,0,0.85)'; c.fillText(lbl, sx + 1, ly + 1);
       c.fillStyle = pt.owner === 'baroness' ? '#d8a0a0' : pt.owner === 'revo' ? '#e07a68' : pt.owner === 'winford' || pt.owner === 'wfcar' ? '#a8c0e0' : '#d8c080'; c.fillText(lbl, sx, ly);
       c.textAlign = 'left';
     });
     for (const cl of this.clashes) { // подпись стычки
+      if (!cl.met) continue;
       const sx = cl.x - cx, sy = cl.y - cy;
       if (sx < -80 || sx > VW + 80 || sy < -40 || sy > VH + 60 || dist(cl, p) > 420) continue;
       const lbl = `Стычка: ${cl.a.name} — ${cl.b.name}`;
