@@ -221,7 +221,15 @@ const onRoad = (p: Pt) => nearRoad(p, 14);
 // ============================================================ вода: по озеру и рекам не пройти, мосты — там, где дорога или рельсы
 const railNear = (q: Pt, d: number) => [RAIL, WF_RAIL].some((r) => r.some((pt, i) => i > 0 && segDist(q, r[i - 1], pt) < d));
 /** pad — запас вокруг воды (для сетки обхода, чтобы путь не проскальзывал сквозь узкую реку между клетками). */
+// ------------------------------------------------------------ северо-восточные горы
+// Высокий горный массив между северными лесами и Траншейным Адом: непроходим, как вода.
+/** Западный край массива (зависит от y) и южный край (зависит от x). */
+const peakW = (y: number) => OLD_E + 30 + Math.sin(y / 90) * 28 + Math.sin(y / 37 + 1) * 12;
+const peakS = (x: number) => NORTH_Y - 70 + Math.sin(x / 70) * 26 + Math.sin(x / 23 + 2) * 9;
+export function peaksAt(q: Pt, pad = 0) { return q.x > peakW(q.y) - pad && q.x < HELL_X + 20 && q.y < peakS(q.x) + pad; }
+
 function waterAt(q: Pt, pad = 0) {
+  if (peaksAt(q, pad)) return true; // горы — непроходимы
   const a = Math.atan2((q.y - LAKE.y) / LAKE.ry, (q.x - LAKE.x) / LAKE.rx), wob = 1 + Math.sin(a * 5) * 0.06 + Math.sin(a * 11 + 1) * 0.03;
   const inLake = Math.hypot((q.x - LAKE.x) / LAKE.rx, (q.y - LAKE.y) / LAKE.ry) / wob < 1.02 + pad / LAKE.ry;
   const inRiver = !inLake && RIVERS.some((rv) => rv.some((pt, i) => i > 0 && segDist(q, rv[i - 1], pt) < 8 + pad));
@@ -993,7 +1001,7 @@ function renderBackground(): HTMLCanvasElement {
   c.fillStyle = '#4a4a42'; c.fillRect(WX0, 0, WW - WX0, WH);
   // север: тёмная лесная подстилка, к границе — переход в серую пустошь
   c.fillStyle = '#2a2e26'; c.fillRect(WX0, WY0, HELL_X - WX0, -WY0);
-  c.fillStyle = '#4a4a42'; c.fillRect(OLD_E, WY0, HELL_X - OLD_E, -WY0); // восточнее Олдриджа на севере — та же пустошь, не лес
+  c.fillStyle = '#3a3630'; c.fillRect(OLD_E, WY0, HELL_X - OLD_E, -WY0); // восточнее Олдриджа на севере — скальное подножие гор
   { const g = c.createLinearGradient(0, -80, 0, 60); g.addColorStop(0, 'rgba(42,46,38,1)'); g.addColorStop(1, 'rgba(74,74,66,0)'); c.fillStyle = g; c.fillRect(WX0, -80, WW - WX0, 140); }
   for (let i = 0; i < 1300; i++) {
     const x = WX0 + r() * (OLD_E - WX0), y = r() * SOUTH_Y, rr = 30 + r() * 110;
@@ -1055,7 +1063,7 @@ function renderBackground(): HTMLCanvasElement {
   { // пятна подлеска, сырости и тени под кронами
     const rn = seeded(911);
     for (let i = 0; i < 900; i++) {
-      const x = WX0 + rn() * (HELL_X - WX0), y = WY0 + rn() * (-WY0 + 30), rr = 30 + rn() * 100;
+      const x = WX0 + rn() * (OLD_E - WX0), y = WY0 + rn() * (-WY0 + 30), rr = 30 + rn() * 100;
       const g = c.createRadialGradient(x, y, 0, x, y, rr);
       const v = rn() < 0.6 ? '16,24,16' : '70,84,58';
       g.addColorStop(0, `rgba(${v},${0.08 + rn() * 0.1})`); g.addColorStop(1, `rgba(${v},0)`);
@@ -1120,6 +1128,8 @@ function renderBackground(): HTMLCanvasElement {
   drawWater(c, r, thick);
   // север: густой лес бывших земель барона Сильвера
   drawForest(c);
+  // северо-восток: высокий горный массив до самого Траншейного Ада
+  drawPeaks(c);
   // железная дорога: насыпь, шпалы, рельсы
   const track = (poly: number[][]) => {
     const rail = pts(poly);
@@ -1368,19 +1378,51 @@ function drawForest(c: CanvasRenderingContext2D) {
   for (let y = WY0 / 2 + 6; y < NORTH_Y / 2 + 14; y += 5) {
     // к южной опушке лес редеет
     const edge = y > NORTH_Y / 2 - 30 ? (NORTH_Y / 2 + 14 - y) / 44 : 1;
-    for (let x = WX0 / 2 + (y % 10 ? 0 : 3); x < HELL_X / 2 - 30; x += 5) {
+    for (let x = WX0 / 2 + (y % 10 ? 0 : 3); x < HELL_X / 2; x += 5) {
       const tx = Math.round(x + (r() - 0.5) * 3), ty = Math.round(y + (r() - 0.5) * 3);
       const q = { x: tx * 2, y: ty * 2 };
       // поляны — по плавному шуму
       const glade = Math.sin(q.x * 0.011 + 1.3) * Math.sin(q.y * 0.013 + 0.4) + Math.sin(q.x * 0.004 - q.y * 0.006) * 0.6;
       if (r() > edge * (glade > 0.75 ? 0.25 : 0.9)) continue;
-      if (near(q)) continue;
+      if (near(q) || peaksAt(q, 14)) continue; // у подножия гор лес кончается
       const k = r();
       if (k < 0.66) fir(tx, ty, 5 + Math.floor(r() * 4));
       else if (k < 0.97) leafy(tx, ty);
       else dead(tx, ty);
     }
   }
+}
+
+/** Высокий горный массив на северо-востоке: скальное подножие, пики внахлёст, снег на вершинах. */
+function drawPeaks(c: CanvasRenderingContext2D) {
+  const r = seeded(4471), X0 = Math.floor(OLD_E / 2), X1 = Math.ceil(HELL_X / 2) + 4, Y0 = WY0 / 2;
+  // подножие: тёмный камень, осыпь по контуру
+  for (let x = X0; x < X1; x++) for (let y = Y0; y < 0; y++) {
+    const q = { x: x * 2, y: y * 2 };
+    if (!peaksAt(q)) continue;
+    ppx(c, x, y, !peaksAt(q, -10) ? (r() < 0.5 ? '#4e4a40' : '#403c34') : (r() < 0.1 ? '#3a362f' : '#2e2b26'));
+  }
+  // пики — только внутри массива (не залезают ни в лес, ни в Траншейный Ад); дальние — выше, ближние перекрывают
+  c.save(); c.beginPath(); c.rect(X0, Y0, Math.ceil(HELL_X / 2) - X0, -Y0); c.clip();
+  const peaks: [number, number, number, number][] = [];
+  for (let y = Y0 + 16; y < 0; y += 6 + r() * 5) for (let x = X0 + 6 + r() * 8; x < X1; x += 7 + r() * 9) {
+    const h = 12 + r() * r() * 30, w = h * (0.8 + r() * 0.35);
+    if (!peaksAt({ x: (x - w) * 2, y: y * 2 }, -6) || !peaksAt({ x: x * 2, y: y * 2 }, -16)) continue;
+    peaks.push([x, y, h, w]);
+  }
+  peaks.sort((a, b) => a[1] - b[1]);
+  for (const [px, py, h, w] of peaks) {
+    const snow = h > 24 ? h * 0.22 : h > 18 ? h * 0.1 : 0, X = Math.round(px);
+    for (let k = 0; k < h; k++) {
+      const half = Math.round((k / h) * w), y = Math.round(py - h + k), sn = k < snow;
+      prect(c, X - half, y, half, 1, sn ? '#a8a8a0' : k % 3 ? '#5a564c' : '#646054');
+      prect(c, X, y, half + 1, 1, sn ? '#76787a' : k % 3 ? '#34302a' : '#3c3830');
+    }
+    // гребень: светлая кромка по левому склону
+    for (let k = 1; k < h; k += 2) ppx(c, X - Math.round((k / h) * w), Math.round(py - h + k), k < snow ? '#c8c8c0' : '#78736a');
+    ppx(c, X, Math.round(py - h), snow ? '#d0d0c8' : '#8a857a');
+  }
+  c.restore();
 }
 
 /** Горы на юге земель Винферда: гряда тёмных скал со светлыми гранями. */
