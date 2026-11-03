@@ -186,12 +186,17 @@ const COVEN_AT = { x: -420, y: -560 }, COVEN_R = 520;
 const DSQ_START: [number, number, string[]][] = [[-700, -430, ['hound', 'imp']], [-180, -720, ['demon', 'imp']], [-470, -230, ['hound', 'hound', 'imp']], [-640, -800, ['demon', 'hound']]];
 const nearCoven = (q: Pt, r = COVEN_R) => dist(q, COVEN_AT) < r;
 // шайки бандитов: бродят по пустошам барона, по 2–4 человека
-interface Band { raid?: boolean; id: number; kinds: string[]; x: number; y: number; tx: number; ty: number; alive: boolean; respawn: number; calm: number; seen: boolean }
+interface Band { fac: 'bandit' | 'deserter'; raid?: boolean; id: number; kinds: string[]; x: number; y: number; tx: number; ty: number; alive: boolean; respawn: number; calm: number; seen: boolean }
 const BAND_START: [number, number][] = [[750, 1180], [1450, 1180], [820, 200], [1560, 430]]; // глухие углы, подальше от трактов
+// дезертиры бесчинствуют в землях Леди Харрингтон
+const DESERTER_START: [number, number][] = [[-1250, 1080], [-2320, 1080], [-1150, 230]];
+/** Где бродит шайка: бандиты — в землях Олдриджа, дезертиры — в землях Леди Харрингтон. */
+const bandArea = (fac: Band['fac']) => (fac === 'deserter' ? { x0: WX0 + 140, x1: FRONT_W0 - 80 } : { x0: 200, x1: 1700 });
 /** Глушь для шайки: подальше от трактов, рельсов, сёл и воды. */
 const BAND_ROAD = 190;
-function bandWild(q: Pt) {
-  return q.x > 200 && q.x < 1700 && q.y > 150 && q.y < SOUTH_Y - 60 && !nearRoad(q, BAND_ROAD) && !railNear(q, BAND_ROAD - 40) && !waterAt(q, 20) && !LOCS.some((l) => l.kind !== 'poi' && dist(l, q) < 260);
+function bandWild(q: Pt, fac: Band['fac'] = 'bandit') {
+  const A = bandArea(fac);
+  return q.x > A.x0 && q.x < A.x1 && q.y > 150 && q.y < SOUTH_Y - 60 && !nearRoad(q, BAND_ROAD) && !railNear(q, BAND_ROAD - 40) && !waterAt(q, 20) && !LOCS.some((l) => l.kind !== 'poi' && dist(l, q) < 260);
 }
 /** Состав шайки: 2–4 бандита; в шайке из 3–4 может быть главарь. */
 function bandRoll(): string[] {
@@ -200,6 +205,15 @@ function bandRoll(): string[] {
   if (n >= 3 && Math.random() < 0.6) k[0] = 'bandit_boss';
   return k;
 }
+/** Дезертиры: 2–4 солдата; бывает беглый сержант, сапёр с лопаткой, изредка — пулемётчик. */
+function deserterRoll(): string[] {
+  const n = 2 + Math.floor(Math.random() * 3);
+  const k = Array.from({ length: n }, (): string => (Math.random() < 0.7 ? 'deserter' : 'deserter_sapper'));
+  if (n >= 3 && Math.random() < 0.5) k[0] = 'deserter_sgt';
+  if (n >= 3 && Math.random() < 0.25) k[n - 1] = 'deserter_mg';
+  return k;
+}
+const rollFor = (fac: Band['fac']) => (fac === 'deserter' ? deserterRoll() : bandRoll());
 const LOYAL_START: [number, number][] = [[880, -620], [1420, -620], [300, -450]];
 const inHell = (q: Pt) => q.x > HELL_X && !peaksAt(q, 40); // север отрезан горами
 const inFront = (q: Pt) => q.x > FRONT_W0 + 40 && q.x < FRONT_X - 20 && q.y > 80 && q.y < SOUTH_Y - 80;
@@ -283,6 +297,8 @@ export const World = {
   bandHit: null as Band | null,
   bandLoot: 2, // сколько бандитов было в разбитой шайке — для добычи
   bandTrophy: '', // трофейное оружие (id экземпляра с состоянием) или пусто
+  bandKinds: [] as string[],
+  bandFac: 'bandit' as 'bandit' | 'deserter', // чья шайка была разбита — для текста добычи
   onArrive: (_l: Loc) => {},
   onEncounter: () => {},
   onPatrol: (_owner: PatrolOwner) => {},
@@ -312,7 +328,10 @@ export const World = {
 
   init() {
     this.bg = renderBackground();
-    this.bands = BAND_START.map(([x, y], i) => ({ id: i, kinds: bandRoll(), x, y, tx: x, ty: y, alive: true, respawn: 0, calm: 0, seen: false, raid: false }));
+    this.bands = [
+      ...BAND_START.map(([x, y], i): Band => ({ fac: 'bandit', id: i, kinds: bandRoll(), x, y, tx: x, ty: y, alive: true, respawn: 0, calm: 0, seen: false, raid: false })),
+      ...DESERTER_START.map(([x, y], i): Band => ({ fac: 'deserter', id: 10 + i, kinds: deserterRoll(), x, y, tx: x, ty: y, alive: true, respawn: 0, calm: 0, seen: false, raid: false })),
+    ];
     this.lastDay = Math.floor(G.clock / 24);
     // первый выходит из Эшфорда к форту, второй — из форта к Ричморду: идут навстречу и расходятся
     this.clouds = [[2500, 400], [2800, 1300], [2650, 2050], [3000, 700], [2400, -600], [2900, -200], [300, 1520], [-700, 1660], [1100, 2120], [-1500, 2000], [600, 2210], [-300, 1750], [200, 300], [760, 1080], [1250, 560], [-300, 420], [-650, 900], [1560, 1120], [900, 180], [-1250, 220], [-2050, 950], [-1500, 1150], [-2300, 380]].map(([x, y], i) => ({
@@ -448,7 +467,8 @@ export const World = {
       b.raid = Math.random() < 0.04;
       for (let k = 0; k < 24; k++) {
         const a = Math.random() * TAU, t = { x: from.x + Math.cos(a) * r, y: from.y + Math.sin(a) * r };
-        if (b.raid ? (t.x > 200 && t.x < 1700 && t.y > 150 && t.y < SOUTH_Y - 60 && !LOCS.some((l) => l.kind !== 'poi' && dist(l, t) < 200)) : bandWild(t)) { b.tx = t.x; b.ty = t.y; return; }
+        const A = bandArea(b.fac);
+        if (b.raid ? (t.x > A.x0 && t.x < A.x1 && t.y > 150 && t.y < SOUTH_Y - 60 && !waterAt(t, 20) && !LOCS.some((l) => l.kind !== 'poi' && dist(l, t) < 200)) : bandWild(t, b.fac)) { b.tx = t.x; b.ty = t.y; return; }
       }
       b.raid = false; b.tx = b.x; b.ty = b.y;
     };
@@ -456,9 +476,9 @@ export const World = {
       if (!b.alive) {
         if (G.clock >= b.respawn) {
           for (let k = 0; k < 200; k++) {
-            const q = { x: 200 + Math.random() * 1500, y: 150 + Math.random() * (SOUTH_Y - 210) };
-            if (bandWild(q) && dist(q, p) > 600 && this.hungry.every((g) => dist(g, q) > 450) && this.bands.every((o) => o === b || !o.alive || dist(o, q) > 400)) {
-              b.alive = true; b.kinds = bandRoll(); b.x = b.tx = q.x; b.y = b.ty = q.y; b.raid = false; break;
+            const A = bandArea(b.fac), q = { x: A.x0 + Math.random() * (A.x1 - A.x0), y: 150 + Math.random() * (SOUTH_Y - 210) };
+            if (bandWild(q, b.fac) && dist(q, p) > 600 && this.hungry.every((g) => dist(g, q) > 450) && this.bands.every((o) => o === b || !o.alive || dist(o, q) > 400)) {
+              b.alive = true; b.kinds = rollFor(b.fac); b.x = b.tx = q.x; b.y = b.ty = q.y; b.raid = false; break;
             }
           }
         }
@@ -877,7 +897,8 @@ export const World = {
     }
     for (const b of this.bands) {
       if (!b.alive || !b.seen) continue;
-      const lbl = G.clock < b.calm ? 'Бандиты (отстали)' : dist(b, p) < 250 ? 'Бандиты — преследуют!' : 'Бандиты';
+      const who = b.fac === 'deserter' ? 'Дезертиры' : 'Бандиты';
+      const lbl = G.clock < b.calm ? `${who} (отстали)` : dist(b, p) < 250 ? `${who} — преследуют!` : who;
       c.font = 'italic 12px "Old Standard TT", serif'; c.textAlign = 'center';
       c.fillStyle = 'rgba(0,0,0,0.85)'; c.fillText(lbl, b.x - cx + 1, b.y - cy - 39);
       c.fillStyle = '#e07060'; c.fillText(lbl, b.x - cx, b.y - cy - 40);

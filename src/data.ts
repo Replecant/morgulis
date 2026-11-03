@@ -154,6 +154,11 @@ export const ENEMIES: Record<string, UnitBase> = {
   bandit_gun:  E('bandit_gun', 'Бандит с винтовкой', 'bandit_gun', 9, 4, ['rifle', 'knife'], 'ranged', 3, 11),
   bandit_shot: E('bandit_shot', 'Бандит с обрезом', 'bandit_shot', 10, 4, ['sawnoff', 'knife'], 'ranged', 2, 11),
   bandit_axe:  E('bandit_axe', 'Бандит с топором', 'bandit_axe', 12, 4, ['axe'], 'melee', 3, 11, { armor: 1 }),
+  // дезертиры армии Леди Харрингтон — бывшие солдаты: стреляют лучше бандитов и держатся укрытий
+  deserter:        E('deserter', 'Дезертир', 'deserter', 10, 4, ['rifle', 'bayonet'], 'ranged', 3, 12),
+  deserter_sapper: E('deserter_sapper', 'Дезертир-сапёр', 'deserter_sapper', 13, 4, ['spade'], 'melee', 3, 11, { armor: 1 }),
+  deserter_mg:     E('deserter_mg', 'Дезертир с пулемётом', 'deserter_mg', 11, 3, ['mg', 'knife'], 'ranged', 2, 11),
+  deserter_sgt:    E('deserter_sgt', 'Беглый сержант', 'deserter_sgt', 15, 4, ['revolver', 'bayonet'], 'ranged', 4, 12, { armor: 1 }),
   bandit_boss: E('bandit_boss', 'Главарь шайки', 'bandit_boss', 15, 4, ['revolver', 'saber'], 'ranged', 4, 12, { armor: 1 }),
   // морской демон: громадный, скользкий (высокая Защита), ядовитое дыхание
   salamander: E('salamander', 'Морской демон', 'salamander', 26, 3, ['breath', 'salbite'], 'breath', 2, 13, { armor: 1, demonic: true }),
@@ -279,8 +284,9 @@ export function battleDef(id: string, _flags: Record<string, boolean | undefined
   if (id.startsWith('band_')) { // шайка бандитов: состав в id (band_bandit_gun_bandit_axe…)
     const kinds = id.slice(5).split('+'), w = battleDef('waste', _flags);
     const pos = [{ x: 19, y: 5 }, { x: 17, y: 9 }, { x: 21, y: 7 }, { x: 20, y: 11 }];
-    const ammo: Record<string, Record<string, number>> = { bandit_gun: { rifle: 4 }, bandit_shot: { sawnoff: 2 }, bandit_boss: { revolver: 6 } };
-    return { ...w, id, title: 'Бандиты в пустоши', enemies: kinds.map((t, i) => ({ t, ...pos[i], ammo: ammo[t] })) };
+    const ammo: Record<string, Record<string, number>> = { bandit_gun: { rifle: 4 }, bandit_shot: { sawnoff: 2 }, bandit_boss: { revolver: 6 }, deserter: { rifle: 5 }, deserter_mg: { mg: 9 }, deserter_sgt: { revolver: 6 } };
+    const des = kinds.some((k) => k.startsWith('deserter'));
+    return { ...w, id, title: des ? 'Дезертиры' : 'Бандиты в пустоши', enemies: kinds.map((t, i) => ({ t, ...pos[i], ammo: ammo[t] })) };
   }
   if (id.startsWith('hungry')) { // голодные бандиты — на карте засады в пустоши
     const w = battleDef('waste', _flags), n = +(id.slice(6) || 2);

@@ -71,9 +71,9 @@ Combat.hooks = {
     if (id === 'ruins') { G.flags.scavDone = true; Dialog.start('after_scav'); }
     if (id.startsWith('band_')) {
       const kinds = id.slice(5).split('+');
-      World.bandLoot = kinds.length; World.killBand();
+      World.bandLoot = kinds.length; World.bandKinds = kinds; World.bandFac = kinds.some((k) => k.startsWith('deserter')) ? 'deserter' : 'bandit'; World.killBand();
       // трофей: иногда — оружие одного из бандитов, обычно потрёпанное
-      const TROPHY: Record<string, string> = { bandit_gun: 'rifle', bandit_shot: 'sawnoff', bandit_axe: 'axe', bandit_boss: 'revolver' };
+      const TROPHY: Record<string, string> = { bandit_gun: 'rifle', bandit_shot: 'sawnoff', bandit_axe: 'axe', bandit_boss: 'revolver', deserter: 'rifle', deserter_sapper: 'spade', deserter_sgt: 'revolver', deserter_mg: 'mg' };
       const k = TROPHY[kinds[Math.floor(Math.random() * kinds.length)]];
       World.bandTrophy = k && Math.random() < 0.45 ? k + (Math.random() < 0.25 ? '~b' : '~w') : '';
       Dialog.start('after_band');
@@ -129,7 +129,7 @@ Explore.onInteract = (d) => Dialog.start(d);
 Explore.onLocation = () => refreshHud();
 Explore.onExit = (scene) => toWorld(scene);
 World.onArrive = (l) => Dialog.start(l.talk);
-World.onEncounter = () => Dialog.start('enc_band');
+World.onEncounter = () => Dialog.start(World.bandHit?.fac === 'deserter' ? 'enc_deserters' : 'enc_band');
 // ---------------------------------------------------------------- отладка (F2)
 Debug.load();
 Debug.weathers = WEATHER_ORDER.map((k) => ({ id: k, name: WEATHER_NAMES[k] }));

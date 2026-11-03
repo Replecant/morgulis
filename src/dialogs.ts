@@ -79,6 +79,7 @@ export const SPEAKERS: Record<string, { name: string; kind: string | null }> = {
   penny: { name: 'Пенни, пастушка', kind: 'girl' },
   alex: { name: 'Александр', kind: 'alex' },
   scav: { name: 'Бандит', kind: 'bandit_gun' },
+  deserter: { name: 'Дезертир', kind: 'deserter' },
   hungry: { name: 'Голодный бандит', kind: 'hungry' },
   ash_sgt: { name: 'Сержант заставы', kind: 'ashsoldier' },
   ragged: { name: 'Оборванец', kind: 'militia_gun' },
@@ -149,6 +150,15 @@ const WALLACE: Choice[] = [
   { t: 'Жуки? На мясо?', go: 'beetles' },
   { t: 'Бывай.', go: 'bye' },
 ];
+
+/** Добыча с дезертиров: шиллингов мало, зато патроны, бинты, у пулемётчика — ленты. */
+function desLoot(n: number) {
+  const mg = (World.bandKinds ?? []).includes('deserter_mg'), gren = n >= 3;
+  return {
+    text: `Дезертиры лежат в сухой траве. В вещмешках — казённое: патроны, бинты, сухари, жалованье, которого им уже не выдадут. (Получено: ${3 * n} шиллингов, ${5 * n} винтовочных патронов, ${Math.ceil(n / 2)} бинт., 1 паёк${gren ? ', 1 граната' : ''}${mg ? ', 1 пулемётная лента' : ''}.)`,
+    give: (g: Flags) => { g.money += 3 * n; g.supplies.ammo_rifle += 5 * n; g.supplies.bandage += Math.ceil(n / 2); g.supplies.ration += 1; if (gren) g.supplies.grenade += 1; if (mg) g.supplies.ammo_mg += 15; },
+  };
+}
 
 export const DIALOGS: Record<string, DTree> = {
   intro: { start: 'a', nodes: {
@@ -1114,6 +1124,26 @@ const WORLD_DIALOGS: Record<string, DTree> = {
     escaped: { s: 'nar', t: 'Вы ныряете в овраг и уходите по сухому руслу, пока бандиты обшаривают холмы.', act: 'band_lose' },
     fight: { s: 'scav', t: '— Ну, как знаешь. — Щёлкают затворы.', act: 'battle_band' },
   } },
+  // дезертиры в землях Леди Харрингтон
+  enc_deserters: { start: 'a', nodes: {
+    a: { s: 'deserter', t: () => {
+      const k = World.bandHit?.kinds ?? [], n = k.length || 2;
+      return `Из балки поднимаются ${['двое', 'двое', 'трое', 'четверо'][n - 1] ?? n} — в выцветших шинелях армии Леди Харрингтон, нашивки спороты. Винтовки держат по-уставному, стволы смотрят на вас. ` +
+        (k.includes('deserter_sgt') ? 'Командует сержант — лычки срезаны, голос остался. ' : '') + (k.includes('deserter_mg') ? 'Один тащит на ремне ручной пулемёт. ' : '') +
+        '— Стой. Мешки на землю, руки на виду. Мы своё отвоевали — теперь твоя очередь платить.';
+    }, c: [
+      { t: 'Драться', act: 'battle_band' },
+      { t: 'Откупиться (−20 ш.)', go: 'bribe', if: (g) => g.money >= 20 },
+      { t: 'Отдать патроны (−10 винтовочных)', go: 'bribe2', if: (g) => g.supplies.ammo_rifle >= 10 },
+      { t: '[Убеждение] Патруль Леди Харрингтон рядом — выстрелы услышат', check: { skill: 'persuasion', dc: 18, ok: 'scared', fail: 'fight' } },
+      { t: '[Скрытность] Ускользнуть', check: { skill: 'stealth', dc: 18, ok: 'escaped', fail: 'fight' } },
+    ] },
+    bribe: { s: 'deserter', t: 'Сержант пересчитывает монеты и прячет их за отворот шинели. — Свободен. И нас ты не видел.', do: (g) => (g.money -= 20), act: 'band_calm' },
+    bribe2: { s: 'deserter', t: 'Дезертир взвешивает пачки на ладони и впервые за весь разговор улыбается. — Вот это по-солдатски. Иди.', do: (g) => { g.supplies.ammo_rifle -= 10; }, act: 'band_calm' },
+    scared: { s: 'deserter', t: 'Дезертиры переглядываются и невольно косятся на дорогу. — Чёрт с тобой. Уходим, ребята. — Они пятятся в балку, не опуская винтовок.', act: 'band_calm' },
+    escaped: { s: 'nar', t: 'Вы уходите низиной, по колено в сухой траве. Сзади ещё долго слышны злые голоса — дезертиры ищут вас не там.', act: 'band_lose' },
+    fight: { s: 'deserter', t: '— Значит, по-плохому. — Лязгают затворы, кто-то примыкает штык.', act: 'battle_band' },
+  } },
   // патруль барона на тракте
   enc_patrol: { start: 'a', nodes: {
     a: { s: 'patrol', t: '— Чего надо? Патруль его милости барона Олдриджа. — Сержант поднимает фонарь к вашему лицу и долго разглядывает. — Не местный. Бумаг, небось, нет? Кто такой, куда идёшь?', c: [
@@ -1208,8 +1238,9 @@ const WORLD_DIALOGS: Record<string, DTree> = {
     a: { s: 'nar', t: 'Оборванцы лежат в пыли. У них почти ничего нет — нож с выщербленным лезвием и горсть медяков. (Получено: 2 шиллинга.)', do: (g) => { g.money += 2; } },
   } },
   after_band: { start: 'a', nodes: {
-    a: { s: 'nar', t: () => { const n = World.bandLoot; return `Бандиты повержены. В их мешках — награбленное у других путников. (Получено: ${6 * n} шиллингов, ${3 * n} винтовочных и ${2 * n} пистолетных патронов, ${Math.ceil(n / 2)} бинт., 1 паёк.)` + (World.bandTrophy ? ` ${tr('В обоз:')} ${itemName(World.bandTrophy).toLowerCase()}.` : ''); },
-      do: (g) => { const n = World.bandLoot; g.money += 6 * n; g.supplies.ammo_rifle += 3 * n; g.supplies.ammo_pistol += 2 * n; g.supplies.bandage += Math.ceil(n / 2); g.supplies.ration += 1; if (World.bandTrophy) g.stash.push(World.bandTrophy); World.bandTrophy = ''; } },
+    a: { s: 'nar', t: () => { const n = World.bandLoot; if (World.bandFac === 'deserter') return desLoot(n).text + (World.bandTrophy ? ` ${tr('В обоз:')} ${itemName(World.bandTrophy).toLowerCase()}.` : '');
+      return `Бандиты повержены. В их мешках — награбленное у других путников. (Получено: ${6 * n} шиллингов, ${3 * n} винтовочных и ${2 * n} пистолетных патронов, ${Math.ceil(n / 2)} бинт., 1 паёк.)` + (World.bandTrophy ? ` ${tr('В обоз:')} ${itemName(World.bandTrophy).toLowerCase()}.` : ''); },
+      do: (g) => { const n = World.bandLoot; if (World.bandFac === 'deserter') { desLoot(n).give(g); if (World.bandTrophy) g.stash.push(World.bandTrophy); World.bandTrophy = ''; return; } g.money += 6 * n; g.supplies.ammo_rifle += 3 * n; g.supplies.ammo_pistol += 2 * n; g.supplies.bandage += Math.ceil(n / 2); g.supplies.ration += 1; if (World.bandTrophy) g.stash.push(World.bandTrophy); World.bandTrophy = ''; } },
   } },
   hunger: { start: 'a', nodes: {
     a: { s: 'nar', t: 'Пайки кончились. Голод забирает силы. (−2 ОЗ. Найдите еду: пайки дают в деревнях, их находят в руинах и у мародёров.)' },
