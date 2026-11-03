@@ -35,11 +35,11 @@ export const WEAPONS: Record<string, Weapon> = {
   saber:     { name: 'Офицерская сабля', type: 'melee', atk: 1, dmg: [4, 7] },
   carbine:   { name: 'Карабин', type: 'ranged', range: 8, opt: 5, atk: 0, dmg: [3, 5], ammo: 4, ammoType: 'ammo_rifle' },
   rifle:     { name: 'Армейская винтовка', type: 'ranged', range: 11, opt: 8, atk: 1, dmg: [4, 6], ammo: 5, ammoType: 'ammo_rifle' },
-  huntrifle: { name: 'Охотничья винтовка', type: 'ranged', range: 13, opt: 10, atk: 2, dmg: [5, 7], ammo: 3, ammoType: 'ammo_rifle' },
+  huntrifle: { name: 'Охотничья винтовка', type: 'ranged', closePen: 5, range: 13, opt: 10, atk: 2, dmg: [5, 7], ammo: 3, ammoType: 'ammo_rifle' },
   shotgun2:  { name: 'Двуствольный дробовик', type: 'ranged', closePen: 0, range: 5, opt: 2, atk: 1, dmg: [5, 8], ammo: 2, ammoType: 'ammo_shell', shot: true },
   pumpshot:  { name: 'Помповый дробовик', type: 'ranged', closePen: 0, range: 5, opt: 2, atk: 1, dmg: [4, 7], ammo: 5, ammoType: 'ammo_shell', shot: true },
   flamer:    { name: 'Огнемёт', type: 'ranged', closePen: 0, range: 4, opt: 4, atk: 2, dmg: [4, 6], ammo: 3, ignoreCover: true, splash: [2, 3] },
-  mg:        { name: 'Ручной пулемёт', type: 'ranged', range: 10, opt: 6, atk: 0, dmg: [3, 5], ammo: 15, ammoType: 'ammo_mg', burst: 3, heavy: true },
+  mg:        { name: 'Ручной пулемёт', type: 'ranged', closePen: 4, range: 10, opt: 6, atk: 0, dmg: [3, 5], ammo: 15, ammoType: 'ammo_mg', burst: 3, heavy: true },
   exprifle:  { name: 'Экспериментальная винтовка', type: 'ranged', range: 12, opt: 9, atk: 2, dmg: [6, 8], ammo: 4, ammoType: 'ammo_rifle', pierce: true },
   bayonet:   { name: 'Штык', type: 'melee', atk: 0, dmg: [2, 4] },
   knife:     { name: 'Нож', type: 'melee', atk: 1, dmg: [2, 4] },
@@ -129,7 +129,7 @@ export function makeLeader(c: Character): UnitBase {
 export function makeAlex(): UnitBase {
   return {
     id: 'alex', name: 'Александр', kind: 'alex', hp: 6, maxHp: 6, move: 5,
-    weapons: ['knife'], atkM: 0, atkR: 0, def: 12, armor: 0, dmgM: 0, horror: -1, med: 0, str: -1, wounds: [],
+    weapons: ['knife'], atkM: 0, atkR: 0, def: 15, armor: 0, dmgM: 0, horror: -1, med: 0, str: -1, wounds: [],
     equip: { main: 'knife', head: 'cap', body: 'clothes' }, abil: {},
   };
 }
@@ -139,8 +139,10 @@ export function makeSquad(c: Character): UnitBase[] {
   return [makeLeader(c)];
 }
 
+/** Противник. def — Защита по старой шкале d20; под 3d6 к ней прибавляется DEF_SHIFT (см. DEF_BASE в rules.ts). */
+const DEF_SHIFT = 3;
 const E = (id: string, name: string, kind: string, hp: number, move: number, weapons: string[], ai: UnitBase['ai'], atk: number, def: number, extra: Partial<UnitBase> = {}): UnitBase =>
-  ({ id, name, kind, hp, maxHp: hp, move, weapons, ai, atkM: atk, atkR: atk, def, ...extra });
+  ({ id, name, kind, hp, maxHp: hp, move, weapons, ai, atkM: atk, atkR: atk, def: def + DEF_SHIFT, ...extra });
 
 export const ENEMIES: Record<string, UnitBase> = {
   fork:        E('fork', 'Ополченец', 'militia', 7, 4, ['pitchfork'], 'melee', 2, 10),

@@ -191,8 +191,8 @@ export const Combat = {
     if (dy && Math.abs(dy) >= Math.abs(dx) * 0.5) c = Math.max(c, this.coverAt(t.x, t.y + Math.sign(dy)));
     return c;
   },
-  /** Бонус укрытия к Защите: половинное +3, полное +5. */
-  coverDef(cover: number) { return cover >= 40 ? 5 : cover >= 25 ? 3 : 0; },
+  /** Бонус укрытия к Защите: половинное +2, полное +4 (под 3d6 каждое очко весит больше, чем на d20). */
+  coverDef(cover: number) { return cover >= 40 ? 4 : cover >= 25 ? 2 : 0; },
   /**
    * Бросок атаки по правилам: 3d6 + бонус атаки + бонус оружия − штраф дистанции
    * против Защиты цели (+ укрытие). Возвращает null, если атака невозможна.
@@ -1476,7 +1476,7 @@ export const Combat = {
           if (this.action.key === 'charge') lines.push('Штыковая: +2 к атаке, +2 к урону, затем раскрыт');
           if (this.action.key === 'last') lines.push('Натиск: лучший из двух бросков, +2 к урону');
           const cv = w.type === 'ranged' && !w.ignoreCover ? this.coverOf(u, sel) : 0;
-          if (cv) lines.push(cv >= 40 ? 'Цель в полном укрытии (+5 к Защите)' : 'Цель в половинном укрытии (+3 к Защите)');
+          if (cv) lines.push(cv >= 40 ? 'Цель в полном укрытии (+4 к Защите)' : 'Цель в половинном укрытии (+2 к Защите)');
           if (u.armor) lines.push(`Броня поглощает ${u.armor}`);
         } else lines.push(w.type === 'melee' ? 'Слишком далеко для ближнего боя' : 'Вне досягаемости / не видно');
       }

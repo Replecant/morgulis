@@ -186,7 +186,9 @@ export function maxHp(c: Character) {
   const per = Math.max(1, p.hpLevel + c.attrs.str) + (c.talent === 'tough' ? 1 : 0);
   return p.hp + c.attrs.str + (c.talent === 'tough' ? 3 : 0) + per * (c.level - 1);
 }
-export const defense = (c: Character) => 10 + c.attrs.dex + (c.talent === 'quick' ? 1 : 0);
+/** Защита: 13 + Ловкость. Под 3d6 база поднята на 3 (с d20 было 10), чтобы по открытой цели попадали примерно в 60–75%, а не в 90%. */
+export const DEF_BASE = 13;
+export const defense = (c: Character) => DEF_BASE + c.attrs.dex + (c.talent === 'quick' ? 1 : 0);
 export const armorOf = (c: Character) => PROFESSIONS[c.prof].armor;
 export const initiative = (c: Character) => c.attrs.dex + (c.talent === 'quick' ? 2 : 0);
 export const meleeAttack = (c: Character) => skillBonus(c, 'melee');
