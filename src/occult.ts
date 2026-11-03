@@ -3,10 +3,10 @@
 //  в меню покажет их сама), ритуалы вне боя
 //  и оккультное напряжение (0–6). Только для оккультиста.
 //  Заклинание в бою тратит основное действие (как атака).
-//  Проверки — обычный d20 + Оккультизм против сложности.
+//  Проверки — обычный 3d6 + Оккультизм против сложности.
 // ============================================================
 import { G, gearBonus, hasTool } from './state';
-import { skillBonus } from './rules';
+import { skillBonus, roll3d6, CRIT_AT, FUMBLE_AT } from './rules';
 
 export type School = 'folk' | 'demon' | 'astro' | 'rune';
 export const SCHOOL_ORDER: School[] = ['folk', 'demon', 'astro', 'rune'];
@@ -69,7 +69,7 @@ export const occultBonus = () => (G.pc ? skillBonus(G.pc, 'occult') + gearBonus(
 export function strainCheck(): { roll: number; total: number; dc: number; ok: boolean } | null {
   const s = strain();
   if (s < 4) return null;
-  const wil = G.pc?.attrs.wil ?? 0, roll = 1 + Math.floor(Math.random() * 20), dc = 8 + s;
-  return { roll, total: roll + wil, dc, ok: roll !== 1 && (roll === 20 || roll + wil >= dc) };
+  const wil = G.pc?.attrs.wil ?? 0, roll = roll3d6(), dc = 8 + s;
+  return { roll, total: roll + wil, dc, ok: roll > FUMBLE_AT && (roll >= CRIT_AT || roll + wil >= dc) };
 }
 export function addStrain(n: number) { const b = G.squad[0]; if (b) b.strain = Math.min(STRAIN_MAX, (b.strain ?? 0) + n); }

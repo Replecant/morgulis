@@ -221,7 +221,7 @@ export const DIALOGS: Record<string, DTree> = {
   ruin1: { start: (g) => (F(g).chest1 ? 'empty' : 'a'), nodes: {
     a: { s: 'nar', t: 'Пустой дом. На столе — недопитая чашка, покрытая пылью. Под кроватью — окованный сундук с висячим замком.', c: [
       { t: '[Скрытность] Вскрыть замок отмычками', check: { skill: 'stealth', dc: 15, ok: 'open', fail: 'jam' }, if: () => G.stash.includes('lockpicks') },
-      { t: '[Атлетика] Сбить замок', check: { skill: 'athletics', dc: 18, ok: 'open', fail: 'nope' } },
+      { t: '[Атлетика] Сбить замок', check: { skill: 'athletics', dc: 17, ok: 'open', fail: 'nope' } },
       { t: 'Оставить', go: 'bye' },
     ] },
     open: { s: 'nar', t: 'Замок поддаётся. В сундуке — завязанный узелком платок с монетами и коробка патронов. (Получено: 25 шиллингов, 12 пистолетных патронов.)', do: (g) => { F(g).chest1 = true; g.money += 25; g.supplies.ammo_pistol += 12; } },
@@ -744,7 +744,7 @@ const WORLD_DIALOGS: Record<string, DTree> = {
       return tr('Туман между елями шевелится — и из него выходят они.') + ' ' + (k ? k.map((x) => tr(({ imp: 'Бес скалится и подпрыгивает на кривых лапах.', demon: 'Рогатый демон в чёрном, выше человека, смотрит горящими глазами.', hound: 'Гончая — поджарая, багрово-чёрная, с шипами по хребту — роет мох и рычит.' } as Record<string, string>)[x])).filter((v, i, arr) => arr.indexOf(v) === i).join(' ') : tr('Бесы, гончие, рогатые тени.')) + ' ' + tr('Это слуги ковена, и они вышли на охоту.');
     }, c: [
       { t: 'Принять бой', act: 'battle_dsq' },
-      { t: '[Атлетика] Бежать', check: { skill: 'athletics', dc: 18, ok: 'ran', fail: 'caught' } },
+      { t: '[Атлетика] Бежать', check: { skill: 'athletics', dc: 17, ok: 'ran', fail: 'caught' } },
       { t: '[Скрытность] Затаиться в ельнике', check: { skill: 'stealth', dc: 15, ok: 'hid', fail: 'caught' } },
       { t: '[Оккультизм] Отогнать знаком', check: { skill: 'occult', dc: 15, ok: 'warded', fail: 'caught' }, if: (g) => g.pc?.prof === 'occultist' },
     ] },
@@ -1191,8 +1191,8 @@ const WORLD_DIALOGS: Record<string, DTree> = {
       { t: 'Драться', act: 'battle_band' },
       { t: 'Откупиться (−15 ш.)', go: 'bribe', if: (g) => g.money >= 15 },
       { t: 'Откупиться припасами (−2 пайка, −2 бинта)', go: 'bribe2', if: (g) => g.supplies.ration >= 2 && g.supplies.bandage >= 2 },
-      { t: '[Убеждение] Запугать', check: { skill: 'persuasion', dc: 18, ok: 'scared', fail: 'fight' } },
-      { t: '[Скрытность] Ускользнуть', check: { skill: 'stealth', dc: 18, ok: 'escaped', fail: 'fight' } },
+      { t: '[Убеждение] Запугать', check: { skill: 'persuasion', dc: 17, ok: 'scared', fail: 'fight' } },
+      { t: '[Скрытность] Ускользнуть', check: { skill: 'stealth', dc: 17, ok: 'escaped', fail: 'fight' } },
     ] },
     bribe: { s: 'scav', t: 'Главарь пересчитывает монеты, не сводя с вас глаз. — Не густо. Но сегодня мы добрые. Проваливай.', do: (g) => (g.money -= 15), act: 'band_calm' },
     bribe2: { s: 'scav', t: 'Бандит забирает свёртки и бинты, взвешивает на ладони. — Сойдёт. Иди, пока не передумали.', do: (g) => { g.supplies.ration -= 2; g.supplies.bandage -= 2; }, act: 'band_calm' },
@@ -1211,9 +1211,9 @@ const WORLD_DIALOGS: Record<string, DTree> = {
       { t: 'Драться', act: 'battle_band' },
       { t: 'Откупиться (−20 ш.)', go: 'bribe', if: (g) => g.money >= 20 },
       { t: 'Отдать патроны (−10 винтовочных)', go: 'bribe2', if: (g) => g.supplies.ammo_rifle >= 10 },
-      { t: '[Убеждение] Патруль Леди Харрингтон рядом — выстрелы услышат', check: { skill: 'persuasion', dc: 18, ok: 'scared', fail: 'fight' }, if: () => World.party.y <= SOUTH_Y },
-      { t: '[Убеждение] Здесь земли Винферда — его патрули выстрелы услышат', check: { skill: 'persuasion', dc: 18, ok: 'scared', fail: 'fight' }, if: () => World.party.y > SOUTH_Y },
-      { t: '[Скрытность] Ускользнуть', check: { skill: 'stealth', dc: 18, ok: 'escaped', fail: 'fight' } },
+      { t: '[Убеждение] Патруль Леди Харрингтон рядом — выстрелы услышат', check: { skill: 'persuasion', dc: 17, ok: 'scared', fail: 'fight' }, if: () => World.party.y <= SOUTH_Y },
+      { t: '[Убеждение] Здесь земли Винферда — его патрули выстрелы услышат', check: { skill: 'persuasion', dc: 17, ok: 'scared', fail: 'fight' }, if: () => World.party.y > SOUTH_Y },
+      { t: '[Скрытность] Ускользнуть', check: { skill: 'stealth', dc: 17, ok: 'escaped', fail: 'fight' } },
     ] },
     bribe: { s: 'deserter', t: 'Сержант пересчитывает монеты и прячет их за отворот шинели. — Свободен. И нас ты не видел.', do: (g) => (g.money -= 20), act: 'band_calm' },
     bribe2: { s: 'deserter', t: 'Дезертир взвешивает пачки на ладони и впервые за весь разговор улыбается. — Вот это по-солдатски. Иди.', do: (g) => { g.supplies.ammo_rifle -= 10; }, act: 'band_calm' },
@@ -1267,7 +1267,7 @@ const WORLD_DIALOGS: Record<string, DTree> = {
   poi_bunker: { start: (g: Flags) => (F(g).bunkerDone ? 'empty' : 'a'), nodes: {
     a: { s: 'nar', t: 'Бетонный командный блиндаж врос в землю. Бронедверь на клёпках перекосило взрывом — она заклинила, но изнутри тянет сухим воздухом. Там, похоже, ничего не тронуто.', c: [
       { t: '[Механика] Разобрать заклинивший запор (инструменты)', check: { skill: 'mechanics', dc: 15, ok: 'ok', fail: 'mfail' }, if: () => hasRepairKit() },
-      { t: '[Атлетика] Выбить дверь', check: { skill: 'athletics', dc: 18, ok: 'ok', fail: 'afail' } },
+      { t: '[Атлетика] Выбить дверь', check: { skill: 'athletics', dc: 17, ok: 'ok', fail: 'afail' } },
       { t: 'Уйти', go: 'bye' },
     ] },
     ok: { s: 'nar', t: 'Дверь со скрежетом поддаётся. Внутри — стол с истлевшими картами, каска на гвозде и ящик с противогазными фильтрами. В жестянке — несколько шиллингов. (В обоз: стальная каска. Получено: 2 фильтра, 20 шиллингов.)', do: (g) => { F(g).bunkerDone = true; g.stash.push('helmet'); g.supplies.filter += 2; g.money += 20; } },

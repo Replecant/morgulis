@@ -71,7 +71,7 @@ export const OccultMenu = {
     addStrain(r.strain);
     G.clock += r.hours;
     const sc = strainCheck();
-    if (sc && !sc.ok) { const d = 1 + Math.floor(Math.random() * 3); b.hp = Math.max(1, b.hp - d); res += ` Отдача: кровь из носа, −${d} ОЗ. [Воля: d20 ${sc.roll} → ${sc.total} против ${sc.dc}]`; }
+    if (sc && !sc.ok) { const d = 1 + Math.floor(Math.random() * 3); b.hp = Math.max(1, b.hp - d); res += ` Отдача: кровь из носа, −${d} ОЗ. [Воля: 3d6 ${sc.roll} → ${sc.total} против ${sc.dc}]`; }
     this.note = `${r.name} (${r.hours} ч). ${res}`;
     this.render();
   },

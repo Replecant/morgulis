@@ -194,7 +194,7 @@ export const Combat = {
   /** Бонус укрытия к Защите: половинное +3, полное +5. */
   coverDef(cover: number) { return cover >= 40 ? 5 : cover >= 25 ? 3 : 0; },
   /**
-   * Бросок атаки по правилам: d20 + бонус атаки + бонус оружия − штраф дистанции
+   * Бросок атаки по правилам: 3d6 + бонус атаки + бонус оружия − штраф дистанции
    * против Защиты цели (+ укрытие). Возвращает null, если атака невозможна.
    */
   attackInfo(att: Unit, from: Pt, t: Unit, wkey: string, extra = 0) {
@@ -483,7 +483,7 @@ export const Combat = {
       if (sp.dc !== undefined || id === 'command') {
         const dc = id === 'command' ? 10 + Math.ceil(target!.hp / 2) : sp.dc!;
         const r = check(occultBonus(), dc); ok = r.success;
-        rollTxt = ` [Оккультизм: d20 ${r.roll}${occultBonus() >= 0 ? '+' : ''}${occultBonus()} против ${dc}]`;
+        rollTxt = ` [Оккультизм: 3d6 ${r.roll}${occultBonus() >= 0 ? '+' : ''}${occultBonus()} против ${dc}]`;
       }
       const tgt = target!, turns = sp.turns ?? 1;
       const hit = (msg: string, who: Unit) => { this.float(who, msg, col); this.burst(who.px, who.py - 14, col, 12, 50); };
@@ -525,11 +525,11 @@ export const Combat = {
       // отдача при высоком напряжении
       const sc = strainCheck();
       if (sc && !sc.ok) {
-        const k = randInt(1, 3), txt = `[Воля: d20 ${sc.roll} → ${sc.total} против ${sc.dc}]`;
+        const k = randInt(1, 3), txt = `[Воля: 3d6 ${sc.roll} → ${sc.total} против ${sc.dc}]`;
         if (k === 1) { const d = randInt(1, 3); this.float(u, `Отдача −${d}`, '#b58cff'); this.hooks.log(`Отдача: из носа идёт кровь, ${u.name} теряет ${d} ОЗ. ${txt}`); await this.damage(u, d, false); }
         else if (k === 2) { u.terror = true; this.float(u, 'Видения!', '#b58cff'); this.hooks.log(`Отдача: перед глазами чужие видения — в следующем ходу 1 ОД. ${txt}`); }
         else { u.courage = 0; u.hp = Math.max(1, u.hp - 1); this.float(u, 'Шёпот…', '#b58cff'); this.hooks.log(`Отдача: шёпот в голове гасит кураж, −1 ОЗ. ${txt}`); }
-      } else if (sc) this.hooks.log(`${u.name} удерживает напряжение. [Воля: d20 ${sc.roll} → ${sc.total} против ${sc.dc}]`);
+      } else if (sc) this.hooks.log(`${u.name} удерживает напряжение. [Воля: 3d6 ${sc.roll} → ${sc.total} против ${sc.dc}]`);
       this.magic = false;
     });
   },
@@ -905,7 +905,7 @@ export const Combat = {
       if ((r2.success && !roll.success) || (r2.success === roll.success && r2.total > roll.total)) roll = r2;
     }
     const ch = opts.adv ? this.advChance(info.chance) : info.chance, hit = roll.success;
-    const rollTxt = `d20: ${roll.roll}${advTxt}${info.bonus >= 0 ? '+' : ''}${info.bonus} против ${info.dc}`;
+    const rollTxt = `3d6: ${roll.roll}${advTxt}${info.bonus >= 0 ? '+' : ''}${info.bonus} против ${info.dc}`;
     if (this.jams(a, wkey, roll.roll)) return;
     if (w.ammo || a.ammo[wkey] !== undefined) a.ammo[wkey]--;
     if (w.type === 'ranged') Sfx.shot(wkey);
@@ -923,7 +923,7 @@ export const Combat = {
       if (w.antiDemon && t.demonic) d += w.antiDemon;
       d = Math.max(1, d);
       if (w.shot) d = Math.max(1, d - Math.max(0, Math.floor(dist(a, t) - w.opt!)) - (t.splinter ? 1 : 0)); // дробь теряет силу
-      const crit = roll.crit; // натуральная 20: полуторный урон, броня не спасает
+      const crit = roll.crit; // 16+ на костях: полуторный урон, броня не спасает
       if (crit) d = Math.ceil(d * 1.5);
       const absorbed = crit || w.pierce ? 0 : Math.min(d - 1, t.armor);
       d -= absorbed;
@@ -945,14 +945,14 @@ export const Combat = {
     await sleep(260);
     if (galv) { // отдача гальванической руки
       const str = a.team === 'player' && a.leader ? (G.pc?.attrs.str ?? 0) : 0, r = check(str, 12);
-      if (!r.success) { a.hp = Math.max(1, a.hp - 1); this.float(a, '−1 (разряд)', '#d8ff70'); this.hooks.log(`Отдача разряда: ${a.name} теряет 1 ОЗ [Сила: d20 ${r.roll}${str >= 0 ? '+' : ''}${str} против 12].`); }
-      else this.hooks.log(`${a.name} выдерживает отдачу разряда [Сила: d20 ${r.roll}${str >= 0 ? '+' : ''}${str} против 12].`);
+      if (!r.success) { a.hp = Math.max(1, a.hp - 1); this.float(a, '−1 (разряд)', '#d8ff70'); this.hooks.log(`Отдача разряда: ${a.name} теряет 1 ОЗ [Сила: 3d6 ${r.roll}${str >= 0 ? '+' : ''}${str} против 12].`); }
+      else this.hooks.log(`${a.name} выдерживает отдачу разряда [Сила: 3d6 ${r.roll}${str >= 0 ? '+' : ''}${str} против 12].`);
     }
   },
 
-  /** Изношенный огнестрел клинит на 1–2 на d20: выстрела нет, патрон испорчен. */
+  /** Изношенный огнестрел клинит на 6 и меньше на 3d6 (≈9%): выстрела нет, патрон испорчен. */
   jams(a: Unit, wkey: string, roll: number) {
-    if (!a.worn.includes(wkey) || !WEAPONS[wkey].ammoType || roll > 2) return false;
+    if (!a.worn.includes(wkey) || !WEAPONS[wkey].ammoType || roll > 6) return false;
     if (a.ammo[wkey] > 0) a.ammo[wkey]--;
     a.jam.push(wkey);
     this.float(a, 'Заклинило!', '#e8a050');
@@ -970,7 +970,7 @@ export const Combat = {
     let hits = 0;
     for (let k = 0; k < shots && !t.dead; k++) {
       const info = this.attackInfo(a, a, t, wkey, bonus - 3) ?? { bonus: 0, dc: 99, chance: 0 };
-      const roll = check(info.bonus, info.dc), rt = `d20: ${roll.roll}${info.bonus >= 0 ? '+' : ''}${info.bonus} против ${info.dc}`;
+      const roll = check(info.bonus, info.dc), rt = `3d6: ${roll.roll}${info.bonus >= 0 ? '+' : ''}${info.bonus} против ${info.dc}`;
       if (this.jams(a, wkey, roll.roll)) break;
       a.ammo[wkey]--;
       Sfx.shot(wkey);
@@ -1029,7 +1029,7 @@ export const Combat = {
       if (!v) continue;
       if (v.gas) { this.float(v, 'Противогаз', '#a8b860'); this.hooks.log(`${v.name}: противогаз держит — зловоние не действует.`); continue; }
       const info = this.attackInfo(a, a, v, wkey, bonus) ?? { bonus: w.atk + bonus, dc: v.def, chance: 0 };
-      const roll = check(info.bonus, info.dc), rt = `d20: ${roll.roll}${info.bonus >= 0 ? '+' : ''}${info.bonus} против ${info.dc}`;
+      const roll = check(info.bonus, info.dc), rt = `3d6: ${roll.roll}${info.bonus >= 0 ? '+' : ''}${info.bonus} против ${info.dc}`;
       if (!roll.success) { this.float(v, 'Увернулся', '#b8b8a8'); this.hooks.log(`${v.name} успевает отвернуться от облака [${rt}]`); continue; }
       const d = randInt(w.dmg[0], w.dmg[1]);
       this.hooks.log(`${a.name} → ${v.name}: ${w.name}, ${d} урона, слабость на 2 раунда (−2 к атакам, −1 к урону) [${rt}]`);
@@ -1136,7 +1136,7 @@ export const Combat = {
   async whisper(u: Unit, t: Unit) {
     this.float(u, '«Смотри в Око…»', '#b58cff');
     await this.projectile(u, t, '#b58cff', 500);
-    const save = check(t.horror + (G.flags.salts ? 4 : 0) + (t.st.ward ? 4 : 0), 14);
+    const save = check(t.horror + (G.flags.salts ? 4 : 0) + (t.st.ward ? 4 : 0), 12);
     if (!save.success) {
       t.terror = true;
       if (t.courage) this.hooks.log(`Ужас гасит кураж: ${t.name} теряет его.`);
@@ -1472,7 +1472,7 @@ export const Combat = {
         if (ch > 0) {
           lines.push(`Попадание: ${ch}%   Урон: ${w.dmg[0]}–${w.dmg[1]}`);
           const info = this.action.type === 'c' ? null : this.attackInfo(sel, sel, u, wk, this.action.key === 'aim' ? 4 : 0);
-          if (info) lines.push(`d20 ${info.bonus >= 0 ? '+' : ''}${info.bonus} против Защиты ${info.dc}`);
+          if (info) lines.push(`3d6 ${info.bonus >= 0 ? '+' : ''}${info.bonus} против Защиты ${info.dc}`);
           if (this.action.key === 'charge') lines.push('Штыковая: +2 к атаке, +2 к урону, затем раскрыт');
           if (this.action.key === 'last') lines.push('Натиск: лучший из двух бросков, +2 к урону');
           const cv = w.type === 'ranged' && !w.ignoreCover ? this.coverOf(u, sel) : 0;

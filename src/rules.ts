@@ -1,6 +1,6 @@
 // ============================================================
 //  Ролевая система Моргулиса (компьютерная адаптация)
-//  d20 + бонус ≥ КС. Четыре характеристики, шесть профессий,
+//  3d6 + бонус ≥ КС. Четыре характеристики, шесть профессий,
 //  10 уровней, таланты. Подробности — в RULES.md.
 // ============================================================
 
@@ -71,7 +71,7 @@ export const PROFESSIONS: Record<ProfId, Profession> = {
     desc: 'Мастер огнестрельного оружия. Бьёт издалека и точно, знает цену каждому патрону и каждому укрытию.',
     key: 'dex', hp: 9, hpLevel: 5, armor: 0,
     skills: ['shooting', 'perception', 'survival'],
-    ability: { name: 'Прицельный выстрел', desc: 'Тратит весь ход на прицеливание: +4 к броску атаки d20.' },
+    ability: { name: 'Прицельный выстрел', desc: 'Тратит весь ход на прицеливание: +4 к броску атаки 3d6.' },
     kit: ['Охотничья винтовка', '20 винт. патронов', 'Нож', 'Кепи', '20 ш.'],
     weapons: ['huntrifle', 'knife'], combatAbil: { aim: 99 },
     archetypes: 'охотник на вампиров, снайпер, дуэлянт',
@@ -195,19 +195,31 @@ export const meleeDamage = (c: Character) => Math.max(0, c.attrs.str) + (c.talen
 export const horrorSave = (c: Character) => c.attrs.wil + (c.talent === 'cold' ? 3 : 0);
 
 // ------------------------------------------------------------ проверки
-/** Ступени сложности. Обученный специалист с сильной характеристикой на 1-м уровне берёт обычную примерно в половине случаев. */
-export const DC = { easy: 12, normal: 15, hard: 18, extreme: 21 } as const;
-export const DC_NAMES: Record<number, string> = { 12: 'лёгкая', 15: 'обычная', 18: 'сложная', 21: 'очень сложная' };
+/** Ступени сложности под 3d6. Обученный специалист с сильной характеристикой на 1-м уровне берёт обычную примерно в половине случаев. */
+export const DC = { easy: 12, normal: 15, hard: 17, extreme: 19 } as const;
+export const DC_NAMES: Record<number, string> = { 12: 'лёгкая', 15: 'обычная', 17: 'сложная', 19: 'очень сложная' };
 
 export interface CheckResult { roll: number; bonus: number; total: number; dc: number; success: boolean; crit: boolean; fumble: boolean }
-/** Проверка: d20 + бонус ≥ КС. Натуральная 20 — всегда успех, 1 — всегда провал. */
+// Бросок — 3d6 (3–18, чаще всего 9–12): меньше случайности, больше веса у навыка и укрытий.
+// 16–18 на костях — блестящий успех (крит), 3–5 — провал при любом бонусе: каждое примерно в 5% бросков.
+export const DICE = '3d6';
+export const CRIT_AT = 16, FUMBLE_AT = 5;
+const d6 = () => 1 + Math.floor(Math.random() * 6);
+export const roll3d6 = () => d6() + d6() + d6();
+/** Вероятность каждой суммы 3d6 (индекс — сумма). */
+const P3D6 = (() => { const p = new Array(19).fill(0); for (let a = 1; a <= 6; a++) for (let b = 1; b <= 6; b++) for (let c = 1; c <= 6; c++) p[a + b + c] += 1 / 216; return p; })();
+/** Проверка: 3d6 + бонус ≥ КС. 16+ на костях — всегда успех, 5 и меньше — всегда провал. */
 export function check(bonus: number, dc: number): CheckResult {
-  const roll = 1 + Math.floor(Math.random() * 20);
+  const roll = roll3d6();
   const total = roll + bonus;
-  return { roll, bonus, total, dc, success: roll === 20 || (roll !== 1 && total >= dc), crit: roll === 20, fumble: roll === 1 };
+  return { roll, bonus, total, dc, success: roll >= CRIT_AT || (roll > FUMBLE_AT && total >= dc), crit: roll >= CRIT_AT, fumble: roll <= FUMBLE_AT };
 }
-/** Вероятность успеха проверки (для подсказок в интерфейсе). */
-export const checkChance = (bonus: number, dc: number) => Math.min(95, Math.max(5, (21 - (dc - bonus)) * 5));
+/** Вероятность успеха проверки, % (для подсказок в интерфейсе). */
+export function checkChance(bonus: number, dc: number) {
+  let p = 0;
+  for (let r = 3; r <= 18; r++) if (r >= CRIT_AT || (r > FUMBLE_AT && r + bonus >= dc)) p += P3D6[r];
+  return Math.round(p * 100);
+}
 
 /** Готовый герой для быстрого старта: случайные пол и имя, черты под профессию. */
 export function quickCharacter(prof: ProfId): Character {

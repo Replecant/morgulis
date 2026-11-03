@@ -239,7 +239,7 @@ export const Inventory = {
     const lock = G.checkLock.repair ?? -1;
     if (lock > G.clock) { this.note = `Руки ещё не дошли: следующая попытка — через ${Math.ceil(lock - G.clock)} ч.`; this.render(); return; }
     const bonus = skillBonus(G.pc, 'mechanics') + gearBonus('mechanics'), r = check(bonus, DC.normal);
-    const rt = `[Механика: d20 ${r.roll}${bonus >= 0 ? '+' : ''}${bonus} против ${DC.normal}]`;
+    const rt = `[Механика: 3d6 ${r.roll}${bonus >= 0 ? '+' : ''}${bonus} против ${DC.normal}]`;
     G.clock += 1;
     if (r.success) { G.stash[idx] = withCond(id, 'ok'); G.supplies.parts--; this.note = `${itemOf(id).name}: разобрано, вычищено, собрано — снова в идеальном состоянии. ${rt}`; }
     else { G.checkLock.repair = G.clock + 24; this.note = `${itemOf(id).name}: не выходит — нужна деталь или свежая голова. Следующая попытка через сутки. ${rt}`; }

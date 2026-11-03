@@ -123,7 +123,7 @@ export function rest(): string {
   return 'Отряд разбивает привал. Силы частично восстановлены.' + (healed.length ? ` Зажило: ${healed.join(', ')}.` : '');
 }
 
-/** Операция: d20 + Медицина лекаря против 13. Успех — тяжёлая рана становится «швами». */
+/** Операция: 3d6 + Медицина лекаря против 13. Успех — тяжёлая рана становится «швами». */
 export function surgery(b: UnitBase, woundId: string): { text: string; roll?: CheckResult } {
   if (!hasTool('surgerykit')) return { text: 'Без хирургического набора оперировать нельзя.' };
   if (G.supplies.antiseptic <= 0) return { text: 'Нет антисептика для операции.' };
@@ -131,7 +131,7 @@ export function surgery(b: UnitBase, woundId: string): { text: string; roll?: Ch
   const healer = bestHealer();
   const r = check(healer.bonus, 13);
   const w = WOUNDS[woundId];
-  const rollTxt = `d20 (${r.roll}) ${healer.bonus >= 0 ? '+' : '−'} ${Math.abs(healer.bonus)} = ${r.total} против 13`;
+  const rollTxt = `3d6 (${r.roll}) ${healer.bonus >= 0 ? '+' : '−'} ${Math.abs(healer.bonus)} = ${r.total} против 13`;
   if (r.success) {
     b.wounds = (b.wounds ?? []).filter((id) => id !== woundId);
     if (!b.wounds.includes('stitches')) b.wounds.push('stitches');

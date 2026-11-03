@@ -245,7 +245,7 @@ export function itemStatLines(id: string): string[] {
     if (w.antiDemon) out.push(`+${w.antiDemon} к урону по демонам и бесам`);
     if (w.heavy) out.push('Тяжёлое: −1 к перемещению');
     const c = condOf(id);
-    out.push(`Состояние: ${COND_NAME[c]}` + (c === 'worn' ? (w.ammoType ? ' — может заклинить (1–2 на d20)' : ' — −1 к урону') : c === 'broken' ? ' — не стреляет и не рубит, нужна починка' : ''));
+    out.push(`Состояние: ${COND_NAME[c]}` + (c === 'worn' ? (w.ammoType ? ' — может заклинить (6 и меньше на 3d6)' : ' — −1 к урону') : c === 'broken' ? ' — не стреляет и не рубит, нужна починка' : ''));
   }
   if (it.armor) out.push(`Поглощение ${it.armor}`);
   const names: Record<string, string> = { def: 'Защита', atkM: 'Атака вблизи', atkR: 'Стрельба', move: 'Перемещение', horror: 'Стойкость к ужасу' };

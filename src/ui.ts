@@ -98,9 +98,9 @@ export const Dialog = {
   choose(i: number) {
     const c = this.choices[i];
     if (!c) return;
-    if (c.check && G.pc) { // проверка навыка: d20 + бонус против КС
+    if (c.check && G.pc) { // проверка навыка: 3d6 + бонус против КС
       const bonus = skillBonus(G.pc, c.check.skill) + gearBonus(c.check.skill), res = check(bonus, c.check.dc);
-      const tag = `[${SKILLS[c.check.skill].name}: d20 (${res.roll}) ${bonus >= 0 ? '+' : '−'} ${Math.abs(bonus)} = ${res.total} против ${c.check.dc} — ${res.success ? 'успех' : 'провал'}] `;
+      const tag = `[${SKILLS[c.check.skill].name}: 3d6 (${res.roll}) ${bonus >= 0 ? '+' : '−'} ${Math.abs(bonus)} = ${res.total} против ${c.check.dc} — ${res.success ? 'успех' : 'провал'}] `;
       if (!res.success) G.checkLock[this.lockKey(c)] = G.clock + 24; // провал: снова попробовать — не раньше чем через сутки
       return this.goto(res.success ? c.check.ok : c.check.fail, tag);
     }
@@ -173,7 +173,7 @@ export function openSquad(onClose: () => void) {
     box.className = 'squad-box';
     box.innerHTML = `<h2>Отряд</h2>
       <div class="sup">Бинты: <b>${G.supplies.bandage}</b> · Аптечки: <b>${G.supplies.medkit}</b> · Антисептик: <b>${G.supplies.antiseptic}</b> · Пайки: <b>${G.supplies.ration}</b>
-      <span class="healer">Лекарь: ${healer.name} (Медицина ${healer.bonus >= 0 ? '+' : ''}${healer.bonus}) — бинт +${bandageAmount(healer.bonus)} ОЗ, аптечка +${medkitAmount(healer.bonus)} ОЗ и снимает лёгкую рану, операция d20 против 13 ${hasTool('surgerykit') ? '(хирургический набор есть)' : '— <b style="color:#e07060">нужен хирургический набор</b>'}</span></div>`;
+      <span class="healer">Лекарь: ${healer.name} (Медицина ${healer.bonus >= 0 ? '+' : ''}${healer.bonus}) — бинт +${bandageAmount(healer.bonus)} ОЗ, аптечка +${medkitAmount(healer.bonus)} ОЗ и снимает лёгкую рану, операция 3d6 против 13 ${hasTool('surgerykit') ? '(хирургический набор есть)' : '— <b style="color:#e07060">нужен хирургический набор</b>'}</span></div>`;
     for (const s of G.squad) {
       const max = effMaxHp(s);
       const row = document.createElement('div');

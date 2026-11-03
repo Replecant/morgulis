@@ -162,12 +162,12 @@ export function openCreation(host: HTMLElement, onDone: (c: Character) => void, 
           statRow('Стойкость к ужасу', sign(horrorSave(c))),
         ),
         h('h3', {}, 'Как бросают кость'),
-        h('p', { class: 'formula' }, 'd20 + черта + мастерство (если навык обучен) ≥ КС'),
+        h('p', { class: 'formula' }, '3d6 + черта + мастерство (если навык обучен) ≥ КС'),
         h('div', { class: 'dcs' }, ...Object.values(DC).map((d) => h('span', {}, DC_NAMES[d], ' ', String(d)))),
         h('button', { class: 'bbtn small', onclick: () => {
           const b = skillBonus(c, tested), r = check(b, DC.normal);
           lastRoll = h('div', { class: 'roll ' + (r.success ? 'ok' : 'bad') },
-            `${SKILLS[tested].name}: d20 (${r.roll}) ${b >= 0 ? '+' : '−'} ${Math.abs(b)} = ${r.total} против 13 — `,
+            `${SKILLS[tested].name}: 3d6 (${r.roll}) ${b >= 0 ? '+' : '−'} ${Math.abs(b)} = ${r.total} против 13 — `,
             h('b', {}, r.crit ? 'блестяще!' : r.fumble ? 'позорный провал' : r.success ? 'успех' : 'провал'));
           refresh();
         } }, `⚄ Испытать: ${SKILLS[tested].name}, КС 13`),
