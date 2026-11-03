@@ -630,3 +630,9 @@ body { font-family: 'Old Standard TT', Georgia, serif; color: var(--text); }
 
 /* вес обоза: перегруз */
 .inv-h .cnt.over, .tload.over, .res .over { color: #e07a5a; }
+
+/* пауза: сохранения */
+.psaves { margin-bottom: 10px; }
+.psaves .mitem { font-size: 17px; padding: 3px 0; line-height: 1.2; }
+.psave small { display: block; font-size: 11px; color: var(--dim); font-style: italic; margin-top: 2px; }
+.pause-box .mitem[disabled] { opacity: 0.45; cursor: default; }

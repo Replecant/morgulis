@@ -156,7 +156,7 @@ function drawMenuScene(out: CanvasRenderingContext2D, t: number) {
 
 // ------------------------------------------------------------ меню
 
-export interface MenuHandlers { onNew: () => void; onQuick: (prof: ProfId) => void; onRules: () => void; onAbout: () => void }
+export interface MenuHandlers { onContinue?: () => void; onNew: () => void; onQuick: (prof: ProfId) => void; onRules: () => void; onAbout: () => void }
 
 export function showMainMenu(host: HTMLElement, hd: MenuHandlers) {
   const item = (label: string, fn: () => void) => h('button', { class: 'mitem', onclick: fn }, h('span', { class: 'orn' }, '❦'), label, h('span', { class: 'orn r' }, '❦'));
@@ -166,6 +166,7 @@ export function showMainMenu(host: HTMLElement, hd: MenuHandlers) {
       h('div', { class: 'msub' }, 'ролевая песочница'),
       h('div', { class: 'mrule' }, '✦'),
       h('nav', { class: 'mnav' },
+        ...(hd.onContinue ? [item('Продолжить', hd.onContinue)] : []),
         item('Новая игра', hd.onNew),
         item('Быстрый старт', () => {
           // список профессий вместо пунктов меню

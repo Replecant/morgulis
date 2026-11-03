@@ -3,7 +3,7 @@
 //  Режимы: глобальная карта (world) ⇄ локальная сцена (explore) → бой (combat)
 // ============================================================
 import './style.css';
-import { installI18n } from './i18n';
+import { installI18n, tr } from './i18n';
 import { G, resetGame } from './state';
 import { Explore } from './explore';
 import { World, clockText, LOCS } from './worldmap';
@@ -29,6 +29,7 @@ import { openCreation } from './creation';
 import { Character, newCharacter, quickCharacter, PROF_ORDER, ProfId } from './rules';
 import { rest } from './wounds';
 import { $ } from './util';
+import { Save, type Slot } from './save';
 installI18n(); // английский: перевод текста в DOM и на холсте
 
 const cv = $('cv') as HTMLCanvasElement;
@@ -45,6 +46,7 @@ function toWorld(fromScene?: string) {
   G.keys.clear();
   hint();
   refreshHud();
+  if (fromScene) Save.auto(); // автосохранение при выходе на карту
 }
 function toScene(id: string, at?: { x: number; y: number }) {
   G.mode = 'explore';
@@ -53,6 +55,7 @@ function toScene(id: string, at?: { x: number; y: number }) {
   G.keys.clear();
   hint();
   refreshHud();
+  Save.auto(); // и при входе в сцену
 }
 function hint() {
   if (G.mode === 'world') $('hint').textContent = 'Клик — идти · клик по месту — войти · WASD — идти · E — войти рядом · Q — лечение и лагерь · I — снаряжение · C — персонаж · O — оккультизм · M — карта · Esc — меню';
@@ -88,21 +91,18 @@ Combat.hooks = {
     refreshHud();
   },
   defeat(id) {
+    // отступления нет: бой заново, загрузка сохранения или главное меню
+    const cap = id === 'coven' ? 'Ведьмы принесли вас в жертву'
+      : id === 'lake' ? 'Морской демон утащил вас вглубь бездны'
+      : id.startsWith('trench') ? 'Мертвецы теперь будут лакомиться вашей плотью'
+      : 'Ещё одна душа сгинула под взглядом Ока';
+    const last = Save.latest();
     screen(
-      `<img class="death-img" src="${frameUrl('death')}" alt=""><div class="death-cap">Ещё одна душа сгинула под взглядом Ока</div>`,
+      `<img class="death-img" src="${frameUrl('death')}" alt=""><div class="death-cap">${tr(cap)}</div>`,
       [
         { label: 'Повторить бой', fn: () => { hideScreen(); restoreSnapshot(); startBattle(id); } },
-        { label: 'Отступить', fn: () => {
-          hideScreen(); restoreSnapshot();
-          G.squad.forEach((s) => (s.hp = Math.max(1, Math.ceil(s.hp / 2))));
-          if (id.startsWith('band_')) World.calmBand(24);
-          if (id.startsWith('hungry')) World.calmHungry(24);
-          if (id === 'lake') World.calmDemon(24);
-          if (id.startsWith('loyal')) World.calmLoyal(24);
-          if (id.startsWith('dsq_')) World.calmDsq(24);
-          if (id.startsWith('trench')) World.calmDead(12);
-          combatShow(false); G.mode = returnMode; hint(); refreshHud();
-        } },
+        ...(last ? [{ label: 'Загрузить сохранение', fn: () => { hideScreen(); combatShow(false); loadGame(last); } }] : []),
+        { label: 'В главное меню', fn: () => { hideScreen(); combatShow(false); showTitle(); } },
       ],
       'death',
     );
@@ -168,6 +168,7 @@ function fleshCare() {
   }
 }
 World.onDay = () => { // раз в сутки отряд ест
+  setTimeout(() => Save.auto(), 0); // и автосохранение
   fleshCare();
   if (Debug.noHunger) { refreshHud(); return; } // отладка: голода нет
   if (G.supplies.ration > 0) { G.supplies.ration--; toast(`${clockText()}: отряд съел паёк (осталось ${G.supplies.ration})`); }
@@ -222,11 +223,35 @@ function showTitle() {
   $('hud').classList.add('hidden');
   $('hint').textContent = '';
   showMainMenu(layer, {
+    onContinue: Save.latest() ? () => loadGame(Save.latest()!) : undefined,
     onNew: () => { G.mode = 'create'; openCreation(layer, newGame, showTitle); },
     onQuick: (prof) => newGame(quickCharacter(prof), false),
     onRules: () => openRules(layer, showTitle),
     onAbout: () => showAbout(layer, showTitle),
   });
+}
+
+/** Загрузка: та же подготовка, что у новой игры, затем — сохранённое состояние поверх. */
+function loadGame(slot: Slot) {
+  const d = Save.read(slot);
+  if (!d) { toast('Сохранение не найдено'); return false; }
+  layer.replaceChildren();
+  if (Dialog.active) Dialog.close();
+  resetGame(d.g.pc!);
+  Object.assign(G, d.g);
+  Weather.reset();
+  resetShops();
+  setPcStyle(G.pc!);
+  applyEquipLooks(G.squad);
+  Explore.init();
+  World.init();
+  Save.applyWorld(d);
+  hideScreen();
+  $('hud').classList.remove('hidden');
+  if (d.mode === 'explore' && d.scene) toScene(d.scene, d.at ?? undefined);
+  else toWorld();
+  toast(slot === 'manual' ? 'Игра загружена' : 'Загружено автосохранение');
+  return true;
 }
 
 function newGame(pc: Character, intro = true) {
@@ -254,12 +279,15 @@ const roaming = () => G.mode === 'explore' || G.mode === 'world';
 
 window.addEventListener('keydown', (e) => {
   if (e.code === 'F2') { e.preventDefault(); if (G.mode !== 'title' && G.mode !== 'create') Debug.toggle(); return; }
+  // быстрое сохранение и загрузка
+  if (e.code === 'F5') { e.preventDefault(); if (Dialog.active || !Save.write('manual')) toast('Сейчас сохраниться нельзя'); else toast('Игра сохранена'); return; }
+  if (e.code === 'F9') { e.preventDefault(); if (G.mode !== 'create' && Save.meta('manual')) { Pause.close(); combatShow(false); loadGame('manual'); } else toast('Нет ручного сохранения'); return; }
   if (Pause.open) { if (e.code === 'Escape') Pause.close(); return; }
   // Esc вне окон — меню паузы (в бою: сначала отменяет выбранное действие)
   const anyWindow = MapWin.open || Dialog.active || Trade.open || ProsthShop.open || OccultMenu.open || Inventory.open || Sheet.open || squadOpen() || !!$('screen').innerHTML;
   if (e.code === 'Escape' && !anyWindow && (roaming() || G.mode === 'combat')) {
     const sel = Combat.sel, plain = !Combat.magic && (!sel || (Combat.action.type === 'w' && Combat.action.key === sel.weapons[0]));
-    if (G.mode !== 'combat' || plain) { G.keys.clear(); Pause.show(() => { combatShow(false); showTitle(); }); return; }
+    if (G.mode !== 'combat' || plain) { G.keys.clear(); Pause.show(() => { combatShow(false); showTitle(); }, { load: (s) => { combatShow(false); loadGame(s); } }); return; }
   }
   if (MapWin.open) { if (e.code === 'Escape' || e.code === 'KeyM') MapWin.close(); else { e.preventDefault(); MapWin.key(e.code, true); } return; }
   if (e.code === 'KeyM' && roaming() && !Dialog.active && !Trade.open && !ProsthShop.open && !OccultMenu.open && !Inventory.open && !Sheet.open && !squadOpen()) {

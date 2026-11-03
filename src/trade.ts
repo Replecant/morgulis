@@ -104,6 +104,9 @@ export const SHOPS: Record<string, Shop> = {
 
 const stock: Record<string, Record<string, number>> = {};
 export function resetShops() { for (const k in SHOPS) stock[k] = { ...SHOPS[k].items }; }
+/** Запас торговцев — для сохранения. */
+export const getStock = () => stock;
+export function setStock(s: Record<string, Record<string, number>>) { for (const k in SHOPS) stock[k] = { ...(s[k] ?? SHOPS[k].items) }; }
 resetShops();
 
 export const Trade = {
