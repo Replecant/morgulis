@@ -51,7 +51,7 @@ export const WEAPONS: Record<string, Weapon> = {
   buttstock: { name: 'Приклад', type: 'melee', atk: -1, dmg: [1, 3] },
   // оружие траншейных мертвецов
   cudgel:    { name: 'Дубина', type: 'melee', atk: 0, dmg: [1, 3] },
-  breath:    { name: 'Зловонное дыхание', type: 'ranged', closePen: 0, range: 4, opt: 4, atk: 2, dmg: [2, 4], ignoreCover: true, breath: 4 },
+  breath:    { name: 'Зловонное дыхание', type: 'ranged', closePen: 0, range: 4, opt: 4, atk: 2, dmg: [2, 4], ignoreCover: true, breath: 4, ammo: 1 }, // раз за бой
   salbite:   { name: 'Укус', type: 'melee', atk: 2, dmg: [3, 6] },
   rustbayonet: { name: 'Ржавый штык', type: 'melee', atk: 0, dmg: [2, 4] },
   oldrifle:  { name: 'Гнилая винтовка', type: 'ranged', range: 9, opt: 5, atk: -1, dmg: [3, 5] },
@@ -104,7 +104,7 @@ export interface UnitBase {
   equip?: Equip;         // снаряжение (см. items.ts) — у бойцов отряда
   look?: string;         // ключ стиля фигурки с учётом снаряжения
   abil?: Record<string, number>;
-  ai?: 'melee' | 'ranged' | 'caster';
+  ai?: 'melee' | 'ranged' | 'caster' | 'breath'; // breath — сперва дыхание, потом врукопашную
   leader?: boolean;
   demonic?: boolean;
   boss?: boolean;
@@ -156,7 +156,7 @@ export const ENEMIES: Record<string, UnitBase> = {
   bandit_axe:  E('bandit_axe', 'Бандит с топором', 'bandit_axe', 12, 4, ['axe'], 'melee', 3, 11, { armor: 1 }),
   bandit_boss: E('bandit_boss', 'Главарь шайки', 'bandit_boss', 15, 4, ['revolver', 'saber'], 'ranged', 4, 12, { armor: 1 }),
   // морской демон: громадный, скользкий (высокая Защита), ядовитое дыхание
-  salamander: E('salamander', 'Морской демон', 'salamander', 26, 3, ['breath', 'salbite'], 'ranged', 2, 13, { armor: 1, demonic: true }),
+  salamander: E('salamander', 'Морской демон', 'salamander', 26, 3, ['breath', 'salbite'], 'breath', 2, 13, { armor: 1, demonic: true }),
   // голодные бандиты: слабые, измождённые
   hungry:  E('hungry', 'Голодный бандит', 'hungry', 5, 4, ['knife'], 'melee', 0, 9),
   hungry2: E('hungry2', 'Голодный бандит', 'hungry2', 5, 4, ['cudgel'], 'melee', 0, 9),

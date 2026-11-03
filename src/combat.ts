@@ -732,8 +732,9 @@ export const Combat = {
   /** Кончились заряды (у врагов счёт бывает и у оружия без магазина — например, одно ружьё на бой). */
   outOf(u: Unit, w: string) { return (WEAPONS[w].ammo || u.ammo[w] !== undefined) && u.ammo[w] <= 0; },
 
-  async aiAct(u: Unit) {
+  async aiAct(u: Unit): Promise<void> {
     if (u.ai === 'caster') return this.aiCaster(u);
+    if (u.ai === 'breath') return this.aiBreath(u);
     // стрелок без зарядов идёт врукопашную
     if (u.ai === 'ranged' && !u.weapons.some((w) => WEAPONS[w].type === 'ranged' && !this.outOf(u, w))) u.ai = 'melee';
     for (let guard = 0; u.ap > 0 && !u.dead && guard < 3; guard++) {
@@ -755,6 +756,40 @@ export const Combat = {
       }
     }
     u.ap = 0;
+  },
+
+  /** Тварь с дыханием (морской демон): идёт на отряд, выдыхает облако туда, где заденет больше бойцов, потом дерётся вблизи. */
+  async aiBreath(u: Unit): Promise<void> {
+    const bw = u.weapons.find((w) => WEAPONS[w].breath && !this.outOf(u, w));
+    if (!bw) { u.ai = 'melee'; return this.aiAct(u); }
+    for (let guard = 0; u.ap > 0 && !u.dead && guard < 3; guard++) {
+      // цель — та, по направлению к которой в полосу попадёт больше бойцов отряда
+      let best: { t: Unit; n: number; d: number } | null = null;
+      for (const t of this.alive('player')) {
+        if (!this.attackInfo(u, u, t, bw)) continue;
+        const n = this.breathCells(u, t, WEAPONS[bw].breath!).filter((c) => this.units.some((o) => !o.dead && o.team === 'player' && o.x === c.x && o.y === c.y)).length;
+        const d = dist(u, t);
+        if (n && (!best || n > best.n || (n === best.n && d < best.d))) best = { t, n, d };
+      }
+      if (best) { await this.attack(u, best.t, bw); break; }
+      // никого не достать — вблизи укусить, иначе подойти
+      const here = this.bestAttack(u, u);
+      if (here && WEAPONS[here.w].type === 'melee') { await this.attack(u, here.t, here.w); break; }
+      const path = this.meleePath(u);
+      if (!path || path.length < 2) break;
+      await this.moveAlong(u, path); u.ap--;
+    }
+    u.ap = 0;
+  },
+  /** Клетки облака дыхания: n клеток от a в сторону t, до стены. */
+  breathCells(a: Pt, t: Pt, n: number): Pt[] {
+    const dx = t.x - a.x, dy = t.y - a.y, m = Math.max(1, Math.abs(dx), Math.abs(dy)), cells: Pt[] = [];
+    for (let k = 1; k <= n; k++) {
+      const c = { x: Math.round(a.x + (dx * k) / m), y: Math.round(a.y + (dy * k) / m) };
+      if (c.x < 0 || c.y < 0 || c.x >= CW || c.y >= CH || this.map[c.y][c.x] === '#') break; // в стену облако не идёт
+      cells.push(c);
+    }
+    return cells;
   },
 
   meleePath(u: Unit) {
@@ -975,13 +1010,8 @@ export const Combat = {
   async breathAttack(a: Unit, t: Unit, wkey: string, bonus: number) {
     const w = WEAPONS[wkey], n = w.breath!;
     if (t.x !== a.x) a.flip = t.x < a.x;
-    const dx = t.x - a.x, dy = t.y - a.y, m = Math.max(1, Math.abs(dx), Math.abs(dy));
-    const cells: Pt[] = [];
-    for (let k = 1; k <= n; k++) {
-      const c = { x: Math.round(a.x + (dx * k) / m), y: Math.round(a.y + (dy * k) / m) };
-      if (c.x < 0 || c.y < 0 || c.x >= CW || c.y >= CH || this.map[c.y][c.x] === '#') break; // в стену облако не идёт
-      cells.push(c);
-    }
+    const cells = this.breathCells(a, t, n);
+    if (a.ammo[wkey] !== undefined) a.ammo[wkey]--; // дыхание — раз за бой
     this.hooks.log(`${a.name} извергает зловонное дыхание!`);
     this.fx.push({ type: 'breath', x1: a.px, y1: a.py, x2: 0, y2: 0, color: '#8a9a3a', life: 1.8, max: 1.8, cells });
     this.shake = Math.max(this.shake, 2.5);
