@@ -201,7 +201,7 @@ function bandRoll(): string[] {
   return k;
 }
 const LOYAL_START: [number, number][] = [[880, -620], [1420, -620], [300, -450]];
-const inHell = (q: Pt) => q.x > HELL_X;
+const inHell = (q: Pt) => q.x > HELL_X && !peaksAt(q, 40); // север отрезан горами
 const inFront = (q: Pt) => q.x > FRONT_W0 + 40 && q.x < FRONT_X - 20 && q.y > 80 && q.y < SOUTH_Y - 80;
 // едкие облака: плывут над пустошью по ветру; без противогаза газ обжигает лёгкие
 interface Cloud { x: number; y: number; r: number; vx: number; vy: number; seed: number }
@@ -222,11 +222,11 @@ const onRoad = (p: Pt) => nearRoad(p, 14);
 const railNear = (q: Pt, d: number) => [RAIL, WF_RAIL].some((r) => r.some((pt, i) => i > 0 && segDist(q, r[i - 1], pt) < d));
 /** pad — запас вокруг воды (для сетки обхода, чтобы путь не проскальзывал сквозь узкую реку между клетками). */
 // ------------------------------------------------------------ северо-восточные горы
-// Высокий горный массив между северными лесами и Траншейным Адом: непроходим, как вода.
+// Высокий горный массив на северо-востоке: от северных лесов до восточного края карты, Траншейный Ад — южнее. Непроходим, как вода.
 /** Западный край массива (зависит от y) и южный край (зависит от x). */
 const peakW = (y: number) => OLD_E + 30 + Math.sin(y / 90) * 28 + Math.sin(y / 37 + 1) * 12;
 const peakS = (x: number) => NORTH_Y - 70 + Math.sin(x / 70) * 26 + Math.sin(x / 23 + 2) * 9;
-export function peaksAt(q: Pt, pad = 0) { return q.x > peakW(q.y) - pad && q.x < HELL_X + 20 && q.y < peakS(q.x) + pad; }
+export function peaksAt(q: Pt, pad = 0) { return q.x > peakW(q.y) - pad && q.y < peakS(q.x) + pad; }
 
 function waterAt(q: Pt, pad = 0) {
   if (peaksAt(q, pad)) return true; // горы — непроходимы
@@ -1001,7 +1001,7 @@ function renderBackground(): HTMLCanvasElement {
   c.fillStyle = '#4a4a42'; c.fillRect(WX0, 0, WW - WX0, WH);
   // север: тёмная лесная подстилка, к границе — переход в серую пустошь
   c.fillStyle = '#2a2e26'; c.fillRect(WX0, WY0, HELL_X - WX0, -WY0);
-  c.fillStyle = '#3a3630'; c.fillRect(OLD_E, WY0, HELL_X - OLD_E, -WY0); // восточнее Олдриджа на севере — скальное подножие гор
+  c.fillStyle = '#3a3630'; c.fillRect(OLD_E, WY0, WW - OLD_E, -WY0); // восточнее Олдриджа на севере — скальное подножие гор
   { const g = c.createLinearGradient(0, -80, 0, 60); g.addColorStop(0, 'rgba(42,46,38,1)'); g.addColorStop(1, 'rgba(74,74,66,0)'); c.fillStyle = g; c.fillRect(WX0, -80, WW - WX0, 140); }
   for (let i = 0; i < 1300; i++) {
     const x = WX0 + r() * (OLD_E - WX0), y = r() * SOUTH_Y, rr = 30 + r() * 110;
@@ -1395,17 +1395,17 @@ function drawForest(c: CanvasRenderingContext2D) {
 
 /** Высокий горный массив на северо-востоке: скальное подножие, пики внахлёст, снег на вершинах. */
 function drawPeaks(c: CanvasRenderingContext2D) {
-  const r = seeded(4471), X0 = Math.floor(OLD_E / 2), X1 = Math.ceil(HELL_X / 2) + 4, Y0 = WY0 / 2;
+  const r = seeded(4471), X0 = Math.floor(OLD_E / 2), X1 = Math.ceil(WW / 2), Y0 = WY0 / 2;
   // подножие: тёмный камень, осыпь по контуру
-  for (let x = X0; x < X1; x++) for (let y = Y0; y < 0; y++) {
+  for (let x = X0; x < X1; x++) for (let y = Y0; y < 30; y++) {
     const q = { x: x * 2, y: y * 2 };
     if (!peaksAt(q)) continue;
     ppx(c, x, y, !peaksAt(q, -10) ? (r() < 0.5 ? '#4e4a40' : '#403c34') : (r() < 0.1 ? '#3a362f' : '#2e2b26'));
   }
   // пики — только внутри массива (не залезают ни в лес, ни в Траншейный Ад); дальние — выше, ближние перекрывают
-  c.save(); c.beginPath(); c.rect(X0, Y0, Math.ceil(HELL_X / 2) - X0, -Y0); c.clip();
+  c.save(); c.beginPath(); c.rect(X0, Y0, X1 - X0, 30 - Y0); c.clip();
   const peaks: [number, number, number, number][] = [];
-  for (let y = Y0 + 16; y < 0; y += 6 + r() * 5) for (let x = X0 + 6 + r() * 8; x < X1; x += 7 + r() * 9) {
+  for (let y = Y0 + 16; y < 30; y += 6 + r() * 5) for (let x = X0 + 6 + r() * 8; x < X1; x += 7 + r() * 9) {
     const h = 12 + r() * r() * 30, w = h * (0.8 + r() * 0.35);
     if (!peaksAt({ x: (x - w) * 2, y: y * 2 }, -6) || !peaksAt({ x: x * 2, y: y * 2 }, -16)) continue;
     peaks.push([x, y, h, w]);
