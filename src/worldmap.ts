@@ -649,16 +649,28 @@ export const World = {
 
   // ========================================================== обзорная карта (окно по M)
   /** Весь регион целиком: фон, найденные места, подписи, где сейчас отряд. hover — точка под мышью (в пикселях холста). */
-  drawOverview(c: CanvasRenderingContext2D, cw: number, ch: number, t: number, hover: Pt | null) {
+  /** Вид обзорной карты: центр (координаты мира) и масштаб (1 — весь регион в окне). Двигается и масштабируется в окне карты. */
+  overviewFit(cw: number, ch: number) { return this.bg ? Math.min(cw / this.bg.width, ch / this.bg.height) : 1; },
+  clampView(v: { cx: number; cy: number; z: number }, cw: number, ch: number) {
+    v.z = clamp(v.z, 1, 8);
+    const k = this.overviewFit(cw, ch) * v.z, hw = cw / k, hh = ch / k; // видимая часть — в пикселях фона (мир / 2)
+    const bx = clamp(v.cx / 2 + OX, hw / 2, Math.max(hw / 2, BW - hw / 2)), by = clamp(v.cy / 2 + OY, hh / 2, Math.max(hh / 2, BH - hh / 2));
+    v.cx = (bx - OX) * 2; v.cy = (by - OY) * 2;
+    if (BW * k <= cw) v.cx = (BW / 2 - OX) * 2;
+    if (BH * k <= ch) v.cy = (BH / 2 - OY) * 2;
+  },
+  drawOverview(c: CanvasRenderingContext2D, cw: number, ch: number, t: number, hover: Pt | null, view: { cx: number; cy: number; z: number }) {
     if (!this.bg) return null;
-    const bg = this.bg, k = Math.min(cw / bg.width, ch / bg.height), dw = bg.width * k, dh = bg.height * k, ox = (cw - dw) / 2, oy = (ch - dh) / 2;
+    const bg = this.bg, k = this.overviewFit(cw, ch) * view.z, dw = bg.width * k, dh = bg.height * k;
+    const ox = cw / 2 - (view.cx / 2 + OX) * k, oy = ch / 2 - (view.cy / 2 + OY) * k;
     const X = (wx: number) => ox + (wx / 2 + OX) * k, Y = (wy: number) => oy + (wy / 2 + OY) * k;
     c.fillStyle = '#0d130c'; c.fillRect(0, 0, cw, ch);
-    c.imageSmoothingEnabled = true; c.imageSmoothingQuality = 'high';
+    c.imageSmoothingEnabled = k < 1; c.imageSmoothingQuality = 'high'; // крупно — чёткие пиксели, мелко — сглаживание
     c.drawImage(bg, ox, oy, dw, dh);
     c.fillStyle = 'rgba(20,26,16,0.2)'; c.fillRect(ox, oy, dw, dh); // приглушить, как под светом Ока
     // подпись не вылезает за край холста
     const text = (str: string, x: number, y: number, col: string) => {
+      if (x < -10 || x > cw + 10 || y < -10 || y > ch + 20) return; // место за краем окна — без подписи
       const half = c.measureText(str).width / 2 + 4, tx = clamp(x, half, cw - half);
       c.fillStyle = 'rgba(0,0,0,0.9)'; c.fillText(str, tx + 1, y + 1); c.fillStyle = col; c.fillText(str, tx, y);
     };

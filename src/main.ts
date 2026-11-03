@@ -249,7 +249,7 @@ window.addEventListener('keydown', (e) => {
     const sel = Combat.sel, plain = !Combat.magic && (!sel || (Combat.action.type === 'w' && Combat.action.key === sel.weapons[0]));
     if (G.mode !== 'combat' || plain) { G.keys.clear(); Pause.show(() => { combatShow(false); showTitle(); }); return; }
   }
-  if (MapWin.open) { if (e.code === 'Escape' || e.code === 'KeyM') MapWin.close(); return; }
+  if (MapWin.open) { if (e.code === 'Escape' || e.code === 'KeyM') MapWin.close(); else { e.preventDefault(); MapWin.key(e.code, true); } return; }
   if (e.code === 'KeyM' && roaming() && !Dialog.active && !Trade.open && !ProsthShop.open && !OccultMenu.open && !Inventory.open && !Sheet.open && !squadOpen()) {
     G.keys.clear(); MapWin.show(() => { refreshHud(); hint(); }); return;
   }
@@ -295,7 +295,7 @@ window.addEventListener('keydown', (e) => {
     else if (e.code === 'Tab') { e.preventDefault(); if (!Combat.busy) Combat.selectNext(); }
   }
 });
-window.addEventListener('keyup', (e) => G.keys.delete(e.code));
+window.addEventListener('keyup', (e) => { G.keys.delete(e.code); if (MapWin.open) MapWin.key(e.code, false); });
 window.addEventListener('blur', () => G.keys.clear());
 
 cv.addEventListener('mousemove', (e) => {
