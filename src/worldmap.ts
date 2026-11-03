@@ -54,6 +54,7 @@ export const LOCS: Loc[] = [
   { id: 'woodham', name: 'Вудхэм', kind: 'village', x: 380, y: -900, talk: 'loc_woodham', scene: 'woodham', desc: 'Деревня лесорубов в глубине леса.' },
   { id: 'tarwell', name: 'Тарвелл', kind: 'village', x: 1490, y: -960, talk: 'loc_tarwell', scene: 'tarwell', desc: 'Деревня нефтяников. Вышки под охраной братьев.' },
   { id: 'redpost', name: 'Застава Собрания', kind: 'poi', x: 1215, y: 20, talk: 'poi_redpost', desc: 'Шлагбаум и красный флаг на въезде в северные леса.' },
+  { id: 'coven', name: 'Ковен ведьм', kind: 'village', x: -420, y: -560, talk: 'loc_coven', scene: 'coven', desc: 'Логово ведьм в глухом лесу. Вокруг всегда стоит зловещий туман.' },
   { id: 'einbpost', name: 'Застава у Эйнбоу', kind: 'poi', x: 572, y: -230, talk: 'poi_einbpost', desc: 'Пост братьев свободы на дороге к сожжённой деревне.' },
   { id: 'flare', name: 'Газовый факел', kind: 'poi', x: 230, y: 640, talk: 'poi_flare', desc: 'Вечный огонь над старой скважиной.' },
 ];
@@ -213,6 +214,8 @@ export const World = {
       }
     }
   },
+  /** Отряд в зловещем тумане вокруг ковена. */
+  inCovenFog() { const l = LOCS.find((l) => l.id === 'coven')!; return dist(l, this.party) < 430; },
   nearPatrol(q: Pt, r: number) { return this.patrols.some((pt) => dist(this.patrolPos(pt), q) < r); },
 
   /** Поставить отряд рядом с местом (после выхода из сцены). */
@@ -647,7 +650,7 @@ export const World = {
     const lights: PLight[] = [];
     const L = (wx: number, wy: number, r: number, a: number, color?: string) => lights.push({ x: X(wx), y: Y(wy), r, a, color });
     for (const l of LOCS) {
-      if (l.kind === 'village') L(l.x, l.y, l.id === 'einbow' ? 30 : 48, l.id === 'einbow' ? 0.3 : 0.55, l.id === 'fenmor' ? '#a8f070' : l.id === 'einbow' ? '#c86a40' : '#f0c070');
+      if (l.kind === 'village') L(l.x, l.y, l.id === 'einbow' ? 30 : 48, l.id === 'einbow' ? 0.3 : 0.55, l.id === 'fenmor' ? '#a8f070' : l.id === 'einbow' ? '#c86a40' : l.id === 'coven' ? '#9adf50' : '#f0c070');
       if (l.kind === 'fort') L(l.x, l.y - 30, 100, 0.6, '#e8d090');
     }
     L(fl.x, fl.y - 30, 80, 0.7 + Math.sin(t * 9) * 0.08, '#ff9a40');
@@ -1373,6 +1376,16 @@ function drawLocIcon(c: CanvasRenderingContext2D, l: Loc, r: () => number) {
       });
       break;
     }
+    case 'coven': // ковен: кривые избы, каменный круг с зелёным огнём, мёртвые деревья, болотные окна
+      stamp(c, x, y + 14, 60, 36, (s) => {
+        pellipse(s, 30, 20, 27, 13, '#2a2e24');
+        for (const [bx, by] of [[10, 28], [48, 10], [52, 26]]) pellipse(s, bx, by, 4, 2, '#16201a');
+        for (let i = 0; i < 9; i++) { const a = (i / 9) * TAU; prect(s, Math.round(30 + Math.cos(a) * 9), Math.round(19 + Math.sin(a) * 5) - 2, 2, 3, '#7a7a70'); }
+        prect(s, 29, 17, 3, 3, '#9adf50'); ppx(s, 30, 15, '#d8ff90'); ppx(s, 30, 16, '#9adf50');
+        for (const [hx, hy] of [[2, 4], [44, 2], [4, 20]]) { prect(s, hx + 1, hy + 5, 9, 6, '#3a3428'); for (let k = 0; k < 5; k++) prect(s, hx + k + (k % 2), hy + 5 - k, 11 - k * 2, 1, '#2a3022'); ppx(s, hx + 3, hy + 7, '#9adf50'); }
+        for (const [tx, ty] of [[18, 6], [42, 22], [56, 16], [14, 32]]) { prect(s, tx, ty - 7, 1, 7, '#1c1a15'); ppx(s, tx - 1, ty - 5, '#1c1a15'); ppx(s, tx + 1, ty - 6, '#1c1a15'); ppx(s, tx, ty - 8, '#d0ccc0'); }
+      });
+      break;
     case 'redpost': case 'einbpost': // застава Собрания: шлагбаум, будка, красный флаг
       stamp(c, x, y + 6, 26, 22, (s) => {
         prect(s, 2, 12, 8, 7, '#4a4234'); prect(s, 2, 11, 8, 1, '#2e2a22'); prect(s, 4, 14, 2, 2, '#e0a050');

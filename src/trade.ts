@@ -55,6 +55,8 @@ export const SHOPS: Record<string, Shop> = {
     items: { rifle: 2, helmet: 2, greatcoat: 2, quilted: 1, bandolier: 1, boots: 1, gloves: 1 },
     cons: ['ammo_rifle', 'ammo_pistol', 'grenade', 'ration', 'bandage', 'medkit'],
   },
+  // ---------------- ковен
+  coven: { name: 'Старшая ведьма — ковен', greet: 'Бери, что глянется. Платят у нас по-разному — сегодня шиллингами.', items: { ritualkit: 2, grimoire: 1, locket: 1, rabbitfoot: 1 }, cons: ['painkiller', 'tissue'] },
   // ---------------- знахари
   wise_fen: { name: 'Шептунья — Фенмор', greet: 'Ладанки от дурного глаза, лапки на удачу, отвар от боли. Остальное — сам.', items: { wormwood: 2, rabbitfoot: 1 }, cons: ['painkiller', 'bandage'] },
   wise_moss: { name: 'Знахарь — Мосслей', greet: 'Обереги, травы, нитки с узлами. Бери, пока никто не видит.', items: { wormwood: 1, rabbitfoot: 1, ritualkit: 1 }, cons: ['painkiller'] },

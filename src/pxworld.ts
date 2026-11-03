@@ -77,7 +77,7 @@ const TOP: Record<string, number> = {
   house: 16, ruin: 16, farm: 16, station: 20, pumphouse: 28, slaughter: 16, barn: 14, hut: 16,
   tank: 18, watertower: 44, wagon: 14, lamp: 30, tree: 26, rock: 6, barrel: 6, fence: 10, feed: 8, chitin: 6,
   cellar: 10, adit: 26, shroombed: 6, bigshroom: 18, rack: 14, wall: 30, gate: 40, railgate: 36, tower: 56,
-  sign: 16, fountain: 34, sandbags: 8, wire: 8, cell: 16, orecart: 8, boat: 4, nets: 20, scrapheap: 16, banner: 46, poster: 24, statue: 44, horn: 40, keep: 76, barracks: 22, laundry: 22, handcart: 12, crates: 14, coalheap: 8, standpipe: 18, noticeboard: 22, sacks: 8, vent: 4, clinic: 30, shack: 18, factory: 64, tenement: 30, stall: 18, workshop: 26, sawdust: 10, gallows: 56, gibbet: 84, burnt: 26, pine: 46, logs: 8, stump: 2, rbanner: 46, rposter: 24, sawpit: 14, crater: 0, bones: 0, wallruin: 14, skeleton: 14, milestone: 14, lorry: 12,
+  sign: 16, fountain: 34, sandbags: 8, wire: 8, cell: 16, orecart: 8, boat: 4, nets: 20, scrapheap: 16, banner: 46, poster: 24, statue: 44, horn: 40, keep: 76, barracks: 22, laundry: 22, handcart: 12, crates: 14, coalheap: 8, standpipe: 18, noticeboard: 22, sacks: 8, vent: 4, clinic: 30, shack: 18, factory: 64, tenement: 30, stall: 18, workshop: 26, totem: 44, cauldron: 10, sawdust: 10, gallows: 56, gibbet: 84, burnt: 26, pine: 46, logs: 8, stump: 2, rbanner: 46, rposter: 24, sawpit: 14, crater: 0, bones: 0, wallruin: 14, skeleton: 14, milestone: 14, lorry: 12,
 };
 
 export interface ObjLike { kind: string; x: number; y: number; w: number; h: number; seed: number; ruinKind?: string; boarded?: boolean }
@@ -481,6 +481,24 @@ export function objSprite(o: ObjLike, neighbors?: { horizFence: boolean }) {
         if (k > 0.7 && hw > 2) { P(cx - hw - 1, y + 1, '#2a4024'); P(cx + hw + 1, y + 1, '#142016'); } // кончики лап свисают
       }
       P(cx, top - 1, '#3e5a32');
+      break;
+    }
+    case 'totem': { // тотем ковена: шест, рогатый череп, тряпьё и нитки с костями
+      R(4, H - 2, 12, 2, 'rgba(0,0,0,0.45)');
+      R(9, -40, 2, H + 40, '#3a2c1e'); R(10, -40, 1, H + 40, '#4a3826');
+      L(10, -36, 2, -46, '#d0c8b0'); L(10, -36, 18, -46, '#d0c8b0'); P(2, -47, '#b8b098'); P(18, -47, '#b8b098');      // рога
+      R(7, -38, 6, 6, '#d8d0bc'); R(7, -38, 6, 1, '#e8e0cc'); P(8, -35, '#0a0908'); P(11, -35, '#0a0908'); R(8, -33, 4, 1, '#8a8270'); // череп
+      P(8, -35, '#9aff60');
+      for (const [x, y, col] of [[6, -26, '#4a2a2a'], [12, -24, '#3a3428'], [7, -18, '#2e3a26']] as [number, number, string][]) R(x, y, 3, 6, col); // тряпьё
+      L(13, -28, 16, -16, '#8a8270'); P(16, -15, '#d0c8b0'); L(7, -28, 4, -14, '#8a8270'); P(4, -13, '#d0c8b0');           // нитки с костями
+      break;
+    }
+    case 'cauldron': { // чугунный котёл на треноге, в нём булькает зелёное варево
+      R(2, H - 2, 16, 2, 'rgba(0,0,0,0.5)');
+      L(4, H, 8, H - 12, '#2a2622', 2); L(16, H, 12, H - 12, '#2a2622', 2);
+      pellipse(c, 10, H - 7, 7, 5, '#1e1c1a'); pellipse(c, 10, H - 9, 6, 2, '#3a3632');
+      pellipse(c, 10, H - 10, 5, 1, '#6ac040'); P(8, H - 11, '#b8ff80'); P(12, H - 10, '#b8ff80');
+      lights.push({ x: 10, y: H - 10, r: 46, color: '#9aff60', a: 0.7 });
       break;
     }
     case 'sawdust': { // куча опилок со щепой

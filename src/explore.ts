@@ -15,7 +15,7 @@ import { Weather } from './weather';
 
 /** Клетка на экране (низкое разрешение ×2). */
 export const ET = T * PS;
-export const MW = 640, MH = 72; // восточнее x=103 — форт барона; с x=188 — сцены земель баронессы; с x=412 — север (земли Собрания)
+export const MW = 700, MH = 72; // восточнее x=103 — форт барона; с x=188 — сцены земель баронессы; с x=412 — север (земли Собрания)
 const VW = LW, VH = LH; // видимая область в пикселях низкого разрешения
 
 type Ground = 'w' | 'g' | 'r' | 'p' | 'o' | 'k' | 'f' | 'm' | 'x' | 'l';
@@ -67,6 +67,7 @@ export const SCENES: Record<string, { name: string; x0: number; y0: number; x1: 
   hawley:    { name: 'Хоули', x0: 456, y0: 10, x1: 495, y1: 48, entry: { x: 459, y: 30 } },
   woodham:   { name: 'Вудхэм', x0: 499, y0: 14, x1: 537, y1: 50, entry: { x: 535, y: 32 } },
   tarwell:   { name: 'Тарвелл', x0: 541, y0: 14, x1: 579, y1: 50, entry: { x: 543, y: 32 } },
+  coven:     { name: 'Ковен ведьм', x0: 642, y0: 12, x1: 690, y1: 56, entry: { x: 666, y: 53 } },
   svoboda:   { name: 'Форт Свобода', x0: 583, y0: 4, x1: 638, y1: 67, entry: { x: 610, y: 63 } },
   fort2:    { name: 'Средний город', x0: 144, y0: 31, x1: 184, y1: 67, entry: { x: 147, y: 49 } },
 };
@@ -157,6 +158,8 @@ export const Explore = {
     fill('g', 457, 11, 38, 37);                                                     // Хоули
     fill('m', 500, 15, 37, 35); fill('g', 507, 22, 24, 21);                         // Вудхэм: поляна в лесу
     fill('o', 542, 15, 37, 35);                                                     // Тарвелл: промасленная земля
+    fill('m', 643, 13, 47, 43); fill('p', 652, 21, 29, 26);                         // ковен: болотистый лес, вытоптанная поляна
+    for (const [x, y, rr] of [[648, 46, 2], [684, 22, 2], [646, 26, 1], [686, 44, 1], [656, 51, 1]]) blob('x', x, y, rr);
     fill('f', 583, 4, 56, 64); fill('p', 585, 6, 52, 61); fill('k', 599, 24, 23, 13); fill('p', 606, 67, 8, 1); // форт Свобода: улицы, площадь, проём ворот
 
     // дороги
@@ -188,6 +191,7 @@ export const Explore = {
     road([[456, 30], [494, 30]]); road([[475, 30], [475, 46]]);
     road([[537, 32], [520, 32], [512, 26]]);
     road([[541, 32], [578, 32]]); road([[560, 32], [560, 18]]);
+    road([[666, 56], [666, 39]]); // тропа к кругу
     road([[609, 68], [609, 38]]); road([[586, 38], [636, 38]]); road([[609, 23], [609, 14]]); road([[586, 14], [636, 14]]);
 
     // масляные пятна вокруг качалок
@@ -325,7 +329,7 @@ export const Explore = {
           if (k < 0.09 && open) B('laundry', x, row + 1, w, 1, { name: 'Бельевая верёвка', talk: 'laundry' });
           else if (k < 0.14 && open) B('crates', x, row + 1, 1, 1, { name: 'Ящики', talk: 'crates' });
           else if (k < 0.18 && open) B('sacks', x, row + 1, 1, 1, { name: 'Мешки', talk: 'sacks' });
-          else B('shack', x, row, w, 2, { name: 'Лачуга', talk: 'shack' });
+          else if (!taken(x + Math.floor(w / 2), row + 2, 1, 1)) B('shack', x, row, w, 2, { name: 'Лачуга', talk: 'shack' });
         }
         x += w + (r() < 0.45 ? 1 : 0);
       }
@@ -514,6 +518,20 @@ export const Explore = {
     for (const [x, y] of [[551, 30], [569, 30], [558, 42]]) B('lamp', x, y, 1, 1, { name: 'Фонарь', talk: 'lamp' });
     for (const [x, y] of [[549, 29], [571, 34], [555, 41]]) B('barrel', x, y, 1, 1);
 
+    // ======================= КОВЕН ВЕДЬМ — глухой лес, вечный зловещий туман
+    for (let i = 0; i < 9; i++) { const a = (i / 9) * TAU; B('rock', Math.round(666 + Math.cos(a) * 6), Math.round(33 + Math.sin(a) * 5), 1, 1, { name: 'Камень круга', talk: 'coven_stone' }); }
+    B('campfire', 666, 33, 1, 1, { dynamic: true, name: 'Зелёный огонь', talk: 'coven_fire' });
+    B('cauldron', 663, 31, 1, 1, { name: 'Котёл', talk: 'coven_cauldron' });
+    for (const [x, y] of [[653, 22], [676, 22], [653, 40], [676, 41]]) B('hut', x, y, 4, 3, { name: 'Изба ведьмы', talk: 'coven_hut' });
+    for (const [x, y] of [[659, 24], [673, 24], [658, 42], [674, 44], [663, 47], [669, 47]]) B('totem', x, y, 1, 1, { name: 'Тотем', talk: 'coven_totem' });
+    for (const [x, y] of [[680, 30], [652, 30]]) B('rack', x, y, 2, 1, { name: 'Вешала с костями и травами', talk: 'coven_rack' });
+    for (const [x, y] of [[656, 35], [678, 36], [661, 44], [671, 27]]) add({ kind: 'bones', x, y, w: 1, h: 1, block: false });
+    for (const [x, y] of [[650, 34], [682, 39], [670, 51], [660, 52], [684, 28]]) B('tree', x, y, 1, 1, { name: 'Мёртвое дерево' });
+    for (let i = 0; i < 160; i++) { // ельник стеной вокруг поляны
+      const x = 643 + Math.floor(r() * 47), y = 13 + Math.floor(r() * 43);
+      if (this.ground[y][x] === 'm' && !taken(x, y, 1, 1)) B('pine', x, y, 1, 1, { name: 'Ель', talk: 'pine' });
+    }
+
     // ======================= ФОРТ СВОБОДА — бывший форт барона Сильвера
     for (let x = 584; x <= 637; x += 2) { B('wall', x, 5, 2, 1); if (x < 606 || x > 612) B('wall', x, 67, 2, 1); }
     for (let y = 6; y < 67; y++) { B('wall', 584, y, 1, 1); B('wall', 637, y, 1, 1); }
@@ -625,6 +643,12 @@ export const Explore = {
     NPC('svob_g1', 'Брат у помоста', 'brother', 606, 32, 'svob_gibguard'); NPC('svob_g2', 'Брат у помоста', 'brother_w', 612, 32, 'svob_gibguard');
     NPC('commissar', 'Комиссар Собрания', 'brother_off', 609, 14, 'commissar');
     NPC('distrib', 'Раздатчица', 'nb_w', 621, 33, 'distrib');
+    const coven = () => !G.flags.covenDead;
+    NPC('coven_elder', 'Старшая ведьма', 'crone', 666, 29, 'coven_elder', coven);
+    NPC('coven_w1', 'Ведьма', 'crone2', 660, 33, 'coven_witch', coven);
+    NPC('coven_w2', 'Ведьма', 'crone3', 672, 31, 'coven_witch', coven);
+    NPC('coven_d1', 'Рогатый', 'demon', 664, 28, 'coven_demon', coven);
+    NPC('coven_d2', 'Рогатая', 'demon2', 669, 36, 'coven_demon', coven);
     NPC('wise_fen', 'Шептунья', 'wise_fen', 4, 26, 'wise_fen');
     NPC('wise_moss', 'Знахарь', 'wise_moss', 289, 48, 'wise_moss');
     NPC('wise_wood', 'Лесная знахарка', 'wise_wood', 503, 43, 'wise_wood');
@@ -679,7 +703,7 @@ export const Explore = {
   inMap(x: number, y: number) { return x >= 0 && y >= 0 && x < MW && y < MH; },
   activeNpcs() { return this.npcs.filter((n) => !n.cond || n.cond()); },
   /** Жители текущей сцены. */
-  sceneFolk() { return this.folk.filter((f) => f.def.scene === this.scene); },
+  sceneFolk() { return this.folk.filter((f) => f.def.scene === this.scene && !(f.def.scene === 'coven' && G.flags.covenDead)); },
   freeNear(x: number, y: number): Pt {
     for (let r = 0; r < 6; r++) for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
       if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
@@ -1102,7 +1126,7 @@ export const Explore = {
   // ---------------------------------------------------------- спрайты статичных объектов
   renderSprites() {
     for (const o of this.objs) {
-      if (o.dynamic && o.kind !== 'vent') { if (o.kind === 'campfire') o.lights = [{ x: 10, y: 12, r: 90, color: '#f0a050' }]; continue; }
+      if (o.dynamic && o.kind !== 'vent') { if (o.kind === 'campfire') o.lights = [{ x: 10, y: 12, r: 90, color: o.talk === 'coven_fire' ? '#9aff60' : '#f0a050' }]; continue; }
       const horizFence = o.kind === 'fence' && this.objs.some((f) => f.kind === 'fence' && f.y === o.y && Math.abs(f.x - o.x) === 1);
       const s = objSprite(o as any, { horizFence });
       o.sprite = s.cv; o.sx = s.sx; o.sy = s.sy;

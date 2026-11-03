@@ -70,6 +70,7 @@ Combat.hooks = {
     if (id.startsWith('hungry')) { World.killHungry(); Dialog.start('after_hungry'); }
     if (id === 'lake') { World.killDemon(); Dialog.start('after_demon'); }
     if (id.startsWith('loyal')) { World.killLoyal(); Dialog.start('after_loyal'); }
+    if (id === 'coven') Dialog.start('after_coven');
     if (id.startsWith('trench')) { World.killDead(); World.deadHit = null; Dialog.start('after_dead'); }
     refreshHud();
   },
@@ -175,6 +176,7 @@ Dialog.onAction = (act) => {
   else if (act === 'demon_lose') World.calmDemon(12);
   else if (act === 'battle_hungry') startBattle('hungry' + (World.hungryHit?.kinds.length ?? 2));
   else if (act === 'hungry_calm') World.calmHungry(48);
+  else if (act === 'battle_coven') startBattle('coven');
   else if (act === 'battle_loyal') startBattle('loyal' + (World.loyalHit?.kinds.length ?? 2));
   else if (act === 'loyal_calm') World.calmLoyal(72);
   else if (act === 'loyal_lose') World.calmLoyal(10);
@@ -332,6 +334,8 @@ function frame(now: number) {
   else Explore.draw(ctx, G.time);
   if (G.mode === 'world' && (hudT += dt) > 0.5) { hudT = 0; refreshHud(); }
   Music.update(dt, G.mode === 'combat');
+  // зловещий туман ковена: на карте рядом с ним, в его сцене и в бою там
+  Weather.omen = (G.mode === 'world' && World.inCovenFog()) || (G.mode === 'explore' && Explore.scene === 'coven') || (G.mode === 'combat' && Combat.def?.id === 'coven');
   if (G.mode !== 'title' && G.mode !== 'create') Weather.update(dt); // в бою — боевая тема, иначе мирные
   requestAnimationFrame(frame);
 }

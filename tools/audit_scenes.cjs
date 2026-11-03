@@ -10,8 +10,8 @@ const { chromium } = require('playwright');
   const errs = []; p.on('pageerror', e => errs.push(e.message));
   await p.goto('http://localhost:5182/?debug&quick=soldier'); await p.waitForTimeout(1500);
   const rep = await p.evaluate(() => {
-    const E = morgulis.Explore, T = 20, MW = 640;
-    const scenes = ['ashford', 'richmord', 'fenmor', 'fortgate', 'fort1', 'fort2', 'brimmor', 'hailstone', 'mossley', 'bcamp', 'bfort', 'einbow', 'hawley', 'woodham', 'tarwell', 'svoboda'];
+    const E = morgulis.Explore, T = 20, MW = 1000; // MW — множитель ключа клетки, с запасом шире карты
+    const scenes = ['ashford', 'richmord', 'fenmor', 'fortgate', 'fort1', 'fort2', 'brimmor', 'hailstone', 'mossley', 'bcamp', 'bfort', 'einbow', 'hawley', 'woodham', 'tarwell', 'svoboda', 'coven'];
     const out = {};
     const FENCE = new Set(['wall', 'fence', 'wire', 'gate', 'railgate']);
     for (const sc of scenes) {

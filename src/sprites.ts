@@ -192,6 +192,12 @@ function buildChar(kind: string, frame: number): HTMLCanvasElement {
     }
     if (st.mask && st.tanks) pline(c, hx0 + 4, hy + 8, tx0 - 2, sy(tTop + 1), '#2a2c24'); // шланг от маски к баллонам
     if (st.goggles) { R(hx0, hy + 1, 6, 1, '#2a2018'); P(hx0 + 2, hy + 1, BRASS); P(hx0 + 4, hy + 1, BRASS); }
+    if (st.eyes && !st.hood) { P(hx0 + 4, hy + 3, st.eyes); P(hx0 + 2, hy + 3, shade(st.eyes, -0.35)); }   // горящие глаза
+    if (st.horns) { // загнутые назад рога
+      const hd = shade(st.horns, -0.3);
+      R(hx0 + 1, hy - 2, 1, 2, st.horns); P(hx0, hy - 3, st.horns); P(hx0 - 1, hy - 4, hd); P(hx0 - 1, hy - 5, hd);
+      R(hx0 + 4, hy - 2, 1, 2, st.horns); P(hx0 + 5, hy - 3, st.horns); P(hx0 + 6, hy - 4, hd); P(hx0 + 6, hy - 5, hd);
+    }
     const hc = st.hatC ?? '#222', hcD = shade(hc, -0.35), hcL = shade(hc, 0.18);
     switch (st.hat) {
       case 'cap':
@@ -415,6 +421,8 @@ export function miniSprite(kind: string, frame = 0): HTMLCanvasElement {
   if (st.tanks) R(0, 6, 2, 4, '#5a5e4a');
   if (st.beard) R(3, 5, 4, 1, st.beard);
   if (st.hair && !st.hat) R(3, 1, 4, 2, st.hair);
+  if (st.horns) { R(3, 0, 1, 1, st.horns); R(6, 0, 1, 1, st.horns); ppx(c, 2, -1, st.horns); ppx(c, 7, -1, st.horns); }
+  if (st.eyes && !st.hood) R(5, 3, 1, 1, st.eyes);
   if (st.longHair && st.hair) { R(2, 2, 1, 5, st.hair); R(7, 2, 1, 4, st.hair); }
   if (st.hood) { R(2, 1, 6, 2, coat); R(2, 2, 1, 4, coat); R(7, 2, 1, 4, coat); R(3, 3, 3, 2, '#000'); }
   const hc = st.hatC ?? '#2a2620';

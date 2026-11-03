@@ -56,7 +56,7 @@ export const RITUALS: Ritual[] = [
 // ------------------------------------------------------------ состояние героя
 export const isOccultist = () => G.pc?.prof === 'occultist';
 /** Знаки — сколько заклинаний можно изучить: 2 + уровень, +1 с гримуаром, +1 за урок у знахаря. */
-export const signs = () => (isOccultist() ? 2 + (G.pc?.level ?? 1) + (hasTool('grimoire') ? 1 : 0) + (G.flags.folkLesson ? 1 : 0) : 0);
+export const signs = () => (isOccultist() ? 2 + (G.pc?.level ?? 1) + (hasTool('grimoire') ? 1 : 0) + (G.flags.folkLesson ? 1 : 0) + (G.flags.covenLesson ? 1 : 0) : 0);
 export const freeSigns = () => signs() - G.known.length;
 export const knows = (id: string) => G.known.includes(id);
 export const knowsSchool = (s: School) => G.known.some((id) => SPELLS[id]?.school === s);

@@ -31,10 +31,13 @@ export const Weather = {
   nextFlash: 4,
   thunderIn: -1,   // через сколько секунд после вспышки ударит гром
   thunderPow: 1,
+  omen: false,     // зловещий туман ковена: перекрывает погоду, пока отряд рядом с ковеном
+  /** Погода, которую видно сейчас (с учётом зловещего тумана). */
+  shown(): WeatherKind { return this.omen ? 'fog' : this.kind; },
 
   reset() { this.kind = 'clear'; this.until = G.clock + 16 + Math.random() * 12; this.flash = 0; },
   set(k: WeatherKind, lock = false) { this.kind = k; this.locked = lock; this.until = G.clock + 18 + Math.random() * 24; },
-  label() { return WEATHER_NAMES[this.kind]; },
+  label() { return this.omen ? 'Зловещий туман' : WEATHER_NAMES[this.kind]; },
 
   /** Каждый кадр: смена погоды по игровому времени и молнии в бурю. */
   update(dt: number) {
@@ -45,7 +48,7 @@ export const Weather = {
       this.until = G.clock + 18 + Math.random() * 30; // держится от трёх четвертей суток до двух
     }
     if (this.flash > 0) this.flash -= dt;
-    if (this.kind === 'storm') {
+    if (this.kind === 'storm' && !this.omen) {
       this.nextFlash -= dt;
       if (this.nextFlash <= 0) {
         this.flash = 0.18; this.nextFlash = 4 + Math.random() * 9;
@@ -58,7 +61,8 @@ export const Weather = {
 
   /** Освещение: уровень темноты, оттенок мира, виньетка. */
   light(baseTint: [number, number, number], baseVig: number): { ambient: number; tint: [number, number, number]; vig: number } {
-    const k = this.kind, m = (a: number, b: number, c: number): [number, number, number] => [baseTint[0] * a, baseTint[1] * b, baseTint[2] * c];
+    if (this.omen) return { ambient: 0.52, tint: [baseTint[0] * 0.78, baseTint[1] * 0.92, baseTint[2] * 0.74], vig: baseVig + 0.22 };
+    const k = this.shown(), m = (a: number, b: number, c: number): [number, number, number] => [baseTint[0] * a, baseTint[1] * b, baseTint[2] * c];
     if (k === 'storm') return this.flash > 0 ? { ambient: 1.0, tint: m(0.95, 1, 1.05), vig: baseVig } : { ambient: 0.4, tint: m(0.78, 0.82, 0.86), vig: baseVig + 0.2 };
     if (k === 'rain') return { ambient: 0.6, tint: m(0.76, 0.8, 0.84), vig: baseVig + 0.12 };
     if (k === 'overcast') return { ambient: 0.6, tint: m(0.86, 0.86, 0.88), vig: baseVig + 0.06 };
@@ -66,20 +70,26 @@ export const Weather = {
     return { ambient: 0.6, tint: baseTint, vig: baseVig };
   },
   /** Скорость отряда на карте. */
-  speedK() { return this.kind === 'storm' ? 0.7 : this.kind === 'rain' ? 0.85 : 1; },
+  speedK() { const k = this.shown(); return k === 'storm' ? 0.7 : k === 'rain' ? 0.85 : 1; },
   /** Дальность обзора на карте (находки мест). */
-  sightK() { return this.kind === 'fog' ? 0.55 : this.kind === 'storm' ? 0.75 : 1; },
+  sightK() { const k = this.shown(); return k === 'fog' ? 0.55 : k === 'storm' ? 0.75 : 1; },
 
   /** Поверх освещённого кадра низкого разрешения: туман, дождь, отблеск молнии. ox/oy — сдвиг камеры (сейчас не нужен: дымка экранная). */
   draw(c: CanvasRenderingContext2D, w: number, h: number, t: number, _ox = 0, _oy = 0) {
-    const k = this.kind;
+    const k = this.shown();
     if (k === 'fog' || k === 'storm' || k === 'rain') { // дымка на весь экран: ровная пелена, к краям гуще, медленно «дышит»
       const fog = k === 'fog', br = Math.sin(t * 0.35) * 0.03;
-      const col = fog ? '128,138,126' : '62,72,72';
-      c.fillStyle = `rgba(${col},${(fog ? 0.24 : 0.1) + br})`; c.fillRect(0, 0, w, h);
+      const col = this.omen ? '96,116,86' : fog ? '128,138,126' : '62,72,72';
+      c.fillStyle = `rgba(${col},${(this.omen ? 0.2 : fog ? 0.24 : 0.1) + br})`; c.fillRect(0, 0, w, h);
       const g = c.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.2, w / 2, h / 2, Math.hypot(w, h) * 0.55);
-      g.addColorStop(0, `rgba(${col},0)`); g.addColorStop(1, `rgba(${col},${fog ? 0.5 : 0.22})`);
+      g.addColorStop(0, `rgba(${col},0)`); g.addColorStop(1, `rgba(${col},${this.omen ? 0.58 : fog ? 0.5 : 0.22})`);
       c.fillStyle = g; c.fillRect(0, 0, w, h);
+      if (this.omen) for (let i = 0; i < 5; i++) { // зловещие клубы медленно плывут поперёк экрана
+        const cx = ((i * 137 + t * (4 + i)) % (w + 240)) - 120, cy = h * (0.15 + 0.18 * i) + Math.sin(t * 0.2 + i) * 12, r = 70 + i * 14;
+        const cg = c.createRadialGradient(cx, cy, 0, cx, cy, r);
+        cg.addColorStop(0, 'rgba(60,78,52,0.26)'); cg.addColorStop(1, 'rgba(60,78,52,0)');
+        c.fillStyle = cg; c.fillRect(cx - r, cy - r, r * 2, r * 2);
+      }
     }
     if (k === 'rain' || k === 'storm') { // косые струи и брызги
       const n = k === 'storm' ? 220 : 120, sx = k === 'storm' ? 70 : 30, sy = k === 'storm' ? 260 : 200, len = k === 'storm' ? 6 : 4;

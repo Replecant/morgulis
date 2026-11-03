@@ -389,6 +389,16 @@ export const FOLK: FolkDef[] = [
   { id: 's_c6', name: 'Гражданин с повязкой', kind: 'nb_red', scene: 'svoboda', speed: 0.9,
     route: [{ x: 615, y: 23, wait: 16, work: true }, { x: 597, y: 33, wait: 6 }, { x: 625, y: 16, wait: 6 }],
     barks: ['Читаю списки. Мало ли кого знаю.', 'Бдительность, гражданин. Бдительность — долг каждого.', 'Повязку надел — и спокойнее. Тебе бы тоже.'] },
+  // ковен: бесы снуют между избами
+  { id: 'c_imp1', name: 'Бес', kind: 'imp', scene: 'coven', speed: 2.4,
+    route: [{ x: 657, y: 27, wait: 2 }, { x: 675, y: 27, wait: 3 }, { x: 670, y: 40, wait: 2 }],
+    barks: ['Хи-хи… мясо пришло…', 'Старшая велела не трогать. Пока.', 'Чую страх. Вкусный.'] },
+  { id: 'c_imp2', name: 'Бес', kind: 'imp', scene: 'coven', speed: 2.2,
+    route: [{ x: 657, y: 38, wait: 3 }, { x: 662, y: 45, wait: 2 }, { x: 679, y: 34, wait: 3 }],
+    barks: ['Не ходи к котлу. Там уже один такой варится. Шучу. Или нет.', 'Шшш… слышишь? Туман шепчет твоё имя.'] },
+  { id: 'c_imp3', name: 'Бес', kind: 'imp', scene: 'coven', speed: 2.6,
+    route: [{ x: 668, y: 45, wait: 2 }, { x: 680, y: 44, wait: 2 }, { x: 664, y: 38, wait: 2 }],
+    barks: ['Кость! Дай кость!', 'Хозяйки старые. Мы — старше.'] },
   // лесной двор форта: рабочие и надсмотрщик
   { id: 's_saw1', name: 'Рабочий лесопилки', kind: 'lumber', scene: 'svoboda', speed: 1,
     route: [{ x: 620, y: 48, wait: 8, work: true }, { x: 625, y: 51, wait: 7, work: true }, { x: 620, y: 56, wait: 8, work: true }],
