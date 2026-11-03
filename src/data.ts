@@ -53,6 +53,7 @@ export const WEAPONS: Record<string, Weapon> = {
   hammer:    { name: 'Кузнечный молот', type: 'melee', atk: 0, dmg: [3, 6] },
   claws:     { name: 'Когти', type: 'melee', atk: 1, dmg: [2, 3] },
   hexfire:   { name: 'Ведьмин огонь', type: 'ranged', range: 7, opt: 7, atk: 1, dmg: [2, 4], ignoreCover: true, magic: true },
+  houndbite: { name: 'Клыки', type: 'melee', atk: 2, dmg: [3, 6] },
   demonclaw: { name: 'Когти демона', type: 'melee', atk: 2, dmg: [4, 7] },
   flame:     { name: 'Зелёное пламя', type: 'ranged', range: 8, opt: 8, atk: 1, dmg: [3, 5], ignoreCover: true, splash: [1, 2], magic: true },
 };
@@ -137,6 +138,7 @@ export const ENEMIES: Record<string, UnitBase> = {
   // ковен: ведьмы колдуют издали, старшие демоны рвут вблизи
   witch:  E('witch', 'Ведьма ковена', 'crone2', 10, 3, ['hexfire'], 'caster', 3, 11, { demonic: true }),
   witch2: E('witch2', 'Старшая ведьма', 'crone', 14, 3, ['hexfire'], 'caster', 4, 12, { demonic: true, boss: true }),
+  hound:  E('hound', 'Адская гончая', 'hound', 12, 6, ['houndbite'], 'melee', 3, 12, { demonic: true }),
   demon:  E('demon', 'Рогатый демон', 'demon', 22, 4, ['demonclaw'], 'melee', 4, 13, { demonic: true, armor: 1 }),
   // лоялисты старого режима: бывшие гвардейцы, загнанные в лес — стреляют метко, патронов мало
   loyalist:  E('loyalist', 'Лоялист', 'loyalist', 8, 4, ['carbine', 'bayonet'], 'ranged', 2, 11),
@@ -194,6 +196,11 @@ export function battleDef(id: string, _flags: Record<string, boolean | undefined
       lights: [[12, 3, 220, '#6a9a8a'], [3, 10, 110, '#e8c070']],
     };
   }
+  if (id.startsWith('dsq_')) { // отряд демонов в лесу у ковена: состав в id (dsq_imp_hound_demon)
+    const kinds = id.slice(4).split('_'), pos = [{ x: 19, y: 5 }, { x: 19, y: 9 }, { x: 21, y: 7 }];
+    const f = battleDef('loyal2', _flags);
+    return { ...f, id, title: 'Демоны в тумане', enemies: kinds.map((t, i) => ({ t, ...pos[i] })), lights: [[12, 6, 200, '#9aff60'], [3, 7, 110, '#e8c070']] };
+  }
   if (id === 'coven') { // поляна ковена: каменный круг, ели, топь
     return { id, title: 'Ковен ведьм', theme: 'forest',
       map: [
@@ -213,7 +220,7 @@ export function battleDef(id: string, _flags: Record<string, boolean | undefined
         'TT....T...T...T..T...TTT',
       ],
       players: [[2, 6], [2, 8], [1, 5], [1, 9]],
-      enemies: [{ t: 'witch2', x: 12, y: 6 }, { t: 'witch', x: 15, y: 4 }, { t: 'witch', x: 15, y: 9 }, { t: 'demon', x: 10, y: 7 }, { t: 'imp', x: 9, y: 4 }, { t: 'imp', x: 9, y: 10 }],
+      enemies: [{ t: 'witch2', x: 12, y: 6 }, { t: 'witch', x: 15, y: 4 }, { t: 'witch', x: 15, y: 9 }, { t: 'demon', x: 10, y: 7 }, { t: 'hound', x: 9, y: 4 }, { t: 'imp', x: 9, y: 10 }],
       lights: [[12, 7, 220, '#9aff60'], [2, 7, 110, '#e8c070']],
     };
   }

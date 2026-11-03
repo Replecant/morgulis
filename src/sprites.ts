@@ -17,7 +17,7 @@ export function charSprite(kind: string, frame = 0, dead = false, flash = false)
   const key = `${kind}|${frame}|${dead}|${flash}`;
   let cv = cache.get(key);
   if (cv) return cv;
-  let base = kind === 'imp' ? impSprite(frame) : kind === 'salamander' ? salamanderSprite(frame) : buildChar(kind, frame);
+  let base = kind === 'imp' ? impSprite(frame) : kind === 'hound' ? houndSprite(frame) : kind === 'salamander' ? salamanderSprite(frame) : buildChar(kind, frame);
   if (flash) base = flashCopy(base);
   if (dead) base = rotate90(base);
   cache.set(key, base);
@@ -285,6 +285,31 @@ function buildChar(kind: string, frame: number): HTMLCanvasElement {
   return cv;
 }
 
+/** Адская гончая: поджарая четвероногая тварь, чёрно-багровая шкура, гребень шипов, горящие глаза. 30×22. */
+function houndSprite(frame: number): HTMLCanvasElement {
+  const cv = document.createElement('canvas'); cv.width = 30; cv.height = 22;
+  const c = cv.getContext('2d')!;
+  const R = (x: number, y: number, w: number, h: number, col: string) => prect(c, x, y, w, h, col);
+  const P = (x: number, y: number, col: string) => ppx(c, x, y, col);
+  const body = '#3a1614', bodyL = '#5a2420', bodyD = '#1e0a0a', bone = '#c8bca0';
+  const st = [0, 1, 0, -1][frame % 4];
+  // ноги: передняя и задняя пары, в шаге расходятся
+  for (const [x, ph] of [[6, st], [9, -st], [18, -st], [21, st]] as [number, number][]) { R(x + ph, 14, 2, 6, bodyD); R(x + ph - 1, 19, 3, 1, bone); }
+  // туловище: впалый живот, проступающие рёбра
+  R(5, 9, 18, 6, body); R(5, 9, 18, 1, bodyL); R(8, 14, 11, 1, bodyD);
+  for (const x of [11, 13, 15]) R(x, 11, 1, 3, bodyD);
+  // гребень шипов по хребту
+  for (const x of [7, 10, 13, 16, 19]) { P(x, 8, bone); P(x, 7, shade(bone, -0.2)); }
+  // хвост
+  pline(c, 5, 10, 1, 6, body); P(0, 5, bone);
+  // голова с вытянутой мордой и пастью
+  R(22, 6, 6, 5, body); R(27, 8, 3, 3, body); R(22, 6, 6, 1, bodyL);
+  R(25, 11, 5, 1, '#8a1a10'); P(26, 11, bone); P(28, 11, bone);     // пасть, клыки
+  P(22, 4, bone); P(23, 5, bone); P(25, 4, bone); P(25, 5, bone);    // рога-уши
+  P(26, 7, '#ffb040'); P(24, 7, '#c86a20');                          // глаза
+  outline(cv, INK);
+  return cv;
+}
 function impSprite(frame: number): HTMLCanvasElement {
   const cv = document.createElement('canvas'); cv.width = SW; cv.height = SH;
   const c = cv.getContext('2d')!;
@@ -388,6 +413,13 @@ export function miniSprite(kind: string, frame = 0): HTMLCanvasElement {
   const key = `${kind}|mini|${frame}`;
   let cv = cache.get(key);
   if (cv) return cv;
+  if (kind === 'hound' || kind === 'imp') { // на карте — уменьшенные гончая и бес
+    const big = kind === 'hound' ? houndSprite(frame) : impSprite(frame);
+    const w = kind === 'hound' ? 15 : 9, hh = kind === 'hound' ? 11 : 12;
+    cv = document.createElement('canvas'); cv.width = 12 > w ? 12 : w; cv.height = 17;
+    const c = cv.getContext('2d')!; c.imageSmoothingEnabled = false; c.drawImage(big, 0, 0, big.width, big.height, 0, 17 - hh, w, hh);
+    cache.set(key, cv); return cv;
+  }
   if (kind === 'salamander') { // на карте — уменьшенная саламандра
     const big = salamanderSprite(frame);
     cv = document.createElement('canvas'); cv.width = 14; cv.height = 18;

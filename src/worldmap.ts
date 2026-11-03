@@ -27,6 +27,7 @@ const FRONT_X = 120;          // западнее — старый фронт
 
 export interface Loc {
   id: string; name: string; kind: 'village' | 'fort' | 'poi';
+  hidden?: boolean; // скрыто на карте, пока отряд сам не найдёт (как примечательности)
   x: number; y: number; talk: string; scene?: string; desc: string;
 }
 export const LOCS: Loc[] = [
@@ -54,7 +55,7 @@ export const LOCS: Loc[] = [
   { id: 'woodham', name: 'Вудхэм', kind: 'village', x: 380, y: -900, talk: 'loc_woodham', scene: 'woodham', desc: 'Деревня лесорубов в глубине леса.' },
   { id: 'tarwell', name: 'Тарвелл', kind: 'village', x: 1490, y: -960, talk: 'loc_tarwell', scene: 'tarwell', desc: 'Деревня нефтяников. Вышки под охраной братьев.' },
   { id: 'redpost', name: 'Застава Собрания', kind: 'poi', x: 1215, y: 20, talk: 'poi_redpost', desc: 'Шлагбаум и красный флаг на въезде в северные леса.' },
-  { id: 'coven', name: 'Ковен ведьм', kind: 'village', x: -420, y: -560, talk: 'loc_coven', scene: 'coven', desc: 'Логово ведьм в глухом лесу. Вокруг всегда стоит зловещий туман.' },
+  { id: 'coven', name: 'Ковен ведьм', kind: 'village', hidden: true, x: -420, y: -560, talk: 'loc_coven', scene: 'coven', desc: 'Логово ведьм в глухом лесу, в вечном зловещем тумане.' },
   { id: 'einbpost', name: 'Застава у Эйнбоу', kind: 'poi', x: 572, y: -230, talk: 'poi_einbpost', desc: 'Пост братьев свободы на дороге к сожжённой деревне.' },
   { id: 'flare', name: 'Газовый факел', kind: 'poi', x: 230, y: 640, talk: 'poi_flare', desc: 'Вечный огонь над старой скважиной.' },
 ];
@@ -139,6 +140,11 @@ const inBaronLand = (q: Pt) => q.x > 200 && q.x < 1650 && q.y > 120 && q.y < WH 
 const inNorth = (q: Pt) => q.y < NORTH_Y;
 // лоялисты старого режима: редкие группы прячутся в лесу, подальше от дорог
 interface Loyal { id: number; kinds: string[]; x: number; y: number; tx: number; ty: number; alive: boolean; respawn: number; calm: number; seen: boolean }
+// отряды демонов: бродят по лесу вокруг ковена — бес, рогатый демон, адская гончая в разных сочетаниях
+interface DemonSquad { id: number; kinds: string[]; x: number; y: number; tx: number; ty: number; alive: boolean; respawn: number; calm: number; seen: boolean }
+const COVEN_AT = { x: -420, y: -560 }, COVEN_R = 520;
+const DSQ_START: [number, number, string[]][] = [[-700, -430, ['hound', 'imp']], [-180, -720, ['demon', 'imp']], [-470, -230, ['hound', 'hound', 'imp']], [-640, -800, ['demon', 'hound']]];
+const nearCoven = (q: Pt, r = COVEN_R) => dist(q, COVEN_AT) < r;
 const LOYAL_START: [number, number][] = [[880, -620], [1420, -620], [300, -450]];
 const inFront = (q: Pt) => q.x > FRONT_W0 + 40 && q.x < FRONT_X - 20 && q.y > 80 && q.y < WH - 80;
 // едкие облака: плывут над пустошью по ветру; без противогаза газ обжигает лёгкие
@@ -168,6 +174,9 @@ export const World = {
   onEncounter: () => {},
   onPatrol: (_owner: PatrolOwner) => {},
   loyal: [] as Loyal[],
+  dsq: [] as DemonSquad[],
+  dsqHit: null as DemonSquad | null,
+  onDsq: () => {},
   loyalHit: null as Loyal | null,
   onLoyal: () => {},
   onDiscover: (_l: Loc) => {},
@@ -200,6 +209,7 @@ export const World = {
     this.hungry = HUNGRY_START.map(([x, y], i) => ({ id: i, kinds: i % 2 ? ['hungry2', 'hungry', 'hungry'] : ['hungry', 'hungry2'], x, y, tx: x, ty: y, alive: true, respawn: 0, calm: 0, seen: false }));
     this.dead = DEAD_START.map(([id, kinds, x, y]) => ({ id, kinds, x, y, tx: x, ty: y, alive: true, respawn: 0, calm: 0, seen: false }));
     this.patrols = PATROL_PATHS.map((path, i) => { const len = polyLen(path); return { path, len, s: i === 0 ? len * 0.2 : i >= 3 ? len * (0.15 + (i - 3) * 0.3) : 0, dir: 1 as const, wait: 0, speed: i ? PATROL_SPEED * 1.15 : PATROL_SPEED * 0.9, owner: PATROL_OWNER[i] }; });
+    this.dsq = DSQ_START.map(([x, y, kinds], i) => ({ id: i, kinds, x, y, tx: x, ty: y, alive: true, respawn: 0, calm: 0, seen: false }));
     this.loyal = LOYAL_START.map(([x, y], i) => ({ id: i, kinds: i === 1 ? ['loyal_off', 'loyalist', 'loyalist'] : ['loyalist', 'loyalist2'], x, y, tx: x, ty: y, alive: true, respawn: 0, calm: 0, seen: false }));
   },
   patrolPos(pt: Patrol) { return polyAt(pt.path, pt.s); },
@@ -214,8 +224,6 @@ export const World = {
       }
     }
   },
-  /** Отряд в зловещем тумане вокруг ковена. */
-  inCovenFog() { const l = LOCS.find((l) => l.id === 'coven')!; return dist(l, this.party) < 430; },
   nearPatrol(q: Pt, r: number) { return this.patrols.some((pt) => dist(this.patrolPos(pt), q) < r); },
 
   /** Поставить отряд рядом с местом (после выхода из сцены). */
@@ -228,9 +236,9 @@ export const World = {
   },
 
   /** Примечательные места видны на карте, только когда отряд их нашёл — подошёл близко. */
-  known(l: Loc) { return l.kind !== 'poi' || !!G.flags['found_' + l.id]; },
+  known(l: Loc) { return (l.kind !== 'poi' && !l.hidden) || !!G.flags['found_' + l.id]; },
   discover() {
-    for (const l of LOCS) if (l.kind === 'poi' && !G.flags['found_' + l.id] && dist(l, this.party) < FIND_R * Weather.sightK()) { G.flags['found_' + l.id] = true; this.onDiscover(l); }
+    for (const l of LOCS) if ((l.kind === 'poi' || l.hidden) && !G.flags['found_' + l.id] && dist(l, this.party) < FIND_R * Weather.sightK()) { G.flags['found_' + l.id] = true; this.onDiscover(l); }
   },
   locAt(x: number, y: number, r = 26) { return LOCS.find((l) => this.known(l) && Math.hypot(l.x - x, l.y - y) < (l.kind === 'fort' ? 70 : r)) ?? null; },
   nearLoc() { return LOCS.find((l) => this.known(l) && dist(l, this.party) < (l.kind === 'fort' ? 90 : 40)) ?? null; },
@@ -306,6 +314,7 @@ export const World = {
       this.updateHungry(dt);
       this.updateDemons(dt);
       this.updateLoyal(dt);
+      this.updateDsq(dt);
     }
   },
 
@@ -410,6 +419,34 @@ export const World = {
       if (dd > 0.5) { g.x += ((g.tx - g.x) / dd) * Math.min(sp, dd); g.y += ((g.ty - g.y) / dd) * Math.min(sp, dd); }
       if (chase && d < 20) { p.moving = false; this.pending = null; G.keys.clear(); this.loyalHit = g; this.onLoyal(); return; }
     }
+  },
+  /** Отряды демонов: кружат по лесу у ковена; заметив отряд рядом — идут на него, но от ковена далеко не уходят. Гончие быстрее. */
+  updateDsq(dt: number) {
+    const p = this.party, hours = dt * HOURS_PER_SEC;
+    const ok = (q: Pt) => nearCoven(q) && !nearCoven(q, 130) && q.y < NORTH_Y - 40 && !nearRoad(q, 50);
+    for (const g of this.dsq) {
+      if (!g.alive) {
+        if (G.clock >= g.respawn) { const s0 = DSQ_START[g.id]; if (dist({ x: s0[0], y: s0[1] }, p) > 420) { g.alive = true; g.x = g.tx = s0[0]; g.y = g.ty = s0[1]; } }
+        continue;
+      }
+      const d = dist(g, p);
+      g.seen = d < 260 * Weather.sightK();
+      const chase = !Debug.invisible && d < 170 && G.clock >= g.calm && nearCoven(p, COVEN_R + 120) && !nearCoven(p, 110);
+      if (chase) { g.tx = p.x; g.ty = p.y; }
+      else if (dist(g, { x: g.tx, y: g.ty }) < 4) {
+        for (let k = 0; k < 10; k++) { const a = Math.random() * TAU, t = { x: g.x + Math.cos(a) * 180, y: g.y + Math.sin(a) * 180 }; if (ok(t)) { g.tx = t.x; g.ty = t.y; break; } }
+      }
+      const fast = g.kinds.includes('hound'), sp = (chase ? (fast ? 58 : 44) : 20) * hours, dd = dist(g, { x: g.tx, y: g.ty });
+      if (dd > 0.5) { g.x += ((g.tx - g.x) / dd) * Math.min(sp, dd); g.y += ((g.ty - g.y) / dd) * Math.min(sp, dd); }
+      if (chase && d < 20) { p.moving = false; this.pending = null; G.keys.clear(); this.dsqHit = g; this.onDsq(); return; }
+    }
+  },
+  killDsq() { const g = this.dsqHit; if (g) { g.alive = false; g.respawn = G.clock + 72; } this.dsqHit = null; },
+  calmDsq(hours: number) {
+    const g = this.dsqHit, p = this.party; if (!g) return;
+    g.calm = G.clock + hours;
+    const a = Math.atan2(g.y - p.y, g.x - p.x); g.tx = g.x + Math.cos(a) * 200; g.ty = g.y + Math.sin(a) * 200;
+    this.dsqHit = null;
   },
   killLoyal() { const g = this.loyalHit; if (g) { g.alive = false; g.respawn = G.clock + 96; } this.loyalHit = null; },
   calmLoyal(hours: number) {
@@ -606,6 +643,12 @@ export const World = {
       pshadow(lc, Math.round(X(g.x)), Math.round(Y(g.y)), 9, 2);
       if (fl) { lc.save(); lc.translate(dx * 2 + 14, 0); lc.scale(-1, 1); lc.drawImage(sp, dx, dy); lc.restore(); } else lc.drawImage(sp, dx, dy);
     }
+    // демоны — бес, рогатый, гончая
+    for (const g of this.dsq) {
+      if (!g.alive || !g.seen) continue;
+      const fl = g.tx < g.x;
+      g.kinds.forEach((k, i) => mini(k, X(g.x) + (i - 1) * 8, Y(g.y) + (i % 2) * 3, fl, fr(pm0, i * 0.9)));
+    }
     // лоялисты — кучкой, в выцветших мундирах
     for (const g of this.loyal) {
       if (!g.alive || !g.seen) continue;
@@ -650,7 +693,7 @@ export const World = {
     const lights: PLight[] = [];
     const L = (wx: number, wy: number, r: number, a: number, color?: string) => lights.push({ x: X(wx), y: Y(wy), r, a, color });
     for (const l of LOCS) {
-      if (l.kind === 'village') L(l.x, l.y, l.id === 'einbow' ? 30 : 48, l.id === 'einbow' ? 0.3 : 0.55, l.id === 'fenmor' ? '#a8f070' : l.id === 'einbow' ? '#c86a40' : l.id === 'coven' ? '#9adf50' : '#f0c070');
+      if (l.kind === 'village' && this.known(l)) L(l.x, l.y, l.id === 'einbow' ? 30 : 48, l.id === 'einbow' ? 0.3 : 0.55, l.id === 'fenmor' ? '#a8f070' : l.id === 'einbow' ? '#c86a40' : l.id === 'coven' ? '#9adf50' : '#f0c070');
       if (l.kind === 'fort') L(l.x, l.y - 30, 100, 0.6, '#e8d090');
     }
     L(fl.x, fl.y - 30, 80, 0.7 + Math.sin(t * 9) * 0.08, '#ff9a40');
@@ -692,6 +735,14 @@ export const World = {
       c.font = 'italic 12px "Old Standard TT", serif'; c.textAlign = 'center';
       c.fillStyle = 'rgba(0,0,0,0.85)'; c.fillText(lbl, g.x - cx + 1, g.y - cy - 33);
       c.fillStyle = '#9ac8a0'; c.fillText(lbl, g.x - cx, g.y - cy - 34);
+      c.textAlign = 'left';
+    }
+    for (const g of this.dsq) {
+      if (!g.alive || !g.seen) continue;
+      const lbl = G.clock < g.calm ? 'Демоны (отстали)' : dist(g, p) < 170 && nearCoven(p, COVEN_R + 120) ? 'Демоны — идут на вас!' : 'Демоны';
+      c.font = 'italic 12px "Old Standard TT", serif'; c.textAlign = 'center';
+      c.fillStyle = 'rgba(0,0,0,0.85)'; c.fillText(lbl, g.x - cx + 1, g.y - cy - 39);
+      c.fillStyle = '#e08a60'; c.fillText(lbl, g.x - cx, g.y - cy - 40);
       c.textAlign = 'left';
     }
     for (const g of this.loyal) {
@@ -907,7 +958,7 @@ function renderBackground(): HTMLCanvasElement {
   drawRuins(c, r);
   // значки мест
   for (const l of LOCS) {
-    if (l.kind !== 'poi') { drawLocIcon(c, l, r); continue; }
+    if (l.kind !== 'poi' && !l.hidden) { drawLocIcon(c, l, r); continue; }
     // примечательности — на отдельных холстах: показываются, когда найдены
     const ox = Math.round(l.x / 2) - 40, oy = Math.round(l.y / 2) - 40, ic = document.createElement('canvas'); ic.width = 80; ic.height = 64;
     const ictx = ic.getContext('2d')!; ictx.imageSmoothingEnabled = false; ictx.translate(-ox, -oy);
