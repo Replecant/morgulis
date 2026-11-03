@@ -1,14 +1,17 @@
 // ============================================================
 //  Музыка автора. Сгенерированных звуков в игре нет — только
 //  треки, которые даёт автор.
-//  · Мирные темы идут по очереди по кругу — в меню, на карте,
-//    в деревнях и городе; в бою стихают и потом продолжаются
-//    с того же места.
+//  · В главном меню и при создании героя — своя тема меню (по кругу).
+//  · Мирные темы — на карте, в деревнях и городах — в случайном
+//    порядке (один трек подряд не повторяется); в бою стихают
+//    и потом продолжаются с того же места.
 //  · Боевая тема играет в бою (по кругу), каждый бой — с начала.
 //  Переходы плавные. Выключить/включить — в меню паузы (Esc), выбор запоминается.
 // ============================================================
 import theme1 from './assets/theme-1.mp3';
 import theme2 from './assets/theme-2.mp3';
+import theme3 from './assets/theme-3.mp3';
+import menuTheme from './assets/menu-theme.mp3';
 import battle1 from './assets/battle-1.mp3';
 
 const FADE = 1.2; // время затухания (с)
@@ -19,7 +22,8 @@ class Lane {
   cur = 0;
   a: HTMLAudioElement;
   playing = false;
-  constructor(private list: string[]) {
+  constructor(private list: string[], private shuffle = false) {
+    if (shuffle) this.cur = Math.floor(Math.random() * list.length);
     this.a = this.make(0);
   }
   private make(vol: number) {
@@ -30,7 +34,8 @@ class Lane {
     return a;
   }
   next() {
-    this.cur = (this.cur + 1) % this.list.length;
+    if (this.shuffle && this.list.length > 1) { let n = this.cur; while (n === this.cur) n = Math.floor(Math.random() * this.list.length); this.cur = n; }
+    else this.cur = (this.cur + 1) % this.list.length;
     const vol = this.a.volume;
     this.a.onended = null;
     this.a = this.make(vol);
@@ -52,7 +57,8 @@ class Lane {
   state() { return { track: this.cur + 1, paused: this.a.paused, volume: +this.a.volume.toFixed(2), time: +this.a.currentTime.toFixed(1) }; }
 }
 
-const peace = new Lane([theme1, theme2]);
+const peace = new Lane([theme1, theme2, theme3], true);
+const menu = new Lane([menuTheme]);
 const battle = new Lane([battle1]);
 
 let muted = false;
@@ -71,13 +77,13 @@ export const Music = {
   /** следующий мирный трек (для отладки) */
   skip() { peace.next(); },
   /** для отладки: состояние дорожек */
-  state() { return { ...peace.state(), battle: battle.state(), muted, unlocked }; },
+  state() { return { ...peace.state(), menu: menu.state(), battle: battle.state(), muted, unlocked }; },
   get muted() { return muted; },
   get volume() { return VOL; },
   /** Громкость 0..1: применяется сразу и запоминается. */
   setVolume(v: number) {
     VOL = Math.max(0, Math.min(1, v));
-    peace.setVol(); battle.setVol();
+    peace.setVol(); battle.setVol(); menu.setVol();
     try { localStorage.setItem('morgulis.volume', String(VOL)); } catch { /* ничего */ }
   },
   setMuted(m: boolean) { if (m !== muted) this.toggle(); },
@@ -86,10 +92,11 @@ export const Music = {
     try { localStorage.setItem('morgulis.music', muted ? 'off' : 'on'); } catch { /* ничего */ }
     return muted;
   },
-  /** Каждый кадр: inBattle — играет боевая тема, иначе мирные. */
-  update(dt: number, inBattle: boolean) {
+  /** Каждый кадр: inBattle — боевая тема, inMenu — тема меню, иначе мирные. */
+  update(dt: number, inBattle: boolean, inMenu = false) {
     const on = !muted && unlocked;
-    peace.update(dt, on && !inBattle);
+    menu.update(dt, on && inMenu && !inBattle);
+    peace.update(dt, on && !inBattle && !inMenu);
     battle.update(dt, on && inBattle, true);
   },
 };

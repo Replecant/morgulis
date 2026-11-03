@@ -341,7 +341,7 @@ function frame(now: number) {
   else if (G.mode === 'world') World.draw(ctx, G.time);
   else Explore.draw(ctx, G.time);
   if (G.mode === 'world' && (hudT += dt) > 0.5) { hudT = 0; refreshHud(); }
-  Music.update(dt, G.mode === 'combat');
+  Music.update(dt, G.mode === 'combat', G.mode === 'title' || G.mode === 'create');
   // зловещий туман — только в самом ковене и в бою там
   Weather.omen = (G.mode === 'explore' && Explore.scene === 'coven') || (G.mode === 'combat' && Combat.def?.id === 'coven');
   if (G.mode !== 'title' && G.mode !== 'create') Weather.update(dt); // в бою — боевая тема, иначе мирные
