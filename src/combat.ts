@@ -211,6 +211,7 @@ export const Combat = {
       const d = dist(from, t);
       if (d > w.range! + 0.01 || !this.los(from, t)) return null;
       bonus += att.atkR - Math.floor(Math.max(0, d - w.opt!) / 2);
+      if (cheb(from, t) === 1 && !w.magic) bonus -= w.closePen ?? 3; // в упор длинным стволом не прицелиться
       if (!w.ignoreCover) dc += this.coverDef(this.coverOf(t, from));
       if (this.inSmoke(t.x, t.y)) dc += 3;
     }

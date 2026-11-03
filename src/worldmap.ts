@@ -175,6 +175,16 @@ interface DemonSquad { id: number; kinds: string[]; x: number; y: number; tx: nu
 const COVEN_AT = { x: -420, y: -560 }, COVEN_R = 520;
 const DSQ_START: [number, number, string[]][] = [[-700, -430, ['hound', 'imp']], [-180, -720, ['demon', 'imp']], [-470, -230, ['hound', 'hound', 'imp']], [-640, -800, ['demon', 'hound']]];
 const nearCoven = (q: Pt, r = COVEN_R) => dist(q, COVEN_AT) < r;
+// шайки бандитов: бродят по пустошам барона, по 2–4 человека
+interface Band { id: number; kinds: string[]; x: number; y: number; tx: number; ty: number; alive: boolean; respawn: number; calm: number; seen: boolean }
+const BAND_START: [number, number][] = [[1050, 1080], [600, 520], [1450, 640], [300, 1050]];
+/** Состав шайки: 2–4 бандита; в шайке из 3–4 может быть главарь. */
+function bandRoll(): string[] {
+  const n = 2 + Math.floor(Math.random() * 3), pool = ['bandit_gun', 'bandit_shot', 'bandit_axe'];
+  const k = Array.from({ length: n }, () => pool[Math.floor(Math.random() * pool.length)]);
+  if (n >= 3 && Math.random() < 0.6) k[0] = 'bandit_boss';
+  return k;
+}
 const LOYAL_START: [number, number][] = [[880, -620], [1420, -620], [300, -450]];
 const inFront = (q: Pt) => q.x > FRONT_W0 + 40 && q.x < FRONT_X - 20 && q.y > 80 && q.y < SOUTH_Y - 80;
 // едкие облака: плывут над пустошью по ветру; без противогаза газ обжигает лёгкие
@@ -245,7 +255,9 @@ export const World = {
   pending: null as Loc | null,
   hover: null as Loc | null,
   cam: { x: 0, y: 0 },
-  band: { x: 1050, y: 1080, tx: 1050, ty: 1080, alive: true, respawn: 0, calm: 0, seen: false },
+  bands: [] as Band[],
+  bandHit: null as Band | null,
+  bandLoot: 2, // сколько бандитов было в разбитой шайке — для добычи
   onArrive: (_l: Loc) => {},
   onEncounter: () => {},
   onPatrol: (_owner: PatrolOwner) => {},
@@ -275,7 +287,7 @@ export const World = {
 
   init() {
     this.bg = renderBackground();
-    this.band = { x: 1050, y: 1080, tx: 1050, ty: 1080, alive: true, respawn: 0, calm: 0, seen: false };
+    this.bands = BAND_START.map(([x, y], i) => ({ id: i, kinds: bandRoll(), x, y, tx: x, ty: y, alive: true, respawn: 0, calm: 0, seen: false }));
     this.lastDay = Math.floor(G.clock / 24);
     // первый выходит из Эшфорда к форту, второй — из форта к Ричморду: идут навстречу и расходятся
     this.clouds = [[300, 1520], [-700, 1660], [1100, 2120], [-1500, 2000], [600, 2210], [-300, 1750], [200, 300], [760, 1080], [1250, 560], [-300, 420], [-650, 900], [1560, 1120], [900, 180], [-1250, 220], [-2050, 950], [-1500, 1150], [-2300, 380]].map(([x, y], i) => ({
@@ -404,39 +416,39 @@ export const World = {
     }
   },
 
-  /** Банда мародёров: бродит по пустоши, замечает отряд и преследует. */
+  /** Шайки бандитов: бродят по пустоши, замечают отряд и преследуют. */
   updateBand(dt: number) {
-    const b = this.band, p = this.party;
-    if (!b.alive) {
-      if (G.clock >= b.respawn) {
-        b.alive = true;
-        do { b.x = 200 + Math.random() * 1500; b.y = 200 + Math.random() * 900; } while (dist(b, p) < 500 || LOCS.some((l) => l.kind !== 'poi' && dist(l, b) < 160));
-        b.tx = b.x; b.ty = b.y;
+    const p = this.party;
+    for (const b of this.bands) {
+      if (!b.alive) {
+        if (G.clock >= b.respawn) {
+          b.alive = true; b.kinds = bandRoll();
+          do { b.x = 200 + Math.random() * 1500; b.y = 200 + Math.random() * 900; } while (dist(b, p) < 500 || LOCS.some((l) => l.kind !== 'poi' && dist(l, b) < 160));
+          b.tx = b.x; b.ty = b.y;
+        }
+        continue;
       }
-      return;
+      const d = dist(b, p);
+      // при патруле рядом бандиты не нападают и уходят подальше
+      const patrolNear = this.nearPatrol(b, 200);
+      const chase = !Debug.invisible && d < 250 && G.clock >= b.calm && !patrolNear && !this.nearPatrol(p, 220) && !LOCS.some((l) => l.kind !== 'poi' && dist(l, p) < 110);
+      if (patrolNear) {
+        const pt = this.patrols.reduce((a, q) => (dist(this.patrolPos(q), b) < dist(this.patrolPos(a), b) ? q : a));
+        const pp = this.patrolPos(pt), a = Math.atan2(b.y - pp.y, b.x - pp.x);
+        b.tx = clamp(b.x + Math.cos(a) * 260, 100, WW - 250); b.ty = clamp(b.y + Math.sin(a) * 260, 100, SOUTH_Y - 100);
+      }
+      b.seen = d < 340 * Weather.sightK();
+      if (chase) { b.tx = p.x; b.ty = p.y; }
+      else if (!patrolNear && (dist(b, { x: b.tx, y: b.ty }) < 4 || (G.clock < b.calm && d < 300))) {
+        const away = G.clock < b.calm;
+        const a = away ? Math.atan2(b.y - p.y, b.x - p.x) + (Math.random() - 0.5) : Math.random() * TAU;
+        b.tx = clamp(b.x + Math.cos(a) * 250, 100, WW - 250); b.ty = clamp(b.y + Math.sin(a) * 250, 100, SOUTH_Y - 100);
+        if (LOCS.some((l) => l.kind !== 'poi' && dist(l, { x: b.tx, y: b.ty }) < 150)) { b.tx = b.x; b.ty = b.y; }
+      }
+      const sp = (chase ? 70 : 40) * HOURS_PER_SEC * dt, dd = dist(b, { x: b.tx, y: b.ty });
+      if (dd > 0.5) { b.x += ((b.tx - b.x) / dd) * Math.min(sp, dd); b.y += ((b.ty - b.y) / dd) * Math.min(sp, dd); }
+      if (chase && dist(b, p) < 20) { p.moving = false; this.pending = null; G.keys.clear(); this.bandHit = b; this.onEncounter(); return; }
     }
-    const d = dist(b, p);
-    // при патруле рядом мародёры не нападают и уходят подальше от дороги
-    const patrolNear = this.nearPatrol(b, 200);
-    const chase = !Debug.invisible && d < 230 && G.clock >= b.calm && !patrolNear && !this.nearPatrol(p, 220) && !LOCS.some((l) => l.kind !== 'poi' && dist(l, p) < 110);
-    if (patrolNear) {
-      const pt = this.patrols.reduce((a, q) => (dist(this.patrolPos(q), b) < dist(this.patrolPos(a), b) ? q : a));
-      const pp = this.patrolPos(pt), a = Math.atan2(b.y - pp.y, b.x - pp.x);
-      b.tx = clamp(b.x + Math.cos(a) * 260, 100, WW - 250); b.ty = clamp(b.y + Math.sin(a) * 260, 100, SOUTH_Y - 100);
-    }
-    b.seen = d < 330;
-    if (chase) { b.tx = p.x; b.ty = p.y; }
-    else if (!patrolNear && (dist(b, { x: b.tx, y: b.ty }) < 4 || (G.clock < b.calm && dist(b, p) < 300))) {
-      // бродим (или уходим подальше, если откупились)
-      const away = G.clock < b.calm;
-      const a = away ? Math.atan2(b.y - p.y, b.x - p.x) + (Math.random() - 0.5) : Math.random() * TAU;
-      b.tx = clamp(b.x + Math.cos(a) * 250, 100, WW - 250); b.ty = clamp(b.y + Math.sin(a) * 250, 100, SOUTH_Y - 100);
-      if (LOCS.some((l) => l.kind !== 'poi' && dist(l, { x: b.tx, y: b.ty }) < 150)) { b.tx = b.x; b.ty = b.y; }
-    }
-    const sp = (chase ? 68 : 40) * HOURS_PER_SEC * dt;
-    const dd = dist(b, { x: b.tx, y: b.ty });
-    if (dd > 0.5) { b.x += ((b.tx - b.x) / dd) * Math.min(sp, dd); b.y += ((b.ty - b.y) / dd) * Math.min(sp, dd); }
-    if (chase && dist(b, p) < 20) { p.moving = false; this.pending = null; G.keys.clear(); this.onEncounter(); }
   },
   /** Голодные бандиты: бродят по земле барона, держатся подальше от деревень, форта и патрулей; заметив отряд — плетутся к нему. */
   updateHungry(dt: number) {
@@ -624,8 +636,8 @@ export const World = {
   },
 
   /** После откупа или удачного бегства банда на время отстаёт. */
-  calmBand(hours: number) { this.band.calm = G.clock + hours; },
-  killBand() { this.band.alive = false; this.band.respawn = G.clock + 72; },
+  calmBand(hours: number) { const b = this.bandHit; if (b) b.calm = G.clock + hours; this.bandHit = null; },
+  killBand() { const b = this.bandHit; if (b) { b.alive = false; b.respawn = G.clock + 60; } this.bandHit = null; },
 
   // ========================================================== обзорная карта (окно по M)
   /** Весь регион целиком: фон, найденные места, подписи, где сейчас отряд. hover — точка под мышью (в пикселях холста). */
@@ -720,11 +732,10 @@ export const World = {
       else lc.drawImage(sp, dx, dy);
     };
     // банда
-    const b = this.band;
-    if (b.alive && b.seen) {
+    for (const b of this.bands) {
+      if (!b.alive || !b.seen) continue;
       const bm = dist(b, { x: b.tx, y: b.ty }) > 1;
-      mini('militia_gun', X(b.x) - 4, Y(b.y), b.tx < b.x, fr(bm));
-      mini('militia', X(b.x) + 4, Y(b.y) + 2, b.tx < b.x, fr(bm, 2));
+      b.kinds.forEach((k, i) => mini(k, X(b.x) + (i - (b.kinds.length - 1) / 2) * 7, Y(b.y) + (i % 2) * 3, b.tx < b.x, fr(bm, i * 1.3)));
     }
     const pm0 = p.moving || ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'KeyA', 'KeyD', 'KeyW', 'KeyS'].some((kk) => G.keys.has(kk));
     // морские демоны — ползут вдоль берега
@@ -820,9 +831,12 @@ export const World = {
       if (hv) { c.font = '12px "Old Standard TT", serif'; c.fillStyle = 'rgba(0,0,0,0.85)'; c.fillText(l.desc, x + 1, y + 17); c.fillStyle = '#c9c4aa'; c.fillText(l.desc, x, y + 16); }
       c.textAlign = 'left';
     }
-    if (b.alive && b.seen) {
+    for (const b of this.bands) {
+      if (!b.alive || !b.seen) continue;
+      const lbl = G.clock < b.calm ? 'Бандиты (отстали)' : dist(b, p) < 250 ? 'Бандиты — преследуют!' : 'Бандиты';
       c.font = 'italic 12px "Old Standard TT", serif'; c.textAlign = 'center';
-      c.fillStyle = '#e07060'; c.fillText(G.clock < b.calm ? 'Мародёры (отстали)' : dist(b, p) < 230 ? 'Мародёры — преследуют!' : 'Мародёры', b.x - cx, b.y - cy - 40);
+      c.fillStyle = 'rgba(0,0,0,0.85)'; c.fillText(lbl, b.x - cx + 1, b.y - cy - 39);
+      c.fillStyle = '#e07060'; c.fillText(lbl, b.x - cx, b.y - cy - 40);
       c.textAlign = 'left';
     }
     for (const g of this.demons) {

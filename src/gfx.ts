@@ -34,6 +34,11 @@ export const STYLES: Record<string, Style> = {
   boy: { coat: '#5a4a35', legs: '#3a3226', hat: 'flatcap', hatC: '#3a3226', scale: 0.78, skin: '#d2bca0' },
   miner: { coat: '#3c382f', legs: '#2a2721', hat: 'minerhelm', hatC: '#5a4a2a', beard: '#6a655c', weapon: 'bottle' },
   militia: { coat: '#5a4a36', legs: '#2e2a22', hat: 'flatcap', hatC: '#2c2620', weapon: 'fork', skin: '#bfa88c' },
+  // мародёры-бандиты: длинные тёмные плащи, шарфы на лицах, ремни, трофейное оружие
+  bandit_gun: { coat: '#2e2a26', legs: '#1e1c18', belt: '#3a2a1a', webbing: '#4a3a26', hat: 'flatcap', hatC: '#1a1816', skin: '#b8987c', mask: true, weapon: 'rifle' },
+  bandit_shot: { coat: '#3a2e24', legs: '#221e18', belt: '#3a2a1a', hat: 'brodie', hatC: '#2e2a22', skin: '#b08a6a', beard: '#2a2018', weapon: 'musket' },
+  bandit_axe: { coat: '#35302a', legs: '#201e1a', belt: '#4a3420', apron: '#2a2420', hair: '#2a2018', skin: '#a88a70', mask: true, weapon: 'hammer', scale: 1.1 },
+  bandit_boss: { coat: '#2a1e1e', legs: '#18161a', belt: '#4a2e1a', trim: '#8a6a3a', hat: 'tophat', hatC: '#141214', skin: '#c4a488', beard: '#3a2a20', weapon: 'saber' },
   militia_gun: { coat: '#4a4232', legs: '#2a261f', hair: '#3a2a1a', weapon: 'musket', skin: '#bfa88c', belt: '#2a1d12' },
   fanatic: { coat: '#3e3b30', legs: '#25231d', hat: 'flatcap', hatC: '#1e1d18', weapon: 'fork', sash: true },
   fanatic_gun: { coat: '#38362c', legs: '#25231d', hair: '#222', weapon: 'musket', sash: true },

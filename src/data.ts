@@ -21,24 +21,25 @@ export interface Weapon {
   poison?: boolean;    // попадание отравляет (лёгкое ранение «Отравление газом»)
   shot?: boolean;      // дробь: −1 урона за клетку дальше оптимальной
   pierce?: boolean;    // пробивает броню
+  closePen?: number;   // штраф к попаданию в упор (соседняя клетка); по умолчанию у огнестрела 3, у пистолетов 1, у дробовиков 0
   breath?: number;     // дыхание: бьёт всех в полосе на столько клеток вперёд и вешает слабость
 }
 
 export const WEAPONS: Record<string, Weapon> = {
-  revolver:  { name: 'Револьвер', type: 'ranged', range: 7, opt: 4, atk: 1, dmg: [3, 5], ammo: 6, ammoType: 'ammo_pistol' },
-  autopistol:{ name: 'Самозарядный пистолет', type: 'ranged', range: 6, opt: 4, atk: 1, dmg: [2, 5], ammo: 8, ammoType: 'ammo_pistol' },
+  revolver:  { name: 'Револьвер', type: 'ranged', closePen: 1, range: 7, opt: 4, atk: 1, dmg: [3, 5], ammo: 6, ammoType: 'ammo_pistol' },
+  autopistol:{ name: 'Самозарядный пистолет', type: 'ranged', closePen: 1, range: 6, opt: 4, atk: 1, dmg: [2, 5], ammo: 8, ammoType: 'ammo_pistol' },
   saber:     { name: 'Офицерская сабля', type: 'melee', atk: 1, dmg: [4, 7] },
   carbine:   { name: 'Карабин', type: 'ranged', range: 8, opt: 5, atk: 0, dmg: [3, 5], ammo: 4, ammoType: 'ammo_rifle' },
   rifle:     { name: 'Армейская винтовка', type: 'ranged', range: 11, opt: 8, atk: 1, dmg: [4, 6], ammo: 5, ammoType: 'ammo_rifle' },
   huntrifle: { name: 'Охотничья винтовка', type: 'ranged', range: 13, opt: 10, atk: 2, dmg: [5, 7], ammo: 3, ammoType: 'ammo_rifle' },
-  shotgun2:  { name: 'Двуствольный дробовик', type: 'ranged', range: 5, opt: 2, atk: 1, dmg: [5, 8], ammo: 2, ammoType: 'ammo_shell', shot: true },
-  pumpshot:  { name: 'Помповый дробовик', type: 'ranged', range: 5, opt: 2, atk: 1, dmg: [4, 7], ammo: 5, ammoType: 'ammo_shell', shot: true },
-  flamer:    { name: 'Огнемёт', type: 'ranged', range: 4, opt: 4, atk: 2, dmg: [4, 6], ammo: 3, ignoreCover: true, splash: [2, 3] },
+  shotgun2:  { name: 'Двуствольный дробовик', type: 'ranged', closePen: 0, range: 5, opt: 2, atk: 1, dmg: [5, 8], ammo: 2, ammoType: 'ammo_shell', shot: true },
+  pumpshot:  { name: 'Помповый дробовик', type: 'ranged', closePen: 0, range: 5, opt: 2, atk: 1, dmg: [4, 7], ammo: 5, ammoType: 'ammo_shell', shot: true },
+  flamer:    { name: 'Огнемёт', type: 'ranged', closePen: 0, range: 4, opt: 4, atk: 2, dmg: [4, 6], ammo: 3, ignoreCover: true, splash: [2, 3] },
   exprifle:  { name: 'Экспериментальная винтовка', type: 'ranged', range: 12, opt: 9, atk: 2, dmg: [6, 8], ammo: 4, ammoType: 'ammo_rifle', pierce: true },
   bayonet:   { name: 'Штык', type: 'melee', atk: 0, dmg: [2, 4] },
   knife:     { name: 'Нож', type: 'melee', atk: 1, dmg: [2, 4] },
   wrench:    { name: 'Тяжёлый гаечный ключ', type: 'melee', atk: 0, dmg: [3, 5] },
-  sawnoff:   { name: 'Обрез', type: 'ranged', range: 4, opt: 2, atk: 0, dmg: [4, 7], ammo: 2, ammoType: 'ammo_shell', shot: true },
+  sawnoff:   { name: 'Обрез', type: 'ranged', closePen: 0, range: 4, opt: 2, atk: 0, dmg: [4, 7], ammo: 2, ammoType: 'ammo_shell', shot: true },
   axe:       { name: 'Пожарный топор', type: 'melee', atk: 0, dmg: [3, 7] },
   fists:     { name: 'Кулаки', type: 'melee', atk: 0, dmg: [1, 2] },
   pitchfork: { name: 'Вилы', type: 'melee', atk: 0, dmg: [2, 4] },
@@ -46,11 +47,11 @@ export const WEAPONS: Record<string, Weapon> = {
   buttstock: { name: 'Приклад', type: 'melee', atk: -1, dmg: [1, 3] },
   // оружие траншейных мертвецов
   cudgel:    { name: 'Дубина', type: 'melee', atk: 0, dmg: [1, 3] },
-  breath:    { name: 'Зловонное дыхание', type: 'ranged', range: 4, opt: 4, atk: 2, dmg: [2, 4], ignoreCover: true, breath: 4 },
+  breath:    { name: 'Зловонное дыхание', type: 'ranged', closePen: 0, range: 4, opt: 4, atk: 2, dmg: [2, 4], ignoreCover: true, breath: 4 },
   salbite:   { name: 'Укус', type: 'melee', atk: 2, dmg: [3, 6] },
   rustbayonet: { name: 'Ржавый штык', type: 'melee', atk: 0, dmg: [2, 4] },
   oldrifle:  { name: 'Гнилая винтовка', type: 'ranged', range: 9, opt: 5, atk: -1, dmg: [3, 5] },
-  gasbreath: { name: 'Газовый выдох', type: 'ranged', range: 3, opt: 3, atk: 1, dmg: [2, 3], ignoreCover: true, splash: [1, 2] },
+  gasbreath: { name: 'Газовый выдох', type: 'ranged', closePen: 0, range: 3, opt: 3, atk: 1, dmg: [2, 3], ignoreCover: true, splash: [1, 2] },
   trenchclub:{ name: 'Окопная лопата', type: 'melee', atk: 0, dmg: [3, 6] },
   hammer:    { name: 'Кузнечный молот', type: 'melee', atk: 0, dmg: [3, 6] },
   claws:     { name: 'Когти', type: 'melee', atk: 1, dmg: [2, 3] },
@@ -132,6 +133,11 @@ export const ENEMIES: Record<string, UnitBase> = {
   imp:         E('imp', 'Бес', 'imp', 5, 6, ['claws'], 'melee', 3, 13, { demonic: true }),
   scav_gun:    E('scav_gun', 'Мародёр с ружьём', 'militia_gun', 6, 4, ['musket'], 'ranged', 2, 10),
   scav_knife:  E('scav_knife', 'Мародёр с ножом', 'militia', 7, 4, ['knife'], 'melee', 2, 10),
+  // бандиты пустоши: серьёзнее оборванцев — трофейное оружие, ремни, умеют драться
+  bandit_gun:  E('bandit_gun', 'Бандит с винтовкой', 'bandit_gun', 9, 4, ['rifle', 'knife'], 'ranged', 3, 11),
+  bandit_shot: E('bandit_shot', 'Бандит с обрезом', 'bandit_shot', 10, 4, ['sawnoff', 'knife'], 'ranged', 2, 11),
+  bandit_axe:  E('bandit_axe', 'Бандит с топором', 'bandit_axe', 12, 4, ['axe'], 'melee', 3, 11, { armor: 1 }),
+  bandit_boss: E('bandit_boss', 'Главарь шайки', 'bandit_boss', 15, 4, ['revolver', 'saber'], 'ranged', 4, 12, { armor: 1 }),
   // морской демон: громадный, скользкий (высокая Защита), ядовитое дыхание
   salamander: E('salamander', 'Морской демон', 'salamander', 26, 3, ['breath', 'salbite'], 'ranged', 2, 13, { armor: 1, demonic: true }),
   // голодные бандиты: слабые, измождённые
@@ -252,6 +258,12 @@ export function battleDef(id: string, _flags: Record<string, boolean | undefined
       enemies: comp,
       lights: [[12, 6, 200, '#a8b890'], [3, 7, 110, '#e8c070']],
     };
+  }
+  if (id.startsWith('band_')) { // шайка бандитов: состав в id (band_bandit_gun_bandit_axe…)
+    const kinds = id.slice(5).split('+'), w = battleDef('waste', _flags);
+    const pos = [{ x: 19, y: 5 }, { x: 17, y: 9 }, { x: 21, y: 7 }, { x: 20, y: 11 }];
+    const ammo: Record<string, Record<string, number>> = { bandit_gun: { rifle: 4 }, bandit_shot: { sawnoff: 2 }, bandit_boss: { revolver: 6 } };
+    return { ...w, id, title: 'Бандиты в пустоши', enemies: kinds.map((t, i) => ({ t, ...pos[i], ammo: ammo[t] })) };
   }
   if (id.startsWith('hungry')) { // голодные бандиты — на карте засады в пустоши
     const w = battleDef('waste', _flags), n = +(id.slice(6) || 2);

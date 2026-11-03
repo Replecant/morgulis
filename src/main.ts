@@ -68,7 +68,7 @@ Combat.hooks = {
     G.mode = returnMode;
     hint();
     if (id === 'ruins') { G.flags.scavDone = true; Dialog.start('after_scav'); }
-    if (id === 'waste') { World.killBand(); Dialog.start('after_band'); }
+    if (id.startsWith('band_')) { World.bandLoot = id.slice(5).split('+').length; World.killBand(); Dialog.start('after_band'); }
     if (id.startsWith('hungry')) { World.killHungry(); Dialog.start('after_hungry'); }
     if (id === 'lake') { World.killDemon(); Dialog.start('after_demon'); }
     if (id.startsWith('loyal')) { World.killLoyal(); Dialog.start('after_loyal'); }
@@ -85,7 +85,7 @@ Combat.hooks = {
         { label: 'Отступить', fn: () => {
           hideScreen(); restoreSnapshot();
           G.squad.forEach((s) => (s.hp = Math.max(1, Math.ceil(s.hp / 2))));
-          if (id === 'waste') World.calmBand(24);
+          if (id.startsWith('band_')) World.calmBand(24);
           if (id.startsWith('hungry')) World.calmHungry(24);
           if (id === 'lake') World.calmDemon(24);
           if (id.startsWith('loyal')) World.calmLoyal(24);
@@ -171,7 +171,7 @@ Dialog.onAction = (act) => {
   else if (act === 'rest') { toast(rest()); refreshHud(); }
   else if (act.startsWith('trade:')) { G.keys.clear(); Trade.show(act.slice(6), () => { refreshHud(); hint(); }); }
   else if (act === 'battle_scav') startBattle('ruins');
-  else if (act === 'battle_band') startBattle('waste');
+  else if (act === 'battle_band') startBattle('band_' + (World.bandHit?.kinds.join('+') ?? 'bandit_gun+bandit_axe'));
   else if (act === 'band_calm') World.calmBand(24);
   else if (act === 'band_lose') World.calmBand(8);
   else if (act === 'battle_dead') startBattle(World.deadHit?.id ?? 'trench1');

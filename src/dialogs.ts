@@ -76,7 +76,7 @@ export const SPEAKERS: Record<string, { name: string; kind: string | null }> = {
   wallace: { name: 'Уоллес, старший погонщик', kind: 'herder' },
   hob: { name: 'Хоб, мясник', kind: 'butcher' },
   penny: { name: 'Пенни, пастушка', kind: 'girl' },
-  scav: { name: 'Мародёр', kind: 'militia_gun' },
+  scav: { name: 'Бандит', kind: 'bandit_gun' },
   hungry: { name: 'Голодный бандит', kind: 'hungry' },
   ash_sgt: { name: 'Сержант заставы', kind: 'ashsoldier' },
   ragged: { name: 'Оборванец', kind: 'militia_gun' },
@@ -1073,16 +1073,21 @@ const WORLD_DIALOGS: Record<string, DTree> = {
   } },
 
   enc_band: { start: 'a', nodes: {
-    a: { s: 'scav', t: 'Из-за холма выходят оборванцы с ружьями. — Далеко собрался? Сумку на землю, и разойдёмся.', c: [
+    a: { s: 'scav', t: () => {
+      const k = World.bandHit?.kinds ?? [], n = k.length || 2, boss = k.includes('bandit_boss');
+      return `Из-за холма выходят ${['двое', 'двое', 'трое', 'четверо'][n - 1] ?? n} — в длинных плащах, лица замотаны шарфами, у каждого трофейный ствол или топор. ${boss ? 'Впереди — главарь в цилиндре, с револьвером за поясом. ' : ''}Окружают без суеты, как делали уже не раз. — Стоять. Мешок, оружие, сапоги — на землю. Будешь умным — уйдёшь живым.`;
+    }, c: [
       { t: 'Драться', act: 'battle_band' },
-      { t: 'Откупиться (−1 паёк)', go: 'bribe', if: (g) => g.supplies.ration > 0 },
+      { t: 'Откупиться (−15 ш.)', go: 'bribe', if: (g) => g.money >= 15 },
+      { t: 'Откупиться припасами (−2 пайка, −2 бинта)', go: 'bribe2', if: (g) => g.supplies.ration >= 2 && g.supplies.bandage >= 2 },
       { t: '[Убеждение] Запугать', check: { skill: 'persuasion', dc: 18, ok: 'scared', fail: 'fight' } },
-      { t: '[Скрытность] Ускользнуть', check: { skill: 'stealth', dc: 15, ok: 'escaped', fail: 'fight' } },
+      { t: '[Скрытность] Ускользнуть', check: { skill: 'stealth', dc: 18, ok: 'escaped', fail: 'fight' } },
     ] },
-    bribe: { s: 'scav', t: 'Мародёр ловит свёрток с едой и ухмыляется. — Умный. Иди.', do: (g) => (g.supplies.ration -= 1), act: 'band_calm' },
-    scared: { s: 'scav', t: 'Мародёры переглядываются и пятятся. — Да ну его… Пошли, найдём кого попроще.', act: 'band_calm' },
-    escaped: { s: 'nar', t: 'Вы ныряете в овраг и уходите, пока мародёры спорят, куда вы делись.', act: 'band_lose' },
-    fight: { s: 'scav', t: '— Ну, сам напросился!', act: 'battle_band' },
+    bribe: { s: 'scav', t: 'Главарь пересчитывает монеты, не сводя с вас глаз. — Не густо. Но сегодня мы добрые. Проваливай.', do: (g) => (g.money -= 15), act: 'band_calm' },
+    bribe2: { s: 'scav', t: 'Бандит забирает свёртки и бинты, взвешивает на ладони. — Сойдёт. Иди, пока не передумали.', do: (g) => { g.supplies.ration -= 2; g.supplies.bandage -= 2; }, act: 'band_calm' },
+    scared: { s: 'scav', t: 'Бандиты переглядываются. Что-то в вашем голосе им не нравится. — Ладно… не стоит оно того. — Они отходят, не опуская стволов.', act: 'band_calm' },
+    escaped: { s: 'nar', t: 'Вы ныряете в овраг и уходите по сухому руслу, пока бандиты обшаривают холмы.', act: 'band_lose' },
+    fight: { s: 'scav', t: '— Ну, как знаешь. — Щёлкают затворы.', act: 'battle_band' },
   } },
   // патруль барона на тракте
   enc_patrol: { start: 'a', nodes: {
@@ -1178,7 +1183,8 @@ const WORLD_DIALOGS: Record<string, DTree> = {
     a: { s: 'nar', t: 'Оборванцы лежат в пыли. У них почти ничего нет — нож с выщербленным лезвием и горсть медяков. (Получено: 2 шиллинга.)', do: (g) => { g.money += 2; } },
   } },
   after_band: { start: 'a', nodes: {
-    a: { s: 'nar', t: 'Мародёры повержены. В их котомках — немного полезного. (Получено: 8 шиллингов, 6 пистолетных патронов, 1 бинт, 1 паёк.)', do: (g) => { g.money += 8; g.supplies.ammo_pistol += 6; g.supplies.bandage += 1; g.supplies.ration += 1; } },
+    a: { s: 'nar', t: () => { const n = World.bandLoot; return `Бандиты повержены. В их мешках — награбленное у других путников. (Получено: ${6 * n} шиллингов, ${3 * n} винтовочных и ${2 * n} пистолетных патронов, ${Math.ceil(n / 2)} бинт., 1 паёк.)`; },
+      do: (g) => { const n = World.bandLoot; g.money += 6 * n; g.supplies.ammo_rifle += 3 * n; g.supplies.ammo_pistol += 2 * n; g.supplies.bandage += Math.ceil(n / 2); g.supplies.ration += 1; } },
   } },
   hunger: { start: 'a', nodes: {
     a: { s: 'nar', t: 'Пайки кончились. Голод забирает силы. (−2 ОЗ. Найдите еду: пайки дают в деревнях, их находят в руинах и у мародёров.)' },
