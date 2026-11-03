@@ -805,8 +805,9 @@ export const World = {
       if (this.patrols.slice(0, i).some((o) => dist(this.patrolPos(o), q) < 60)) return; // два патруля рядом — одна подпись
       c.font = 'italic 12px "Old Standard TT", serif'; c.textAlign = 'center';
       const lbl = pt.owner === 'baroness' ? 'Патруль баронессы' : pt.owner === 'revo' ? 'Братья свободы' : pt.owner === 'winford' ? 'Патруль Винферда' : pt.owner === 'wfcar' ? 'Бронемашина Винферда' : 'Патруль барона';
-      c.fillStyle = 'rgba(0,0,0,0.85)'; c.fillText(lbl, sx + 1, sy - 39);
-      c.fillStyle = pt.owner === 'baroness' ? '#d8a0a0' : pt.owner === 'revo' ? '#e07a68' : pt.owner === 'winford' || pt.owner === 'wfcar' ? '#a8c0e0' : '#d8c080'; c.fillText(lbl, sx, sy - (pt.owner === 'wfcar' ? 28 : 40));
+      const ly = sy - (pt.owner === 'wfcar' ? 28 : 40);
+      c.fillStyle = 'rgba(0,0,0,0.85)'; c.fillText(lbl, sx + 1, ly + 1);
+      c.fillStyle = pt.owner === 'baroness' ? '#d8a0a0' : pt.owner === 'revo' ? '#e07a68' : pt.owner === 'winford' || pt.owner === 'wfcar' ? '#a8c0e0' : '#d8c080'; c.fillText(lbl, sx, ly);
       c.textAlign = 'left';
     });
     const near = this.nearLoc();
@@ -1076,6 +1077,18 @@ const RUINS: { kind: string; x: number; y: number }[] = [
   { kind: 'farm', x: 130, y: 460 },
   { kind: 'wall', x: 860, y: 1110 },
   { kind: 'tower', x: 160, y: 820 },
+  // вдоль тракта от форта Олдриджа к Винферду: брошенные усадьбы, хутора, целые деревушки
+  { kind: 'hamlet', x: 1610, y: 990 },
+  { kind: 'tower', x: 1460, y: 1060 },
+  { kind: 'deadvillage', x: 1580, y: 1170 },
+  { kind: 'wall', x: 1360, y: 1250 },
+  { kind: 'farm', x: 1530, y: 1360 },
+  { kind: 'deadvillage', x: 1320, y: 1410 },
+  { kind: 'chapel', x: 1130, y: 1430 },
+  { kind: 'hamlet', x: 1290, y: 1530 },
+  { kind: 'deadvillage', x: 1010, y: 1505 },
+  { kind: 'wall', x: 860, y: 1570 },
+  { kind: 'farm', x: 1090, y: 1640 },
 ];
 
 function drawRuins(c: CanvasRenderingContext2D, r: () => number) {
@@ -1133,6 +1146,16 @@ function drawRuins(c: CanvasRenderingContext2D, r: () => number) {
           for (let k = 0; k < 4; k++) prect(s, 5 + k * 5, 4, 3, 3, dark);
           for (const wx of [5, 19]) { prect(s, wx, 10, 4, 3, '#1c1c1a'); ppx(s, wx + 1, 11, '#5a5a54'); } // колёса кверху
           prect(s, 24, 5, 3, 1, '#3a3028'); ppx(s, 0, 11, '#3a3028');
+        });
+        break;
+      case 'deadvillage': // развалины деревушки: полдюжины домов без крыш, поваленный забор, колодец, засохшее дерево
+        stamp(c, x, y + 12, 58, 34, (s) => {
+          for (let i = 0; i < 26; i++) ppx(s, 2 + r() * 54, 4 + r() * 28, r() < 0.5 ? '#3a3630' : '#4a443a');
+          ruinHut(s, 1, 2, '#544c3c'); ruinHut(s, 16, 0, '#4e4636'); ruinHut(s, 34, 3, '#585040');
+          ruinHut(s, 6, 15, '#4e4636'); ruinHut(s, 26, 17, '#544c3c'); ruinHut(s, 44, 16, '#4a4434');
+          for (let k = 0; k < 12; k++) if (k % 4 !== 2) prect(s, 2 + k * 4, 31 + (k % 2), 1, 2 - (k % 2), '#4e4030'); // поваленный забор
+          prect(s, 20, 27, 4, 3, stoneD); prect(s, 21, 27, 2, 1, '#0c0c0a'); prect(s, 22, 21, 1, 6, '#3a2c1e'); pline(s, 22, 21, 27, 24, '#3a2c1e'); // колодец с журавлём
+          prect(s, 52, 26, 1, 6, '#1c1a15'); ppx(s, 51, 27, '#1c1a15'); ppx(s, 53, 28, '#1c1a15');                                                // засохшее дерево
         });
         break;
       case 'wall': // остатки каменной стены
