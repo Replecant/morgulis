@@ -186,17 +186,23 @@ const COVEN_AT = { x: -420, y: -560 }, COVEN_R = 520;
 const DSQ_START: [number, number, string[]][] = [[-700, -430, ['hound', 'imp']], [-180, -720, ['demon', 'imp']], [-470, -230, ['hound', 'hound', 'imp']], [-640, -800, ['demon', 'hound']]];
 const nearCoven = (q: Pt, r = COVEN_R) => dist(q, COVEN_AT) < r;
 // шайки бандитов: бродят по пустошам барона, по 2–4 человека
-interface Band { fac: 'bandit' | 'deserter'; raid?: boolean; id: number; kinds: string[]; x: number; y: number; tx: number; ty: number; alive: boolean; respawn: number; calm: number; seen: boolean }
+interface Band { fac: 'bandit' | 'deserter'; home?: 'lh' | 'wf'; raid?: boolean; id: number; kinds: string[]; x: number; y: number; tx: number; ty: number; alive: boolean; respawn: number; calm: number; seen: boolean }
 const BAND_START: [number, number][] = [[750, 1180], [1450, 1180], [820, 200], [1560, 430]]; // глухие углы, подальше от трактов
-// дезертиры бесчинствуют в землях Леди Харрингтон
-const DESERTER_START: [number, number][] = [[-1250, 1080], [-2320, 1080], [-1150, 230]];
-/** Где бродит шайка: бандиты — в землях Олдриджа, дезертиры — в землях Леди Харрингтон. */
-const bandArea = (fac: Band['fac']) => (fac === 'deserter' ? { x0: WX0 + 140, x1: FRONT_W0 - 80 } : { x0: 200, x1: 1700 });
+// дезертиры бесчинствуют в землях Леди Харрингтон и заходят в земли Винферда — одна из его головных болей
+const DESERTER_START: [number, number, 'lh' | 'wf'][] = [[-1250, 1080, 'lh'], [-2320, 1080, 'lh'], [-1150, 230, 'lh'], [-1500, 1750, 'wf'], [250, 1700, 'wf']];
+/** Где бродит шайка: бандиты — в землях Олдриджа; дезертиры Леди Харрингтон — в её землях и на западе земель Винферда; осевшие у Винферда — по всем его землям. */
+function inBandArea(q: Pt, fac: Band['fac'], home: Band['home'] = 'lh') {
+  if (fac === 'bandit') return q.x > 200 && q.x < 1700 && q.y > 150 && q.y < SOUTH_Y - 60;
+  const lh = q.x > WX0 + 140 && q.x < FRONT_W0 - 80 && q.y > 150 && q.y < SOUTH_Y - 60;
+  const wf = q.x > WX0 + 140 && q.x < (home === 'wf' ? HELL_X - 200 : -300) && q.y > SOUTH_Y + 60 && q.y < WH - 260;
+  return home === 'wf' ? wf : lh || wf;
+}
+/** Рамка, в которой ищут место для новой шайки (дезертиры появляются у себя «дома»). */
+const bandBox = (b: Band) => (b.fac === 'bandit' ? { x0: 200, x1: 1700, y0: 150, y1: SOUTH_Y - 60 } : b.home === 'wf' ? { x0: WX0 + 140, x1: HELL_X - 200, y0: SOUTH_Y + 60, y1: WH - 260 } : { x0: WX0 + 140, x1: FRONT_W0 - 80, y0: 150, y1: SOUTH_Y - 60 });
 /** Глушь для шайки: подальше от трактов, рельсов, сёл и воды. */
 const BAND_ROAD = 190;
-function bandWild(q: Pt, fac: Band['fac'] = 'bandit') {
-  const A = bandArea(fac);
-  return q.x > A.x0 && q.x < A.x1 && q.y > 150 && q.y < SOUTH_Y - 60 && !nearRoad(q, BAND_ROAD) && !railNear(q, BAND_ROAD - 40) && !waterAt(q, 20) && !LOCS.some((l) => l.kind !== 'poi' && dist(l, q) < 260);
+function bandWild(q: Pt, fac: Band['fac'] = 'bandit', home: Band['home'] = 'lh') {
+  return inBandArea(q, fac, home) && !nearRoad(q, BAND_ROAD) && !railNear(q, BAND_ROAD - 40) && !waterAt(q, 20) && !LOCS.some((l) => l.kind !== 'poi' && dist(l, q) < 260);
 }
 /** Состав шайки: 2–4 бандита; в шайке из 3–4 может быть главарь. */
 function bandRoll(): string[] {
@@ -330,7 +336,7 @@ export const World = {
     this.bg = renderBackground();
     this.bands = [
       ...BAND_START.map(([x, y], i): Band => ({ fac: 'bandit', id: i, kinds: bandRoll(), x, y, tx: x, ty: y, alive: true, respawn: 0, calm: 0, seen: false, raid: false })),
-      ...DESERTER_START.map(([x, y], i): Band => ({ fac: 'deserter', id: 10 + i, kinds: deserterRoll(), x, y, tx: x, ty: y, alive: true, respawn: 0, calm: 0, seen: false, raid: false })),
+      ...DESERTER_START.map(([x, y, home], i): Band => ({ fac: 'deserter', home, id: 10 + i, kinds: deserterRoll(), x, y, tx: x, ty: y, alive: true, respawn: 0, calm: 0, seen: false, raid: false })),
     ];
     this.lastDay = Math.floor(G.clock / 24);
     // первый выходит из Эшфорда к форту, второй — из форта к Ричморду: идут навстречу и расходятся
@@ -467,8 +473,7 @@ export const World = {
       b.raid = Math.random() < 0.04;
       for (let k = 0; k < 24; k++) {
         const a = Math.random() * TAU, t = { x: from.x + Math.cos(a) * r, y: from.y + Math.sin(a) * r };
-        const A = bandArea(b.fac);
-        if (b.raid ? (t.x > A.x0 && t.x < A.x1 && t.y > 150 && t.y < SOUTH_Y - 60 && !waterAt(t, 20) && !LOCS.some((l) => l.kind !== 'poi' && dist(l, t) < 200)) : bandWild(t, b.fac)) { b.tx = t.x; b.ty = t.y; return; }
+        if (b.raid ? (inBandArea(t, b.fac, b.home) && !waterAt(t, 20) && !LOCS.some((l) => l.kind !== 'poi' && dist(l, t) < 200)) : bandWild(t, b.fac, b.home)) { b.tx = t.x; b.ty = t.y; return; }
       }
       b.raid = false; b.tx = b.x; b.ty = b.y;
     };
@@ -476,8 +481,8 @@ export const World = {
       if (!b.alive) {
         if (G.clock >= b.respawn) {
           for (let k = 0; k < 200; k++) {
-            const A = bandArea(b.fac), q = { x: A.x0 + Math.random() * (A.x1 - A.x0), y: 150 + Math.random() * (SOUTH_Y - 210) };
-            if (bandWild(q, b.fac) && dist(q, p) > 600 && this.hungry.every((g) => dist(g, q) > 450) && this.bands.every((o) => o === b || !o.alive || dist(o, q) > 400)) {
+            const A = bandBox(b), q = { x: A.x0 + Math.random() * (A.x1 - A.x0), y: A.y0 + Math.random() * (A.y1 - A.y0) };
+            if (bandWild(q, b.fac, b.home) && dist(q, p) > 600 && this.hungry.every((g) => dist(g, q) > 450) && this.bands.every((o) => o === b || !o.alive || dist(o, q) > 400)) {
               b.alive = true; b.kinds = rollFor(b.fac); b.x = b.tx = q.x; b.y = b.ty = q.y; b.raid = false; break;
             }
           }

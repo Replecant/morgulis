@@ -6,7 +6,7 @@
 import { G, hasRepairKit } from './state';
 import type { SkillKey } from './rules';
 import { addWound, folkHeal } from './wounds';
-import { World } from './worldmap';
+import { World, SOUTH_Y } from './worldmap';
 import { LANG, tr } from './i18n';
 
 import { itemName } from './items';
@@ -1135,7 +1135,8 @@ const WORLD_DIALOGS: Record<string, DTree> = {
       { t: 'Драться', act: 'battle_band' },
       { t: 'Откупиться (−20 ш.)', go: 'bribe', if: (g) => g.money >= 20 },
       { t: 'Отдать патроны (−10 винтовочных)', go: 'bribe2', if: (g) => g.supplies.ammo_rifle >= 10 },
-      { t: '[Убеждение] Патруль Леди Харрингтон рядом — выстрелы услышат', check: { skill: 'persuasion', dc: 18, ok: 'scared', fail: 'fight' } },
+      { t: '[Убеждение] Патруль Леди Харрингтон рядом — выстрелы услышат', check: { skill: 'persuasion', dc: 18, ok: 'scared', fail: 'fight' }, if: () => World.party.y <= SOUTH_Y },
+      { t: '[Убеждение] Здесь земли Винферда — его патрули выстрелы услышат', check: { skill: 'persuasion', dc: 18, ok: 'scared', fail: 'fight' }, if: () => World.party.y > SOUTH_Y },
       { t: '[Скрытность] Ускользнуть', check: { skill: 'stealth', dc: 18, ok: 'escaped', fail: 'fight' } },
     ] },
     bribe: { s: 'deserter', t: 'Сержант пересчитывает монеты и прячет их за отворот шинели. — Свободен. И нас ты не видел.', do: (g) => (g.money -= 20), act: 'band_calm' },
