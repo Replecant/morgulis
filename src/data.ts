@@ -195,9 +195,9 @@ export const ENEMIES: Record<string, UnitBase> = {
   dead_gren:    E('dead_gren', 'Мертвец-гренадер', 'dead_gren', 9, 3, ['deadgrenade', 'deadfist'], 'ranged', 1, 9),
   // штурмовик — единственный быстрый мертвец: каска, маска, траншейная дубинка
   dead_storm:   E('dead_storm', 'Траншейный штурмовик', 'dead_storm', 12, 5, ['trenchclub'], 'melee', 3, 11, { armor: 1 }),
-  // культисты траншейного моря — люди, что служат демонам; ходят с ними одной сворой
-  cultist:      E('cultist', 'Культист', 'cult_k', 7, 4, ['knife'], 'melee', 2, 10),
-  cultist_gun:  E('cultist_gun', 'Культист с карабином', 'cult_g', 7, 4, ['carbine', 'knife'], 'ranged', 2, 10),
+  // культисты траншейного моря — бывшие солдаты Империи в обносках, что служат демонам; ходят с ними одной сворой
+  cultist:      E('cultist', 'Культист', 'cult_k', 8, 4, ['bayonet', 'knife'], 'melee', 2, 10),
+  cultist_gun:  E('cultist_gun', 'Культист с винтовкой', 'cult_g', 8, 4, ['rifle', 'bayonet'], 'ranged', 2, 10),
 };
 
 export interface BattleDef {
@@ -257,7 +257,7 @@ export function battleDef(id: string, _flags: Record<string, boolean | undefined
   }
   if (id.startsWith('dsqh_')) { // свора культистов и демонов в траншейном море: состав в id (dsqh_cultist+imp+hound)
     const kinds = id.slice(5).split('+'), t = trenchBattle('trench1'), pos = [{ x: 19, y: 4 }, { x: 20, y: 9 }, { x: 22, y: 6 }, { x: 21, y: 11 }];
-    return { ...t, id, title: 'Культ в траншеях', enemies: kinds.slice(0, 4).map((k, i) => ({ t: k, ...pos[i] })), lights: [[12, 6, 160, '#c86a40'], [3, 7, 110, '#e8c070']] };
+    return { ...t, id, title: 'Культ в траншеях', enemies: kinds.slice(0, 4).map((k, i) => ({ t: k, ...pos[i], ammo: k === 'cultist_gun' ? { rifle: 3 } : undefined })), lights: [[12, 6, 160, '#c86a40'], [3, 7, 110, '#e8c070']] };
   }
   if (id.startsWith('dsq_')) { // отряд демонов в лесу у ковена: состав в id (dsq_imp+hound+demon)
     const kinds = id.slice(4).split('+'), pos = [{ x: 19, y: 5 }, { x: 19, y: 9 }, { x: 21, y: 7 }];

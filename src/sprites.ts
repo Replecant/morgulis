@@ -160,6 +160,11 @@ function buildChar(kind0: string, frame: number): HTMLCanvasElement {
   if (st.tabs) { P(10, sy(tTop), st.tabs); P(13, sy(tTop), st.tabs); } // петлицы
   if (st.number) { R(tx0 + 1, sy(tTop + 2), 4, 3, '#d8d4c0'); P(tx0 + 2, sy(tTop + 3), '#2a2a2a'); P(tx0 + 4, sy(tTop + 3), '#2a2a2a'); } // нашивка с номером
   if (st.collar) R(11, sy(tTop), 2, 1, '#e8e4d8');
+  if (st.ragged) { // обноски: заплаты другого сукна, прорехи, рваный подол
+    R(tx0 + 1, sy(tTop + 3), 2, 2, shade(coat, 0.12)); R(tx1 - 3, sy(tTop + 6), 2, 2, shade(coat, -0.2));
+    P(tx0 + 4, sy(tTop + 5), shade(coat, -0.55)); P(tx1 - 2, sy(tTop + 2), shade(coat, -0.55));
+    if (!st.dress) for (const xx of [tx0 + 1, tx0 + 4, tx1 - 2]) c.clearRect(xx, sy(tBot), 1, 1);
+  }
   if (st.undead) { // истлевшая шинель: дыры, торчащие рёбра, рваный подол
     R(tx0 + 2, sy(tTop + 4), 2, 1, '#d8d4c0'); R(tx0 + 2, sy(tTop + 6), 2, 1, '#d8d4c0'); P(tx0 + 3, sy(tTop + 5), INK);
     if (!st.dress) for (const xx of [tx0, tx0 + 3, tx1 - 1]) c.clearRect(xx, sy(tBot), 1, 1);

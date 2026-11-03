@@ -15,6 +15,7 @@ interface Style {
   hatC?: string; trim?: string; belt?: string; apron?: string;
   dress?: boolean; collar?: boolean; mask?: boolean; band?: boolean; sash?: boolean; hood?: boolean; longHair?: boolean; goggles?: boolean; cuirass?: boolean;
   undead?: boolean; tanks?: boolean;
+  ragged?: boolean; // обноски: заплаты, дыры, рваный подол (живые, в отличие от undead)
   bare?: boolean; // без одежды (демоны): кожа вместо шинели, набедренная повязка
   armband?: string; // повязка на рукаве
   horns?: string; eyes?: string; // рога (цвет) и горящие глаза — у демонов и ведьм ковена
@@ -132,8 +133,9 @@ export const STYLES: Record<string, Style> = {
   // траншейное море: мертвецы-гренадеры и штурмовики, культисты в капюшонах
   dead_gren: { coat: '#45473a', legs: '#28281f', belt: '#3a2a1a', webbing: '#5a5640', hat: 'cap', hatC: '#2e3024', skin: '#8e9e7c', undead: true, weapon: 'grenade' },
   dead_storm: { coat: '#3a3c32', legs: '#24241e', belt: '#3a2a1a', webbing: '#4a4a3a', hat: 'helmet', hatC: '#55585a', skin: '#86967a', mask: true, undead: true, weapon: 'hammer', scale: 1.05 },
-  cult_k: { coat: '#2a1c1e', legs: '#1a1416', belt: '#4a2a1a', hood: true, weapon: 'knife' },
-  cult_g: { coat: '#2e2224', legs: '#1c1618', belt: '#4a2a1a', hood: true, weapon: 'rifle' },
+  // культисты — бывшие солдаты Империи: выцветшая рваная форма, обмотки, худые небритые лица
+  cult_k: { coat: '#3a3e32', legs: '#2a2c24', belt: '#3a2a1a', puttees: '#3e4234', ragged: true, skin: '#b8a08a', hair: '#3a2e24', beard: '#3a2e24', weapon: 'knife' },
+  cult_g: { coat: '#363a2e', legs: '#282a22', belt: '#3a2a1a', webbing: '#4a4636', puttees: '#3a3e30', ragged: true, hat: 'helmet', hatC: '#3a3e30', skin: '#b49c86', beard: '#4a3a2a', weapon: 'rifle' },
   // Вольница: шайка из траншей — бандиты, анархисты, беглые и прочие
   arthur: { coat: '#3a2a34', legs: '#1e1a1e', belt: '#2a1d12', trim: '#9a8048', collar: true, skin: '#d4bca4', hair: '#b09868', weapon: 'saber' },
   vol_orator: { coat: '#3a3a30', legs: '#24241e', hat: 'flatcap', hatC: '#1a1a16', armband: '#141210', skin: '#c0a488', beard: '#4a3a2a', weapon: 'book' },
