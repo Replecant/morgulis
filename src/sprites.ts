@@ -65,11 +65,11 @@ function buildChar(kind0: string, frame: number): HTMLCanvasElement {
   const top = size === 's' ? 11 : size === 'b' ? 4 : 6;            // верх головы
   const neck = top + 7;
   const tTop = neck + 1;                                            // плечи
-  const tBot = st.puttees ? 22 : size === 's' ? 26 : 25;           // низ шинели (у солдат — короткий мундир)
+  const tBot = st.bare ? 21 : st.puttees ? 22 : size === 's' ? 26 : 25;           // низ шинели (у солдат — короткий мундир)
   const [tx0, tx1] = size === 'b' ? [6, 17] : [7, 16];
-  const coat = st.coat ?? '#4a4a3e', coatD = shade(coat, -0.38), coatL = shade(coat, 0.16);
+  const coat = st.bare ? (st.skin ?? '#6e2a22') : st.coat ?? '#4a4a3e', coatD = shade(coat, -0.38), coatL = shade(coat, 0.16);
   const skin = st.skin ?? '#c8a684', skinD = shade(skin, -0.3);
-  const legs = st.legs ?? '#24221c', legsD = shade(legs, -0.3), boot = '#141210';
+  const legs = st.bare ? shade(skin, -0.12) : st.legs ?? '#24221c', legsD = shade(legs, -0.3), boot = st.bare ? shade(skin, -0.6) : '#141210'; // у демонов — копыта
   const LB = st.limbs ?? {};
   const COPPER = '#b06a3a', SPARK = '#d8ff70';
   const walk = frame === 1 ? 1 : frame === 3 ? -1 : 0;
@@ -133,6 +133,13 @@ function buildChar(kind0: string, frame: number): HTMLCanvasElement {
     R(tx0, sy(tTop + 1), 1, tBot - tTop, coatL);
     R(tx1 - 1, sy(tTop + 1), 2, tBot - tTop, coatD);
     R(12, sy(tTop + 9), 1, tBot - tTop - 8, coatD);                 // разрез
+  }
+  if (st.bare) { // голый торс: грудь, рёбра-мышцы, набедренная повязка вместо подола
+    R(tx0 + 2, sy(tTop + 3), 3, 1, coatD); R(tx1 - 4, sy(tTop + 3), 3, 1, coatD); P(12, sy(tTop + 2), coatD);
+    for (const yy of [5, 7]) { R(tx0 + 3, sy(tTop + yy), 2, 1, shade(coat, -0.22)); R(tx1 - 4, sy(tTop + yy), 2, 1, shade(coat, -0.22)); }
+    R(11, sy(tTop + 4), 1, 5, shade(coat, -0.22));
+    const lc = st.belt ?? '#2a1a14';
+    R(tx0, sy(tBot - 1), tx1 - tx0 + 1, 2, lc); R(10, sy(tBot + 1), 4, 3, lc); P(11, sy(tBot + 4), shade(lc, -0.3));
   }
   if (st.apron) R(tx0 + 2, sy(tTop + 2), tx1 - tx0 - 3, (st.dress ? SH - 2 : tBot) - tTop - 1, st.apron);
   if (st.cuirass) {
@@ -368,6 +375,8 @@ function buildChar(kind0: string, frame: number): HTMLCanvasElement {
       break;
     case 'wrench': pline(c, hx, hy2 + 1, hx + 3, hy2 + 7, STEEL); P(hx + 4, hy2 + 7, STEEL); P(hx + 2, hy2 + 8, STEEL); hand(); break;
     case 'bag': R(hx - 2, hy2 + 1, 5, 4, '#2a1a12'); P(hx, hy2 + 1, BRASS); hand(); break;
+    case 'grenade': // граната с длинной ручкой, занесённая для броска
+      pline(c, hx, hy2 + 1, hx + 1, hy2 - 5, WOOD); R(hx, hy2 - 9, 3, 4, '#4a4e40'); R(hx, hy2 - 9, 3, 1, '#6a6e5a'); P(hx + 1, hy2 - 10, STEEL_L); hand(); break;
     case 'shovel': // окопная лопата-дубина с заточенным краем
       pline(c, hx, hy2 + 1, hx + 2, hy2 - 10, WOOD); R(hx, hy2 - 15, 5, 5, STEEL); R(hx, hy2 - 15, 5, 1, STEEL_L); P(hx + 4, hy2 - 11, '#5a2a1a'); hand();
       break;
@@ -603,7 +612,7 @@ export function miniSprite(kind: string, frame = 0): HTMLCanvasElement {
   const c = cv.getContext('2d')!;
   c.translate(1, 1);
   const R = (x: number, y: number, w: number, h: number, col: string) => prect(c, x, y, w, h, col);
-  const coat = st.coat ?? '#4a4232', legs = st.legs ?? shade(coat, -0.4), skin = st.skin ?? '#c4ac90';
+  const coat = st.bare ? (st.skin ?? '#6e2a22') : st.coat ?? '#4a4232', legs = st.bare ? shade(coat, -0.15) : st.legs ?? shade(coat, -0.4), skin = st.skin ?? '#c4ac90';
   const step = frame % 2 === 1 ? (frame === 1 ? 1 : -1) : 0;
   // ноги
   if (st.dress) { R(2, 10, 6, 4, shade(coat, -0.15)); R(3, 14, 1, 1, INK); R(6, 14, 1, 1, INK); }
@@ -645,6 +654,7 @@ export function miniSprite(kind: string, frame = 0): HTMLCanvasElement {
     case 'saber': R(9, 7, 1, 5, STEEL_L); R(8, 10, 1, 1, BRASS); break;
     case 'hammer': case 'wrench': case 'shovel': R(9, 6, 1, 5, WOOD); R(8, 6, 3, 2, STEEL); break;
     case 'bag': R(8, 9, 3, 3, '#6a5a3a'); break;
+    case 'grenade': R(9, 6, 1, 4, WOOD); R(8, 4, 3, 2, '#4a4e40'); break;
     case 'knife': R(9, 9, 1, 3, STEEL_L); R(8, 9, 1, 1, BRASS); break;
     case 'pistol': R(9, 8, 3, 1, '#3a3a36'); ppx(c, 11, 8, STEEL_L); break;
     case 'sawnoff': R(8, 9, 4, 1, '#3a3a36'); ppx(c, 11, 8, STEEL_L); break;

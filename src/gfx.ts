@@ -15,11 +15,12 @@ interface Style {
   hatC?: string; trim?: string; belt?: string; apron?: string;
   dress?: boolean; collar?: boolean; mask?: boolean; band?: boolean; sash?: boolean; hood?: boolean; longHair?: boolean; goggles?: boolean; cuirass?: boolean;
   undead?: boolean; tanks?: boolean;
+  bare?: boolean; // без одежды (демоны): кожа вместо шинели, набедренная повязка
   armband?: string; // повязка на рукаве
   horns?: string; eyes?: string; // рога (цвет) и горящие глаза — у демонов и ведьм ковена
   puttees?: string; webbing?: string; respirator?: boolean; tabs?: string; number?: boolean; // number — нашивка с номером (заключённые) // военная форма: обмотки, ремни с подсумками, противогаз, петлицы
   limbs?: Partial<Record<string, string>>; // утраченные части тела и протезы (prosthetics.ts) — видны на фигурке // траншейные мертвецы: гнилая кожа, светящиеся глаза; газовые баллоны за спиной
-  weapon?: 'saber' | 'rifle' | 'fork' | 'musket' | 'hammer' | 'staff' | 'pole' | 'bottle' | 'book' | 'wrench' | 'bag' | 'knife' | 'pistol' | 'goad' | 'shovel' | 'sawnoff' | 'shotgun' | 'mg';
+  weapon?: 'saber' | 'rifle' | 'fork' | 'musket' | 'hammer' | 'staff' | 'pole' | 'bottle' | 'book' | 'wrench' | 'bag' | 'knife' | 'pistol' | 'goad' | 'shovel' | 'sawnoff' | 'shotgun' | 'mg' | 'grenade';
   scale?: number;
 }
 
@@ -128,6 +129,11 @@ export const STYLES: Record<string, Style> = {
   refugee2: { coat: '#4a4038', legs: '#2e2a24', hair: '#3a2e24', skin: '#b89c84', beard: '#4a3e30', weapon: 'bag' },
   refugee_kid: { coat: '#4a4440', dress: true, skin: '#d0b498', hair: '#5a3a22', longHair: true, scale: 0.75 },
   // ковен: жуткие старухи-ведьмы и старшие демоны в человеческом облике
+  // траншейное море: мертвецы-гренадеры и штурмовики, культисты в капюшонах
+  dead_gren: { coat: '#45473a', legs: '#28281f', belt: '#3a2a1a', webbing: '#5a5640', hat: 'cap', hatC: '#2e3024', skin: '#8e9e7c', undead: true, weapon: 'grenade' },
+  dead_storm: { coat: '#3a3c32', legs: '#24241e', belt: '#3a2a1a', webbing: '#4a4a3a', hat: 'helmet', hatC: '#55585a', skin: '#86967a', mask: true, undead: true, weapon: 'hammer', scale: 1.05 },
+  cult_k: { coat: '#2a1c1e', legs: '#1a1416', belt: '#4a2a1a', hood: true, weapon: 'knife' },
+  cult_g: { coat: '#2e2224', legs: '#1c1618', belt: '#4a2a1a', hood: true, weapon: 'rifle' },
   // Вольница: шайка из траншей — бандиты, анархисты, беглые и прочие
   arthur: { coat: '#3a2a34', legs: '#1e1a1e', belt: '#2a1d12', trim: '#9a8048', collar: true, skin: '#d4bca4', hair: '#b09868', weapon: 'saber' },
   vol_orator: { coat: '#3a3a30', legs: '#24241e', hat: 'flatcap', hatC: '#1a1a16', armband: '#141210', skin: '#c0a488', beard: '#4a3a2a', weapon: 'book' },
@@ -153,8 +159,8 @@ export const STYLES: Record<string, Style> = {
   crone: { coat: '#2a2622', dress: true, apron: '#3a3226', skin: '#a8a494', hair: '#d0ccc0', longHair: true, eyes: '#c8ff60', weapon: 'staff' },
   crone2: { coat: '#1e1c1e', dress: true, hood: true, weapon: 'staff' },
   crone3: { coat: '#2e2a24', dress: true, skin: '#9a9a8a', hair: '#8a8a80', longHair: true, eyes: '#c8ff60', weapon: 'bag' },
-  demon: { coat: '#24161a', legs: '#1a1012', belt: '#4a2a1a', trim: '#7a5a2a', skin: '#6e2a22', horns: '#d0c4a8', eyes: '#ffb040', scale: 1.15 },
-  demon2: { coat: '#1a1418', dress: true, skin: '#4e2a2e', horns: '#c0b498', eyes: '#ff7030', scale: 1.15, weapon: 'staff' },
+  demon: { bare: true, belt: '#2a1a14', skin: '#6e2a22', horns: '#d0c4a8', eyes: '#ffb040', scale: 1.15 }, // без одежды: голое красное тело, набедренная повязка
+  demon2: { bare: true, belt: '#1e1416', skin: '#4e2a2e', horns: '#c0b498', eyes: '#ff7030', scale: 1.15, weapon: 'staff' },
   // знахари — народные колдуны
   wise_fen: { coat: '#3a3a2c', dress: true, apron: '#4a5232', hat: 'bonnet', hatC: '#2a2c22', skin: '#c4ae98', hair: '#b0aca4', longHair: true, weapon: 'staff' },
   wise_moss: { coat: '#4a3e2c', legs: '#2a241c', apron: '#5a4a30', hat: 'flatcap', hatC: '#2e2a20', skin: '#c0a488', beard: '#c0bcb0', weapon: 'staff' },

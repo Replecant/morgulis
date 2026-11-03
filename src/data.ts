@@ -58,6 +58,7 @@ export const WEAPONS: Record<string, Weapon> = {
   oldrifle:  { name: 'Гнилая винтовка', type: 'ranged', range: 9, opt: 5, atk: -1, dmg: [3, 5] },
   gasbreath: { name: 'Газовый выдох', type: 'ranged', closePen: 0, range: 3, opt: 3, atk: 1, dmg: [2, 3], ignoreCover: true, splash: [1, 2], poison: true, gas: true },
   deadfist:  { name: 'Кулаки', type: 'melee', atk: 1, dmg: [2, 3] },
+  deadgrenade: { name: 'Старая граната', type: 'ranged', closePen: 0, range: 5, opt: 5, atk: 0, dmg: [3, 5], ammo: 2, ignoreCover: true, splash: [2, 3] }, // мертвец-гренадер: две на бой, взрыв задевает и своих
   trenchclub:{ name: 'Траншейная дубинка', type: 'melee', atk: 1, dmg: [3, 5] },
   spade:     { name: 'Сапёрная лопатка', type: 'melee', atk: 0, dmg: [3, 6] },
   rdagger:   { name: 'Ритуальный кинжал', type: 'melee', atk: 1, dmg: [2, 4], antiDemon: 3 },
@@ -189,6 +190,14 @@ export const ENEMIES: Record<string, UnitBase> = {
   // газовый мертвец — смертник: бредёт на отряд, выдыхает газ, а убитый — лопается облаком газа на соседние клетки
   dead_gas:     E('dead_gas', 'Газовый мертвец', 'dead_gas', 9, 3, ['gasbreath'], 'melee', 1, 9),
   dead_sapper:  E('dead_sapper', 'Мертвец-сапёр в панцире', 'dead_sapper', 16, 2, ['spade'], 'melee', 3, 10, { armor: 2 }),
+  // траншейное море: мертвецы бывшего фронта Империи и баронов-сепаратистов
+  // гренадер швыряет старые гранаты, пока есть, потом идёт врукопашную; убитый — иногда рвётся гранатой на поясе
+  dead_gren:    E('dead_gren', 'Мертвец-гренадер', 'dead_gren', 9, 3, ['deadgrenade', 'deadfist'], 'ranged', 1, 9),
+  // штурмовик — единственный быстрый мертвец: каска, маска, траншейная дубинка
+  dead_storm:   E('dead_storm', 'Траншейный штурмовик', 'dead_storm', 12, 5, ['trenchclub'], 'melee', 3, 11, { armor: 1 }),
+  // культисты траншейного моря — люди, что служат демонам; ходят с ними одной сворой
+  cultist:      E('cultist', 'Культист', 'cult_k', 7, 4, ['knife'], 'melee', 2, 10),
+  cultist_gun:  E('cultist_gun', 'Культист с карабином', 'cult_g', 7, 4, ['carbine', 'knife'], 'ranged', 2, 10),
 };
 
 export interface BattleDef {
@@ -246,8 +255,12 @@ export function battleDef(id: string, _flags: Record<string, boolean | undefined
       lights: [[12, 3, 220, '#6a9a8a'], [3, 10, 110, '#e8c070']],
     };
   }
-  if (id.startsWith('dsq_')) { // отряд демонов в лесу у ковена: состав в id (dsq_imp_hound_demon)
-    const kinds = id.slice(4).split('_'), pos = [{ x: 19, y: 5 }, { x: 19, y: 9 }, { x: 21, y: 7 }];
+  if (id.startsWith('dsqh_')) { // свора культистов и демонов в траншейном море: состав в id (dsqh_cultist+imp+hound)
+    const kinds = id.slice(5).split('+'), t = trenchBattle('trench1'), pos = [{ x: 19, y: 4 }, { x: 20, y: 9 }, { x: 22, y: 6 }, { x: 21, y: 11 }];
+    return { ...t, id, title: 'Культ в траншеях', enemies: kinds.slice(0, 4).map((k, i) => ({ t: k, ...pos[i] })), lights: [[12, 6, 160, '#c86a40'], [3, 7, 110, '#e8c070']] };
+  }
+  if (id.startsWith('dsq_')) { // отряд демонов в лесу у ковена: состав в id (dsq_imp+hound+demon)
+    const kinds = id.slice(4).split('+'), pos = [{ x: 19, y: 5 }, { x: 19, y: 9 }, { x: 21, y: 7 }];
     const f = battleDef('loyal2', _flags);
     return { ...f, id, title: 'Демоны в тумане', enemies: kinds.map((t, i) => ({ t, ...pos[i] })), lights: [[12, 6, 200, '#9aff60'], [3, 7, 110, '#e8c070']] };
   }
@@ -376,7 +389,7 @@ function trenchBattle(id: string): BattleDef {
     trench3: [{ t: 'dead_sapper', x: 19, y: 7 }, { t: 'dead_soldier', x: 20, y: 4 }, { t: 'dead_soldier', x: 21, y: 10 }, { t: 'dead_gas', x: 22, y: 6 }],
   };
   return {
-    id, title: 'Старый фронт', theme: 'trench',
+    id, title: id.startsWith('trench+') ? 'Траншейное море' : 'Старый фронт', theme: 'trench',
     map: [
       '.....#....x..x.....,....',
       '..c..#...........T......',
@@ -394,7 +407,8 @@ function trenchBattle(id: string): BattleDef {
       '........................',
     ],
     players: [[3, 6], [3, 8], [2, 5], [2, 9]],
-    enemies: comps[id] ?? comps.trench1,
+    // мертвецы траншейного моря: состав в id (trench+dead_gren+dead_storm…)
+    enemies: id.startsWith('trench+') ? id.slice(7).split('+').slice(0, 4).map((t, i) => ({ t, ...[{ x: 19, y: 4 }, { x: 20, y: 9 }, { x: 22, y: 6 }, { x: 21, y: 11 }][i] })) : comps[id] ?? comps.trench1,
     lights: [[12, 6, 150, '#a8d070'], [3, 7, 110, '#e8c070']],
   };
 }

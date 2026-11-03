@@ -162,7 +162,7 @@ function polyAt(pts: number[][], s: number): Pt & { dx: number } {
 }
 
 // группы траншейных мертвецов: бродят по старому фронту, медленнее отряда
-interface DeadGroup { id: string; kinds: string[]; x: number; y: number; tx: number; ty: number; alive: boolean; respawn: number; calm: number; seen: boolean }
+interface DeadGroup { id: string; kinds: string[]; x: number; y: number; tx: number; ty: number; alive: boolean; respawn: number; calm: number; seen: boolean; hell?: boolean } // hell — бредут по траншейному морю
 const DEAD_START: [string, string[], number, number][] = [
   ['trench1', ['dead_soldier', 'dead_rifle', 'dead_soldier'], -600, 500],
   ['trench2', ['dead_gas', 'dead_soldier', 'dead_rifle'], -330, 860],
@@ -184,7 +184,7 @@ const inNorth = (q: Pt) => q.y < NORTH_Y;
 // лоялисты старого режима: редкие группы прячутся в лесу, подальше от дорог
 // ------------------------------------------------------------ стычки между отрядами
 // Патрули бьют тех, кого их господин считает разбойниками; бандиты гоняют голодных. Отряд может вступить за одну из сторон.
-export interface ClashSide { kind: 'patrol' | 'band' | 'hungry' | 'loyal'; name: string; units: string[]; ref: object }
+export interface ClashSide { kind: 'patrol' | 'band' | 'hungry' | 'loyal' | 'dead' | 'cult'; name: string; units: string[]; ref: object }
 export interface Clash { x: number; y: number; a: ClashSide; b: ClashSide; until: number; offered: boolean; seed: number; met: boolean } // met — стороны сошлись, идёт перестрелка
 const PATROL_UNITS: Record<PatrolOwner, string[]> = {
   baron: ['baron_soldier', 'baron_soldier', 'baron_soldier'], baroness: ['bsoldier', 'bsoldier', 'bsoldier'],
@@ -195,7 +195,7 @@ export const PATROL_NAME: Record<PatrolOwner, string> = { baron: 'Патруль
 const strength = (units: string[]) => units.reduce((s, k) => s + (ENEMIES[k]?.maxHp ?? 8) * ((ENEMIES[k]?.atkR ?? 2) + 4), 0);
 interface Loyal { id: number; kinds: string[]; x: number; y: number; tx: number; ty: number; alive: boolean; respawn: number; calm: number; seen: boolean }
 // отряды демонов: бродят по лесу вокруг ковена — бес, рогатый демон, адская гончая в разных сочетаниях
-interface DemonSquad { id: number; kinds: string[]; x: number; y: number; tx: number; ty: number; alive: boolean; respawn: number; calm: number; seen: boolean }
+interface DemonSquad { id: number; kinds: string[]; x: number; y: number; tx: number; ty: number; alive: boolean; respawn: number; calm: number; seen: boolean; hell?: boolean } // hell — свора культа в траншейном море
 const COVEN_AT = { x: -420, y: -560 }, COVEN_R = 520;
 const DSQ_START: [number, number, string[]][] = [[-700, -430, ['hound', 'imp']], [-180, -720, ['demon', 'imp']], [-470, -230, ['hound', 'hound', 'imp']], [-640, -800, ['demon', 'hound']]];
 const nearCoven = (q: Pt, r = COVEN_R) => dist(q, COVEN_AT) < r;
@@ -236,6 +236,30 @@ function deserterRoll(): string[] {
 const rollFor = (fac: Band['fac']) => (fac === 'deserter' ? deserterRoll() : bandRoll());
 const LOYAL_START: [number, number][] = [[880, -620], [1420, -620], [300, -450]];
 const inHell = (q: Pt) => q.x > HELL_X && !peaksAt(q, 40); // север отрезан горами
+// ------------------------------------------------------------ траншейное море: мертвецы и культ — враждуют между собой
+const HELL_DEAD_START: [number, number][] = [[2700, 600], [2900, 1500], [2550, 1900], [3000, 2250], [2850, 250]];
+const HELL_CULT_START: [number, number][] = [[2980, 900], [2720, 2150], [3080, 1700]];
+/** Где бродят: в море траншей, подальше от Вольницы, Поста 314 и края карты. */
+const hellWild = (q: Pt) => inHell(q) && q.y > 60 && q.y < WH - 80 && q.x < WW - 50 && !LOCS.some((l) => l.kind !== 'poi' && dist(l, q) < 220);
+const pickW = (pool: [string, number][]) => { let r = Math.random() * pool.reduce((s, [, w]) => s + w, 0); return pool.find(([, w]) => (r -= w) < 0)![0]; };
+/** Мертвецы бывшего фронта: 3–4, среди них — гренадеры и штурмовики, характерные для моря траншей. */
+function hellDeadRoll(): string[] {
+  const n = 3 + (Math.random() < 0.4 ? 1 : 0);
+  return Array.from({ length: n }, () => pickW([['dead_soldier', 3], ['dead_rifle', 2], ['dead_gren', 2], ['dead_storm', 2], ['dead_gas', 1], ['dead_sapper', 1]]));
+}
+/** Свора культа: 1–2 культиста и демоны (бес, гончая, изредка рогатый) — всего 3–4. */
+function cultRoll(): string[] {
+  const total = 3 + (Math.random() < 0.4 ? 1 : 0), nc = 1 + (Math.random() < 0.5 ? 1 : 0), nd = total - nc;
+  const out: string[] = Array.from({ length: nc }, () => (Math.random() < 0.5 ? 'cultist' : 'cultist_gun'));
+  let horned = false;
+  for (let i = 0; i < nd; i++) { const k = !horned && Math.random() < 0.25 ? 'demon' : pickW([['imp', 3], ['hound', 2]]); if (k === 'demon') horned = true; out.push(k); }
+  return out;
+}
+/** Место для новой группы в море — подальше от отряда. */
+function hellSpot(p: Pt): Pt | null {
+  for (let k = 0; k < 30; k++) { const q = { x: HELL_X + 120 + Math.random() * (WW - HELL_X - 180), y: 120 + Math.random() * (WH - 240) }; if (hellWild(q) && dist(q, p) > 450) return q; }
+  return null;
+}
 const inFront = (q: Pt) => q.x > FRONT_W0 + 40 && q.x < FRONT_X - 20 && q.y > 80 && q.y < SOUTH_Y - 80;
 // едкие облака: плывут над пустошью по ветру; без противогаза газ обжигает лёгкие
 interface Cloud { x: number; y: number; r: number; vx: number; vy: number; seed: number }
@@ -365,9 +389,11 @@ export const World = {
     this.inGas = false; this.gasDose = 0; this.filterUse = 0; this.clashes = []; this.clashHit = null;
     this.demons = [0.6, 3.6].map((a, i) => { const q = lakeRing(a, 1.1); return { id: i, x: q.x, y: q.y, tx: q.x, ty: q.y, alive: true, respawn: 0, calm: 0, seen: false, a }; });
     this.hungry = HUNGRY_START.map(([x, y], i) => ({ id: i, kinds: i % 2 ? ['hungry2', 'hungry', 'hungry'] : ['hungry', 'hungry2'], x, y, tx: x, ty: y, alive: true, respawn: 0, calm: 0, seen: false }));
-    this.dead = DEAD_START.map(([id, kinds, x, y]) => ({ id, kinds, x, y, tx: x, ty: y, alive: true, respawn: 0, calm: 0, seen: false }));
+    this.dead = [...DEAD_START.map(([id, kinds, x, y]) => ({ id, kinds, x, y, tx: x, ty: y, alive: true, respawn: 0, calm: 0, seen: false })),
+      ...HELL_DEAD_START.map(([x, y], i) => ({ id: 'hell' + i, kinds: hellDeadRoll(), x, y, tx: x, ty: y, alive: true, respawn: 0, calm: 0, seen: false, hell: true }))];
     this.patrols = PATROL_PATHS.map((path, i) => { const len = polyLen(path); return { path, len, s: i === 0 ? len * 0.2 : i >= 3 ? len * ((0.15 + (i - 3) * 0.3) % 1) : 0, dir: 1 as const, wait: 0, speed: PATROL_OWNER[i] === 'wfcar' ? PATROL_SPEED * 2 : i ? PATROL_SPEED * 1.15 : PATROL_SPEED * 0.9, owner: PATROL_OWNER[i] }; });
-    this.dsq = DSQ_START.map(([x, y, kinds], i) => ({ id: i, kinds, x, y, tx: x, ty: y, alive: true, respawn: 0, calm: 0, seen: false }));
+    this.dsq = [...DSQ_START.map(([x, y, kinds], i) => ({ id: i, kinds, x, y, tx: x, ty: y, alive: true, respawn: 0, calm: 0, seen: false })),
+      ...HELL_CULT_START.map(([x, y], i) => ({ id: 10 + i, kinds: cultRoll(), x, y, tx: x, ty: y, alive: true, respawn: 0, calm: 0, seen: false, hell: true }))];
     this.loyal = LOYAL_START.map(([x, y], i) => ({ id: i, kinds: i === 1 ? ['loyal_off', 'loyalist', 'loyalist'] : ['loyalist', 'loyalist2'], x, y, tx: x, ty: y, alive: true, respawn: 0, calm: 0, seen: false }));
   },
   patrolPos(pt: Patrol) { const q = polyAt(pt.path, pt.s); return pt.off ? { ...q, x: q.x + pt.off.x, y: q.y + pt.off.y } : q; },
@@ -493,9 +519,11 @@ export const World = {
   },
 
   /** Сторона стычки по отряду на карте. */
-  sideOf(ref: Patrol | Band | Hungry | Loyal): ClashSide {
+  sideOf(ref: Patrol | Band | Hungry | Loyal | DeadGroup | DemonSquad): ClashSide {
     if ('owner' in ref) return { kind: 'patrol', name: PATROL_NAME[ref.owner], units: PATROL_UNITS[ref.owner], ref };
     if ('fac' in ref) return { kind: 'band', name: ref.fac === 'deserter' ? 'Дезертиры' : 'Бандиты', units: ref.kinds, ref };
+    if (this.dead.includes(ref as DeadGroup)) return { kind: 'dead', name: 'Мертвецы', units: (ref as DeadGroup).kinds, ref };
+    if (this.dsq.includes(ref as DemonSquad)) return { kind: 'cult', name: 'Культ', units: (ref as DemonSquad).kinds, ref };
     if (this.hungry.includes(ref as Hungry)) return { kind: 'hungry', name: 'Голодные бандиты', units: (ref as Hungry).kinds, ref };
     return { kind: 'loyal', name: 'Лоялисты', units: (ref as Loyal).kinds, ref };
   },
@@ -525,6 +553,12 @@ export const World = {
         : pt.owner === 'revo' ? this.loyal : this.bands.filter((b) => b.fac === 'deserter');
       const t = foes.find((g) => g.alive && !this.inClash(g) && dist(g, q) < 230);
       if (t) this.startClash(this.sideOf(pt), this.sideOf(t));
+    }
+    // траншейное море: мертвецы и культ враждуют — заметив друг друга, сходятся насмерть
+    for (const g of this.dead) {
+      if (!g.hell || !g.alive || this.inClash(g)) continue;
+      const t = this.dsq.find((s) => s.hell && s.alive && !this.inClash(s) && dist(s, g) < 200);
+      if (t) this.startClash(this.sideOf(g), this.sideOf(t));
     }
     // погоня: охотник (патруль или бандиты) идёт на добычу; кто слабее — бежит, кто сильнее — принимает бой.
     // Перестрелка начинается, только когда сошлись вплотную; ушли далеко — погоня брошена.
@@ -687,15 +721,20 @@ export const World = {
   /** Отряды демонов: кружат по лесу у ковена; заметив отряд рядом — идут на него, но от ковена далеко не уходят. Гончие быстрее. */
   updateDsq(dt: number) {
     const p = this.party, hours = dt * HOURS_PER_SEC;
-    const ok = (q: Pt) => nearCoven(q) && !nearCoven(q, 130) && q.y < NORTH_Y - 40 && !nearRoad(q, 50);
+    const okC = (q: Pt) => nearCoven(q) && !nearCoven(q, 130) && q.y < NORTH_Y - 40 && !nearRoad(q, 50);
     for (const g of this.dsq) {
+      if (g.alive && this.inClash(g)) { g.seen = dist(g, p) < 260 * Weather.sightK(); continue; }
       if (!g.alive) {
-        if (G.clock >= g.respawn) { const s0 = DSQ_START[g.id]; if (dist({ x: s0[0], y: s0[1] }, p) > 420) { g.alive = true; g.x = g.tx = s0[0]; g.y = g.ty = s0[1]; } }
+        if (G.clock >= g.respawn) {
+          if (g.hell) { const q = hellSpot(p); if (q) { g.alive = true; g.kinds = cultRoll(); g.x = g.tx = q.x; g.y = g.ty = q.y; g.calm = 0; } continue; }
+          const s0 = DSQ_START[g.id]; if (dist({ x: s0[0], y: s0[1] }, p) > 420) { g.alive = true; g.x = g.tx = s0[0]; g.y = g.ty = s0[1]; }
+        }
         continue;
       }
+      const ok = g.hell ? hellWild : okC;
       const d = dist(g, p);
       g.seen = d < 260 * Weather.sightK();
-      const chase = !Debug.invisible && d < 170 && G.clock >= g.calm && nearCoven(p, COVEN_R + 120) && !nearCoven(p, 110);
+      const chase = !Debug.invisible && d < 170 && G.clock >= g.calm && (g.hell ? hellWild(p) : nearCoven(p, COVEN_R + 120) && !nearCoven(p, 110));
       if (chase) { g.tx = p.x; g.ty = p.y; }
       else if (dist(g, { x: g.tx, y: g.ty }) < 4) {
         for (let k = 0; k < 10; k++) { const a = Math.random() * TAU, t = { x: g.x + Math.cos(a) * 180, y: g.y + Math.sin(a) * 180 }; if (ok(t)) { g.tx = t.x; g.ty = t.y; break; } }
@@ -736,22 +775,25 @@ export const World = {
   updateDead(dt: number) {
     const p = this.party, hours = dt * HOURS_PER_SEC;
     for (const g of this.dead) {
+      if (g.alive && this.inClash(g)) { g.seen = dist(g, p) < 320 * Weather.sightK(); continue; }
       if (!g.alive) {
-        // павшие снова поднимаются — через двое суток, подальше от отряда
+        // павшие снова поднимаются — через двое суток, подальше от отряда (в море траншей — новая группа в новом месте)
         if (G.clock >= g.respawn) {
+          if (g.hell) { const q = hellSpot(p); if (q) { g.alive = true; g.kinds = hellDeadRoll(); g.x = g.tx = q.x; g.y = g.ty = q.y; g.calm = 0; } continue; }
           const s0 = DEAD_START.find((d) => d[0] === g.id)!;
           if (dist({ x: s0[2], y: s0[3] }, p) > 400) { g.alive = true; g.x = g.tx = s0[2]; g.y = g.ty = s0[3]; }
         }
         continue;
       }
+      const zone = g.hell ? hellWild : inFront;
       const d = dist(g, p);
       g.seen = d < 320;
-      const chase = !Debug.invisible && d < 190 && G.clock >= g.calm && inFront(p);
+      const chase = !Debug.invisible && d < 190 && G.clock >= g.calm && zone(p);
       if (chase) { g.tx = p.x; g.ty = p.y; }
       else if (dist(g, { x: g.tx, y: g.ty }) < 4) {
         for (let k = 0; k < 8; k++) {
           const a = Math.random() * TAU, t = { x: g.x + Math.cos(a) * 160, y: g.y + Math.sin(a) * 160 };
-          if (inFront(t)) { g.tx = t.x; g.ty = t.y; break; }
+          if (zone(t)) { g.tx = t.x; g.ty = t.y; break; }
         }
       }
       const sp = (chase ? 42 : 22) * hours, dd = dist(g, { x: g.tx, y: g.ty });
@@ -796,6 +838,7 @@ export const World = {
     const g = this.deadHit, p = this.party; if (!g) return;
     g.calm = G.clock + hours;
     const a = Math.atan2(g.y - p.y, g.x - p.x);
+    if (g.hell) { g.tx = clamp(g.x + Math.cos(a) * 200, HELL_X + 80, WW - 60); g.ty = clamp(g.y + Math.sin(a) * 200, 80, WH - 80); return; }
     g.tx = clamp(g.x + Math.cos(a) * 200, FRONT_W0 + 60, FRONT_X - 40); g.ty = clamp(g.y + Math.sin(a) * 200, 100, SOUTH_Y - 100);
   },
 
@@ -1033,7 +1076,9 @@ export const World = {
     }
     for (const g of this.dsq) {
       if (!g.alive || !g.seen) continue;
-      const lbl = G.clock < g.calm ? 'Демоны (отстали)' : dist(g, p) < 170 && nearCoven(p, COVEN_R + 120) ? 'Демоны — идут на вас!' : 'Демоны';
+      if (this.clashes.some((c) => c.met && c.b.ref === g)) continue; // в стычке — подпись у стычки
+      const who = g.hell ? 'Культ' : 'Демоны';
+      const lbl = G.clock < g.calm ? `${who} (отстали)` : dist(g, p) < 170 && (g.hell ? hellWild(p) : nearCoven(p, COVEN_R + 120)) ? `${who} — идут на вас!` : who;
       c.font = 'italic 12px "Old Standard TT", serif'; c.textAlign = 'center';
       c.fillStyle = 'rgba(0,0,0,0.85)'; c.fillText(lbl, g.x - cx + 1, g.y - cy - 39);
       c.fillStyle = '#e08a60'; c.fillText(lbl, g.x - cx, g.y - cy - 40);
@@ -1060,10 +1105,10 @@ export const World = {
       c.textAlign = 'left';
     }
     for (const g of this.dead) {
-      if (!g.alive || !g.seen) continue;
+      if (!g.alive || !g.seen || this.clashes.some((cl) => cl.met && cl.a.ref === g)) continue; // в стычке — подпись у стычки
       c.font = 'italic 12px "Old Standard TT", serif'; c.textAlign = 'center';
       c.fillStyle = 'rgba(0,0,0,0.85)'; c.fillText('Мертвецы', g.x - cx + 1, g.y - cy - 39);
-      c.fillStyle = '#a8d070'; c.fillText(G.clock < g.calm ? 'Мертвецы (потеряли след)' : dist(g, p) < 190 && inFront(p) ? 'Мертвецы — идут на вас!' : 'Мертвецы', g.x - cx, g.y - cy - 40);
+      c.fillStyle = '#a8d070'; c.fillText(G.clock < g.calm ? 'Мертвецы (потеряли след)' : dist(g, p) < 190 && (g.hell ? hellWild(p) : inFront(p)) ? 'Мертвецы — идут на вас!' : 'Мертвецы', g.x - cx, g.y - cy - 40);
       c.textAlign = 'left';
     }
     this.patrols.forEach((pt, i) => {

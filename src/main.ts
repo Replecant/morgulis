@@ -122,6 +122,7 @@ Combat.hooks = {
     if (id.startsWith('loyal')) { World.killLoyal(); Dialog.start('after_loyal'); }
     if (id === 'coven') Dialog.start('after_coven');
     if (id.startsWith('dsq_')) { World.killDsq(); Dialog.start('after_dsq'); }
+    if (id.startsWith('dsqh_')) { World.killDsq(); Dialog.start('after_cult'); }
     if (id.startsWith('trench') && returnMode === 'crawl') Dialog.start('crawl_after_dead'); // засада в траншеях краулинга
     else if (id.startsWith('trench')) { World.killDead(); World.deadHit = null; Dialog.start('after_dead'); }
     if (Combat.wearNotes.length) toast(Combat.wearNotes.join(' '));
@@ -132,6 +133,7 @@ Combat.hooks = {
     const cap = id === 'coven' ? 'Ведьмы принесли вас в жертву'
       : id === 'lake' ? 'Морской демон утащил вас вглубь бездны'
       : id.startsWith('trench') ? 'Мертвецы теперь будут лакомиться вашей плотью'
+      : id.startsWith('dsqh_') ? 'Культ отдал вас демонам'
       : 'Ещё одна душа сгинула под взглядом Ока';
     const last = Save.latest();
     screen(
@@ -190,9 +192,9 @@ Debug.onTeleport = (id) => {
 };
 World.onPatrol = (owner) => Dialog.start(owner === 'baroness' ? 'enc_bpatrol' : owner === 'revo' ? 'enc_revo' : owner === 'winford' ? 'enc_wfpatrol' : owner === 'wfcar' ? 'enc_wfcar' : 'enc_patrol');
 World.onLoyal = () => Dialog.start('enc_loyal');
-World.onDsq = () => Dialog.start('enc_dsq');
+World.onDsq = () => Dialog.start(World.dsqHit?.hell ? 'enc_cult' : 'enc_dsq');
 World.onDiscover = (l) => toast(`Замечено: ${l.name}`);
-World.onDead = () => Dialog.start('enc_dead');
+World.onDead = () => Dialog.start(World.deadHit?.hell ? 'enc_hdead' : 'enc_dead');
 World.onHungry = () => Dialog.start('enc_hungry');
 World.onDemon = () => Dialog.start('enc_demon');
 World.onGas = (msg) => { toast(msg); refreshHud(); };
@@ -244,7 +246,7 @@ Dialog.onAction = (act) => {
   else if (act === 'battle_band') startBattle('band_' + (World.bandHit?.kinds.join('+') ?? 'bandit_gun+bandit_axe'));
   else if (act === 'band_calm') World.calmBand(24);
   else if (act === 'band_lose') World.calmBand(8);
-  else if (act === 'battle_dead') startBattle(World.deadHit?.id ?? 'trench1');
+  else if (act === 'battle_dead') { const g = World.deadHit; startBattle(g?.hell ? 'trench+' + g.kinds.join('+') : g?.id ?? 'trench1'); }
   else if (act === 'battle_trench_poi') { World.deadHit = null; startBattle('trench2'); }
   else if (act === 'dead_lose') World.calmDead(8);
   else if (act === 'battle_demon') startBattle('lake');
@@ -252,7 +254,7 @@ Dialog.onAction = (act) => {
   else if (act === 'battle_hungry') startBattle('hungry' + (World.hungryHit?.kinds.length ?? 2));
   else if (act === 'hungry_calm') World.calmHungry(48);
   else if (act === 'battle_coven') startBattle('coven');
-  else if (act === 'battle_dsq') startBattle('dsq_' + (World.dsqHit?.kinds.join('_') ?? 'imp_hound'));
+  else if (act === 'battle_dsq') startBattle((World.dsqHit?.hell ? 'dsqh_' : 'dsq_') + (World.dsqHit?.kinds.join('+') ?? 'imp+hound'));
   else if (act === 'dsq_calm') World.calmDsq(48);
   else if (act === 'dsq_lose') World.calmDsq(8);
   else if (act === 'battle_loyal') startBattle('loyal' + (World.loyalHit?.kinds.length ?? 2));

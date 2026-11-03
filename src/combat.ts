@@ -1152,6 +1152,14 @@ export const Combat = {
       for (const o of this.units.filter((o) => o !== u && !o.dead && cheb(o, u) <= 1)) await this.gasHit(o);
       return;
     }
+    if (u.base.id === 'dead_gren' && Math.random() < 0.5) { // гренадер: падая, разжимает руку — граната на поясе рвётся
+      this.burst(u.px, u.py - 8, '#e0a050', 30, 80); this.burst(u.px, u.py - 4, '#5a4a3a', 22, 60);
+      this.float(u, 'Взрыв!', '#f0b060'); this.shake = Math.max(this.shake, 6);
+      this.hooks.log(`${u.name} падает — и граната у него на поясе рвётся!`);
+      await sleep(250);
+      for (const o of this.units.filter((o) => o !== u && !o.dead && cheb(o, u) <= 1)) await this.damage(o, Math.max(1, randInt(2, 4) - (o.splinter ? 1 : 0)), false);
+      return;
+    }
     if (u.kind === 'imp') { // бес не оставляет тела — рассыпается в прах
       u.fled = true;
       this.burst(u.px, u.py - 10, '#6a5a50', 26, 70);
