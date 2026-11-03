@@ -248,6 +248,7 @@ Dialog.onAction = (act) => {
   else if (act === 'band_lose') World.calmBand(8);
   else if (act === 'battle_dead') { const g = World.deadHit; startBattle(g?.hell ? 'trench+' + g.kinds.join('+') : g?.id ?? 'trench1'); }
   else if (act === 'battle_trench_poi') { World.deadHit = null; startBattle('trench2'); }
+  else if (act === 'battle_hell_poi') { World.deadHit = null; startBattle('trench+dead_soldier+dead_storm+dead_rifle+dead_gren'); }
   else if (act === 'dead_lose') World.calmDead(8);
   else if (act === 'battle_demon') startBattle('lake');
   else if (act === 'demon_lose') World.calmDemon(12);

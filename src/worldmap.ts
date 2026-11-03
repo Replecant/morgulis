@@ -79,6 +79,11 @@ export const LOCS: Loc[] = [
   { id: 'wfcustoms2', name: 'Пограничная контора', kind: 'poi', x: -1730, y: 1250, talk: 'poi_wfcustoms', desc: 'Будка, шлагбаум и стол с печатями на въезде в земли Винферда.' },
   { id: 'deadend', name: 'Край Траншейного моря', kind: 'poi', x: 2235, y: 850, talk: 'poi_deadend', desc: 'Здесь обрываются тракт и рельсы. Дальше — Траншейное море.' },
   // ---------------- Траншейное море: найти можно только самому
+  { id: 'gravehill', name: 'Могильный холм', kind: 'poi', x: 2560, y: 1740, talk: 'poi_gravehill', desc: 'Холм, сплошь изрытый могилами: колья, каски, доски с номерами.' },
+  { id: 'heathen', name: 'Покинутое капище', kind: 'poi', x: 3010, y: 520, talk: 'poi_heathen', desc: 'Круг кольев с черепами и идолы из касок и штыков. Здесь давно никого нет.' },
+  { id: 'apost1', name: 'Заброшенный пост 209', kind: 'poi', x: 2780, y: 2060, talk: 'poi_apost1', desc: 'Имперский пост: бункеры распахнуты, внутри пусто.' },
+  { id: 'apost2', name: 'Заброшенный пост 156', kind: 'poi', x: 2920, y: 1260, talk: 'poi_apost2', desc: 'Имперский пост, взятый с бою: обгоревшие мешки, следы когтей на бетоне.' },
+  { id: 'scrapyard', name: 'Кладбище имперской техники', kind: 'poi', x: 2640, y: 400, talk: 'poi_scrapyard', desc: 'Ряды ржавых танков, грузовиков и орудий — и остов сухопутного корабля.' },
   { id: 'volnitsa', name: 'Вольница', kind: 'village', hidden: true, x: 2600, y: 1150, talk: 'loc_volnitsa', scene: 'volnitsa', desc: 'Круглые траншеи, землянки и воронки с грибами. Здесь собираются бандиты, анархисты и прочие сомнительные личности.' },
   { id: 'post314', name: 'Пост 314', kind: 'village', hidden: true, x: 2400, y: 1420, talk: 'loc_post314', scene: 'post314', desc: 'Передовой пункт остатков имперской армии у края моря траншей. Бетонные бункеры, гарнизон с семьями несёт вечный дозор и ждёт связи со столицей.' },
   { id: 'flare', name: 'Газовый факел', kind: 'poi', x: 230, y: 640, talk: 'poi_flare', desc: 'Вечный огонь над старой скважиной.' },
@@ -2063,6 +2068,36 @@ function drawLocIcon(c: CanvasRenderingContext2D, l: Loc, r: () => number) {
         for (const [bx, by] of [[8, 20], [30, 18], [16, 30], [34, 30]]) { prect(s, bx, by, 9, 4, '#6a6a62'); prect(s, bx, by - 1, 9, 1, '#3a3022'); prect(s, bx + 1, by + 1, 3, 1, '#0e0e0c'); ppx(s, bx + 7, by + 2, '#e0a050'); }
         prect(s, 42, 1, 1, 24, '#6a6a62'); ppx(s, 42, 0, '#ff5040'); pline(s, 42, 4, 36, 24, '#3a3a34'); pline(s, 42, 4, 48, 24, '#3a3a34');
         prect(s, 24, 6, 1, 13, '#3a3428'); prect(s, 25, 6, 6, 4, '#a8a290'); prect(s, 25, 6, 6, 1, '#9a8048');
+      });
+      break;
+    case 'gravehill': // могильный холм: горб земли, частокол кольев с касками и досок
+      stamp(c, x, y + 10, 40, 26, (s) => {
+        pellipse(s, 20, 18, 19, 8, '#3a3022'); pellipse(s, 20, 15, 14, 6, '#443a2a'); pellipse(s, 20, 12, 8, 4, '#4a3e2c');
+        for (let k = 0; k < 18; k++) { const gx = 5 + ((k * 7) % 31), gy = 8 + ((k * 5) % 13); prect(s, gx, gy - 4, 1, 4, k % 3 ? '#5a4a32' : '#6a6a62'); if (k % 3 === 0) prect(s, gx - 1, gy - 5, 3, 1, '#4a4e40'); else if (k % 3 === 1) prect(s, gx - 1, gy - 3, 3, 1, '#5a4a32'); }
+      });
+      break;
+    case 'heathen': // покинутое капище: круг кольев с черепами, кострище, идол из касок
+      stamp(c, x, y + 10, 34, 26, (s) => {
+        pellipse(s, 17, 16, 15, 7, '#2e2a22'); pellipse(s, 17, 16, 4, 2, '#141210');
+        for (let k = 0; k < 9; k++) { const a = (k / 9) * TAU, kx = Math.round(17 + Math.cos(a) * 12), ky = Math.round(15 + Math.sin(a) * 6); prect(s, kx, ky - 5, 1, 5, '#3a2c1e'); ppx(s, kx, ky - 6, '#c8c2ae'); }
+        prect(s, 16, 3, 2, 10, '#3a2c1e'); prect(s, 14, 4, 6, 2, '#4a4e40'); prect(s, 15, 7, 4, 2, '#4a4e40'); ppx(s, 17, 2, '#c8c2ae');
+      });
+      break;
+    case 'apost1': case 'apost2': // заброшенный пост: разваленный вал, тёмные бункеры, у второго — обгоревшее
+      stamp(c, x, y + 10, 40, 30, (s) => {
+        pellipse(s, 20, 18, 18, 9, '#2e2a22');
+        for (let k = 0; k < 40; k++) { if (k % 7 === 2) continue; const a = (k / 40) * TAU; ppx(s, Math.round(20 + Math.cos(a) * 17), Math.round(18 + Math.sin(a) * 8), k % 2 ? '#6a5e44' : '#54493a'); }
+        for (const [bx, by] of [[8, 13], [24, 12], [14, 21]]) { prect(s, bx, by, 8, 4, l.id === 'apost2' ? '#4a4a44' : '#5e5e56'); prect(s, bx, by - 1, 8, 1, '#3a3022'); prect(s, bx + 5, by + 1, 2, 3, '#0a0a08'); }
+        prect(s, 33, 4, 1, 14, '#4a4a44'); ppx(s, 32, 6, '#4a4a44'); ppx(s, 34, 9, '#4a4a44'); // сломанная мачта
+        if (l.id === 'apost2') for (let k = 0; k < 6; k++) ppx(s, 9 + k * 4, 19 + (k % 2), '#1a1612');
+      });
+      break;
+    case 'scrapyard': // кладбище техники: ряды ржавых танков и грузовиков, над ними — остов сухопутного корабля
+      stamp(c, x, y + 8, 60, 36, (s) => {
+        pellipse(s, 30, 24, 28, 10, '#2e2a22');
+        prect(s, 14, 4, 32, 12, '#4a3e30'); prect(s, 14, 4, 32, 1, '#6a5238'); for (let k = 0; k < 5; k++) prect(s, 17 + k * 6, 7, 3, 2, '#141210'); prect(s, 24, 0, 6, 4, '#4a3e30'); prect(s, 26, -3, 1, 3, '#3a3428');
+        for (let k = 0; k < 4; k++) { prect(s, 14 + k * 8, 16, 6, 3, '#3a3026'); } // гусеницы корабля
+        for (let k = 0; k < 6; k++) { const tx = 4 + k * 9, ty = 22 + (k % 2) * 6; prect(s, tx, ty, 7, 3, k % 3 ? '#5a4a36' : '#6a4a2a'); prect(s, tx + 2, ty - 2, 3, 2, '#5a4a36'); prect(s, tx + 5, ty - 1, 4, 1, '#4a3e30'); prect(s, tx, ty + 3, 7, 1, '#2a2218'); }
       });
       break;
     case 'deadend': // тупик: упор на рельсах, баррикада из шпал и мешков, знак
