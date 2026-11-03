@@ -53,6 +53,7 @@ export interface Unit {
   ai?: UnitBase['ai']; leader: boolean; demonic: boolean;
   dead: boolean; fled: boolean; terror: boolean; flip: boolean; flash: number; seed: number;
   cd: { summon: number; whisper: number };
+  goal?: number;      // ИИ стрелка: клетка-цель (укрытие), к которой он идёт — y * CW + x
 }
 
 type Action = { type: 'w' | 'a' | 'c' | 's'; key: string };
@@ -747,14 +748,15 @@ export const Combat = {
         if (!path || path.length < 2) break;
         await this.moveAlong(u, path); u.ap--;
       } else {
-        // стрелок: оценивает клетки — откуда можно стрелять, насколько укрыт от всех врагов, не слишком ли близко к ним
-        const opt = this.rangedTile(u), stay = this.tileScore(u, u, 0);
-        const moveBetter = opt && opt.path.length > 1 && opt.score > stay + 6;
-        if (here && (u.ap < 2 || !moveBetter)) { await this.attack(u, here.t, here.w); break; }
-        if (!moveBetter) break; // и стрелять не из чего, и лучшего места нет — затаиться
-        const toCover = opt!.cover > this.coverVsAll(u, u) + 5;
-        if (toCover) this.float(u, 'В укрытие', '#c8c0a0');
-        await this.moveAlong(u, opt!.path); u.ap--;
+        // стрелок: цель — лучшее укрытие поближе к отряду, на рабочей дистанции своего оружия (а не просто ближайшее);
+        // до него идёт за один-два хода, по пути стреляет, если уже стоит в укрытии с хорошим выстрелом
+        const goal = this.coverGoal(u), hereScore = this.goalScore(u, u, 0);
+        if (!goal || goal.path.length <= 1 || goal.score <= hereScore + 4) { if (here) await this.attack(u, here.t, here.w); break; }
+        const mv = this.mv(u), reachNow = goal.path.length - 1 <= mv;
+        if (here && !reachNow && (u.ap < 2 || (this.coverVsAll(u, u) >= 25 && here.c >= 55))) { await this.attack(u, here.t, here.w); break; }
+        if (reachNow && goal.cover > this.coverVsAll(u, u) + 5) this.float(u, 'В укрытие', '#c8c0a0');
+        else if (!reachNow) this.float(u, 'Перебежка', '#c8c0a0');
+        await this.moveAlong(u, reachNow ? goal.path : this.bound(u, goal.path[goal.path.length - 1])); u.ap--;
       }
     }
     u.ap = 0;
@@ -829,6 +831,54 @@ export const Combat = {
     if (lowHp) score += Math.min(nd, 10) * 2.5 - exposed * 10;   // ранен — держаться подальше и в укрытии
     if (!at) score -= nd * 6;                                     // стрелять не из чего — сблизиться (короткоствольные — тем более)
     return score;
+  },
+  /** Оценка клетки как цели для стрелка: укрытие важнее всего, затем рабочая дистанция до отряда, выстрел оттуда и путь. */
+  goalScore(u: Unit, n: Pt, turns: number) {
+    const foes = this.alive('player'); if (!foes.length) return -1e9;
+    const at = this.bestAttack(u, n), np = this.nearestPlayer(n)!, nd = dist(n, np);
+    const wk = at?.w ?? u.weapons.find((k) => WEAPONS[k].type === 'ranged' && !this.outOf(u, k)) ?? u.weapons[0], w = WEAPONS[wk];
+    const lowHp = u.hp <= u.maxHp * 0.35;
+    const want = (w.type === 'ranged' ? clamp((w.opt ?? 4) - 2, 2, 5) : 1) + (lowHp ? 3 : 0); // подойти поближе, но не в упор
+    let exposed = 0;
+    for (const p of foes) if (this.los(p, n)) { const c = this.coverOf(n, p); exposed += c >= 40 ? 0 : c >= 25 ? 0.4 : 1; }
+    let s = this.coverVsAll(u, n) * (lowHp ? 1.6 : 1.1) - exposed * 9 + (at ? at.c * 0.3 : -22) - Math.abs(nd - want) * 3.5 - turns * 2.5;
+    const cp = w.type === 'ranged' ? (w.closePen ?? 3) : 0;
+    if (foes.some((p) => cheb(p, n) === 1)) s -= cp > 0 ? 15 + cp * 8 : 6; // длинным стволом в упор — плохо, тем хуже, чем длиннее ствол
+    for (const o of this.units) if (o !== u && !o.dead && o.team === u.team && cheb(o, n) === 1) s -= 3; // не кучковаться под гранату
+    return s;
+  },
+  /** Перебежка к далёкой цели: из клеток в пределах хода — та, что ближе к цели и лучше укрыта (от укрытия к укрытию, а не по открытому). */
+  bound(u: Unit, goal: Pt): Pt[] {
+    const toGoal = bfs(CW, CH, goal.x, goal.y, (x, y) => this.free(x, y) || (x === u.x && y === u.y), null);
+    const reach = bfs(CW, CH, u.x, u.y, (x, y) => this.free(x, y), this.mv(u));
+    const gd = (q: Pt) => toGoal.get(q.y * CW + q.x)?.d ?? 99, d0 = gd(u);
+    let best: Pt | null = null, bs = -1e9;
+    for (const n of reach.values()) {
+      if (!n.d || gd(n) >= d0) continue; // только вперёд, к цели
+      let exposed = 0;
+      for (const p of this.alive('player')) if (this.los(p, n)) { const c = this.coverOf(n, p); exposed += c >= 40 ? 0 : c >= 25 ? 0.4 : 1; }
+      const sc = this.coverVsAll(u, n) * 0.8 - exposed * 6 - gd(n) * 2.5;
+      if (sc > bs) { bs = sc; best = n; }
+    }
+    return best ? pathTo(reach, CW, best.x, best.y) : [];
+  },
+  /** Лучшее укрытие на всём поле (с учётом, сколько ходов до него идти); занятые другими стрелками клетки не берёт. */
+  coverGoal(u: Unit) {
+    const reach = bfs(CW, CH, u.x, u.y, (x, y) => this.free(x, y), null), mv = Math.max(1, this.mv(u));
+    const claimed = new Set(this.units.filter((o) => o !== u && !o.dead && o.team === u.team && o.goal !== undefined).map((o) => o.goal!));
+    let best: { n: Pt & { d: number }; score: number } | null = null;
+    for (const n of reach.values()) {
+      if (n.d && claimed.has(n.y * CW + n.x)) continue;
+      const sc = this.goalScore(u, n, Math.ceil(n.d / mv));
+      if (!best || sc > best.score) best = { n, score: sc };
+    }
+    if (u.goal !== undefined && best) { // прежняя цель, если она почти так же хороша — чтобы не метаться
+      const g = reach.get(u.goal);
+      if (g && !claimed.has(u.goal)) { const sc = this.goalScore(u, g, Math.ceil(g.d / mv)); if (sc >= best.score - 5) best = { n: g, score: sc }; }
+    }
+    if (!best) return null;
+    u.goal = best.n.y * CW + best.n.x;
+    return { score: best.score, cover: this.coverVsAll(u, best.n), path: pathTo(reach, CW, best.n.x, best.n.y) };
   },
   rangedTile(u: Unit) {
     const reach = bfs(CW, CH, u.x, u.y, (x, y) => this.free(x, y), this.mv(u));
