@@ -11,7 +11,7 @@ import { bfs, pathTo, lineTiles, BfsMap, DIRS8, Pt, clamp, cheb, dist, lerp, pic
 import { check, checkChance, CheckResult } from './rules';
 import { woundMods, effMaxHp, addWound, addWoundId, bandageAmount, medkitAmount, WOUNDS } from './wounds';
 import { AMMO_NAME } from './items';
-import { equipStats } from './items';
+import { equipStats, itemOf, condOf, withCond } from './items';
 import { PixelView, applyLight, PLight, T, PS, prect, ppx, pline, pellipse, shade, seeded as pseed, outline } from './px';
 import { drawSprite, combatKind } from './sprites';
 import { paintTile, objSprite } from './pxworld';
@@ -34,9 +34,11 @@ export interface Unit {
   hp: number; maxHp: number; move: number; ap: number;
   atkM: number; atkR: number; def: number; armor: number; dmgM: number; horror: number; med: number;
   courage: number;      // боевой кураж 0–3
-  grenadeCap: number;   // сколько гранат можно применить за бой (патронташ)
-  thrown: number;       // сколько уже брошено
-  quick: boolean; quickUsed: boolean; // патронташ: бесплатная перезарядка раз в ход
+  worn: string[];       // изношенное оружие: огнестрел может заклинить, холодное бьёт слабее
+  jam: string[];        // заклинившее оружие — расклинивается перезарядкой
+  fired: string[];      // чем бойец бил в этом бою (износ после боя)
+  gas: boolean;         // противогаз: газ и зловонное дыхание не действуют
+  splinter: boolean;    // защитная маска: осколки, дробь и огонь на 1 слабее
   blast: boolean;       // сапёрный доспех: урон от взрывов вдвое меньше
   rallyCharm: boolean;  // медальон: поднятый встаёт с половиной ОЗ
   exposed: boolean;     // раскрылся после рискованного манёвра: −2 к Защите до своего хода
@@ -72,7 +74,7 @@ let UID = 0;
 function mkUnit(b: UnitBase, team: Unit['team'], x: number, y: number): Unit {
   const player = team === 'player';
   const m = player ? woundMods(b) : { atkM: 0, atkR: 0, def: 0, move: 0, horror: 0, maxHp: 0 };
-  // снаряжение бойцов отряда: оружие, броня, бонусы, патронташ, оберег
+  // снаряжение бойцов отряда: оружие, броня, бонусы, маска, оберег
   const e = player && b.equip ? equipStats(b) : null;
   const abil = { ...(b.abil ?? {}) };
   if (player && hasProsth(b, 'galvanic')) abil.galvanic = 1; // гальваническая рука
@@ -83,7 +85,7 @@ function mkUnit(b: UnitBase, team: Unit['team'], x: number, y: number): Unit {
     atkM: b.atkM + m.atkM + (e?.atkM ?? 0), atkR: b.atkR + m.atkR + (e?.atkR ?? 0), def: b.def + m.def + (e?.def ?? 0),
     armor: (b.armor ?? 0) + (e?.armor ?? 0), dmgM: b.dmgM ?? 0,
     horror: (b.horror ?? 0) + m.horror + (e?.horror ?? 0), med: b.med ?? 0,
-    courage: Math.min(COURAGE_MAX, e?.courage ?? 0), grenadeCap: e?.grenades ?? 0, thrown: 0, quick: !!e?.quick, quickUsed: false, blast: !!e?.blast, rallyCharm: !!e?.rally,
+    courage: Math.min(COURAGE_MAX, e?.courage ?? 0), worn: e ? e.worn.slice() : [], jam: [], fired: [], gas: !!e?.gas, splinter: !!e?.splinter, blast: !!e?.blast, rallyCharm: !!e?.rally,
     exposed: false, downed: false,
     ai: b.ai, leader: !!b.leader, demonic: !!b.demonic,
     dead: false, fled: false, terror: false, flip: team === 'enemy', flash: 0, seed: Math.random() * 10, cd: { summon: 0, whisper: 0 }, st: {},
@@ -117,6 +119,7 @@ export const Combat = {
   banner: null as { text: string; color: string; t: number } | null,
   hover: null as Pt | null,
   bg: null as HTMLCanvasElement | null,
+  wearNotes: [] as string[], // что износилось за бой — показывается после победы
   view: null as PixelView | null,
   circle: null as { x: number; y: number; r: number } | null,
   smoke: [] as { x: number; y: number; turns: number }[],
@@ -175,7 +178,7 @@ export const Combat = {
   /** Боец отряда (а не призванный бес или подчинённое существо). */
   isSquad(u: Unit) { return G.squad.includes(u.base); },
   /** Перемещение с учётом оккультных состояний: связанный стоит на месте, договор даёт +1. */
-  mv(u: Unit) { return u.st.bound ? 0 : u.move + (u.st.pact ? 1 : 0); },
+  mv(u: Unit) { return u.st.bound ? 0 : Math.max(1, u.move + (u.st.pact ? 1 : 0) - (u.st.supp ? 2 : 0)); },
   coverAt(x: number, y: number) { const t = this.tile(x, y); return t ? TILE[t]?.cover ?? 0 : 0; },
   /** Укрытие цели t от стрелка from: смотрим соседние клетки цели со стороны стрелка. */
   coverOf(t: Pt, from: Pt) {
@@ -197,6 +200,7 @@ export const Combat = {
     // оккультные состояния
     if (att.st.hex) bonus -= 3;
     if (att.st.weak) bonus -= 2; // слабость от зловонного дыхания
+    if (att.st.supp) bonus -= 2; // прижат пулемётным огнём
     if (att.st.pact) bonus += 2;
     if (att.st.stars) bonus += 1;
     if (att.st.fortune) bonus += 4;
@@ -217,7 +221,7 @@ export const Combat = {
     }
     return { bonus, dc, chance: checkChance(bonus, dc) };
   },
-  hitChance(a: Unit, t: Unit, wkey: string, extra = 0) { return this.attackInfo(a, a, t, wkey, extra)?.chance ?? 0; },
+  hitChance(a: Unit, t: Unit, wkey: string, extra = 0) { return this.attackInfo(a, a, t, wkey, extra - (WEAPONS[wkey].burst ? 3 : 0))?.chance ?? 0; }, // у очереди — шанс одной пули
 
   // ---------------------------------------------------------- ход игрока
   async startPlayerTurn() {
@@ -226,7 +230,7 @@ export const Combat = {
     for (const s of this.smoke) s.turns--;
     this.smoke = this.smoke.filter((s) => s.turns > 0);
     for (const u of this.alive('player')) {
-      u.exposed = false; u.quickUsed = false;
+      u.exposed = false;
       u.ap = u.terror ? 1 : 2;
       if (u.terror) this.float(u, 'Ужас: 1 ОД', '#b58cff');
       u.terror = false;
@@ -294,17 +298,16 @@ export const Combat = {
     }
     const types = [...new Set(u.weapons.map((w) => WEAPONS[w].ammoType).filter(Boolean))] as string[];
     if (u.team === 'player' && types.length) {
-      const freeReload = u.quick && !u.quickUsed;
       out.push({
-        kind: 'a', key: 'reload', label: `${ABILITIES.reload.name} (${types.map((t) => `${AMMO_NAME[t]} ${G.supplies[t as keyof typeof G.supplies]}`).join(', ')})`,
-        desc: `${tr(ABILITIES.reload.desc)}${freeReload ? ' ' + tr('Патронташ: сейчас без траты ОД.') : ''}`,
-        disabled: (u.ap < 1 && !freeReload) || !this.reloadable(u).length, active: false,
+        kind: 'a', key: 'reload', label: `${u.jam.length ? '⚠ ' : ''}${ABILITIES.reload.name} (${types.map((t) => `${AMMO_NAME[t]} ${G.supplies[t as keyof typeof G.supplies]}`).join(', ')})`,
+        desc: tr(ABILITIES.reload.desc) + (u.jam.length ? ' ' + tr('Заклинило: ') + u.jam.map((w) => WEAPONS[w].name).join(', ') + '.' : ''),
+        disabled: u.ap < 1 || !this.reloadable(u).length, active: false,
       });
     }
     if (this.isSquad(u)) { // расходники отряда — только у бойцов отряда
-      const S = G.supplies, cap = u.thrown >= u.grenadeCap;
-      const cons: [string, number, boolean][] = [['grenade', S.grenade, cap], ['smoke', S.smoke, cap], ['bandage', S.bandage, u.ap < 1], ['medkit', S.medkit, u.ap < 1], ['painkiller', S.painkiller, u.ap < 1]];
-      for (const [k, n, block] of cons) if (n > 0) out.push({ kind: 'a', key: k, label: `${ABILITIES[k].name} (${n})`, desc: tr(ABILITIES[k].desc) + (k === 'grenade' || k === 'smoke' ? ' ' + tr(`Брошено за бой: ${u.thrown}/${u.grenadeCap} (зависит от патронташа).`) : ''), disabled: block, active: this.action.type === 'a' && this.action.key === k });
+      const S = G.supplies, noAp = u.ap < 1;
+      const cons: [string, number][] = [['grenade', S.grenade], ['dynamite', S.dynamite], ['smoke', S.smoke], ['bandage', S.bandage], ['medkit', S.medkit], ['painkiller', S.painkiller]];
+      for (const [k, n] of cons) if (n > 0) out.push({ kind: 'a', key: k, label: `${ABILITIES[k].name} (${n})`, desc: tr(ABILITIES[k].desc), disabled: noAp, active: this.action.type === 'a' && this.action.key === k });
     }
     for (const k of Object.keys(u.abil)) {
       const n = u.abil[k];
@@ -334,13 +337,14 @@ export const Combat = {
     if (b.kind === 'c') { this.action = { type: 'c', key: b.key }; this.computeReach(); this.hooks.panel(); return; }
     if (b.key === 'reload') {
       this.run(async () => {
-        const got: string[] = [];
+        const got: string[] = [], unjam = u.jam.length > 0;
         for (const w of this.reloadable(u)) {
           const t = WEAPONS[w].ammoType!, need = WEAPONS[w].ammo! - u.ammo[w], take = Math.min(need, G.supplies[t]);
-          u.ammo[w] += take; G.supplies[t] -= take; got.push(`${WEAPONS[w].name} +${take}`);
+          if (u.jam.includes(w)) { u.jam = u.jam.filter((x) => x !== w); got.push(`${WEAPONS[w].name} — расклинено`); }
+          if (take > 0) { u.ammo[w] += take; G.supplies[t] -= take; got.push(`${WEAPONS[w].name} +${take}`); }
         }
-        if (u.quick && !u.quickUsed) u.quickUsed = true; else u.ap -= 1;
-        this.float(u, 'Перезарядка', '#d8c890');
+        u.ap -= 1;
+        this.float(u, unjam ? 'Расклинил' : 'Перезарядка', '#d8c890');
         this.hooks.log(`${u.name} перезаряжает: ${got.join(', ')}.`);
         await sleep(350);
       });
@@ -372,9 +376,10 @@ export const Combat = {
 
   /** Оружие, которое можно дозарядить патронами из запаса. */
   reloadable(u: Unit) {
-    return u.weapons.filter((w) => { const W_ = WEAPONS[w]; return W_.ammoType && u.ammo[w] < W_.ammo! && G.supplies[W_.ammoType] > 0; });
+    return u.weapons.filter((w) => { const W_ = WEAPONS[w]; return W_.ammoType && (u.jam.includes(w) || (u.ammo[w] < W_.ammo! && G.supplies[W_.ammoType] > 0)); });
   },
   canFire(u: Unit, w: string, quiet = false) {
+    if (u.jam.includes(w)) { if (!quiet) this.hooks.toast('Оружие заклинило — расклинить перезарядкой (1 ОД)'); return false; }
     if (WEAPONS[w].ammo && u.ammo[w] <= 0) { if (!quiet) this.hooks.toast('Нет патронов — нужна перезарядка'); return false; }
     return true;
   },
@@ -581,13 +586,12 @@ export const Combat = {
         this.hooks.log(`${u.name}: ${kit ? 'аптечка' : 'перевязка'} — ${target === u ? 'себе' : target.name}.`);
         await sleep(400);
       });
-    } else if (key === 'grenade' || key === 'smoke') {
-      const range = key === 'smoke' ? 6 : 5;
+    } else if (key === 'grenade' || key === 'smoke' || key === 'dynamite') {
+      const range = (key === 'smoke' ? 6 : key === 'dynamite' ? 4 : 5) + (key !== 'smoke' && u.base.id === 'pc' && G.pc?.prof === 'saboteur' ? 1 : 0); // диверсант бросает дальше
       if (cheb(u, { x: tx, y: ty }) > range) return T(`Слишком далеко (макс. ${range} клеток)`);
-      if (u.thrown >= u.grenadeCap) return T('Больше гранат за этот бой не достать — нужен патронташ получше');
       this.run(async () => {
-        u.thrown++;
         if (key === 'grenade') { G.supplies.grenade--; await this.grenade(u, tx, ty); u.ap = 0; }
+        else if (key === 'dynamite') { G.supplies.dynamite--; await this.grenade(u, tx, ty, true); u.ap = 0; }
         else {
           G.supplies.smoke--; u.ap -= 1;
           this.float(u, 'Дым!', '#c8c8c0');
@@ -844,6 +848,8 @@ export const Combat = {
   async attack(a: Unit, t: Unit, wkey: string, bonus = 0, opts: { dmg?: number; adv?: boolean } = {}) {
     const w = WEAPONS[wkey];
     if (w.breath) return this.breathAttack(a, t, wkey, bonus);
+    if (!a.fired.includes(wkey)) a.fired.push(wkey);
+    if (w.burst) return this.burstAttack(a, t, wkey, bonus);
     if (t.x !== a.x) a.flip = t.x < a.x;
     const once = { fortune: !!a.st.fortune, omen: !!a.st.omen };
     if (a.st.pact) opts = { ...opts, dmg: (opts.dmg ?? 0) + 2 }; // демонический договор
@@ -861,6 +867,7 @@ export const Combat = {
     }
     const ch = opts.adv ? this.advChance(info.chance) : info.chance, hit = roll.success;
     const rollTxt = `d20: ${roll.roll}${advTxt}${info.bonus >= 0 ? '+' : ''}${info.bonus} против ${info.dc}`;
+    if (this.jams(a, wkey, roll.roll)) return;
     if (w.ammo || a.ammo[wkey] !== undefined) a.ammo[wkey]--;
     if (w.type === 'ranged') Sfx.shot(wkey);
     if (a.emptyNote && a.ammo[wkey] === 0) { this.hooks.log(a.emptyNote); a.emptyNote = undefined; }
@@ -869,19 +876,21 @@ export const Combat = {
     else { this.muzzle(a, t, hit); await sleep(140); }
     if (hit) {
       let d = randInt(w.dmg[0], w.dmg[1]) + (w.type === 'melee' ? a.dmgM : 0) + (opts.dmg ?? 0) - (a.st.weak ? 1 : 0);
+      if (w.type === 'melee' && a.worn.includes(wkey)) d -= 1; // затупилось, расшаталось
+      if (w.antiDemon && t.demonic) d += w.antiDemon;
       d = Math.max(1, d);
-      if (w.shot) d = Math.max(1, d - Math.max(0, Math.floor(dist(a, t) - w.opt!))); // дробь теряет силу
+      if (w.shot) d = Math.max(1, d - Math.max(0, Math.floor(dist(a, t) - w.opt!)) - (t.splinter ? 1 : 0)); // дробь теряет силу
       const crit = roll.crit; // натуральная 20: полуторный урон, броня не спасает
       if (crit) d = Math.ceil(d * 1.5);
       const absorbed = crit || w.pierce ? 0 : Math.min(d - 1, t.armor);
       d -= absorbed;
       this.hooks.log(`${a.name} → ${t.name}: ${w.name}, ${crit ? 'КРИТ! ' : ''}${d} урона${absorbed ? ` (броня −${absorbed})` : ''} [${rollTxt}]`);
       await this.damage(t, d, crit);
-      if (w.poison && t.team === 'player' && !t.dead && this.isSquad(t) && addWoundId(t.base, 'gassed')) { this.float(t, 'Отравление', '#a8c890'); this.hooks.log(`${t.name}: пагубное дыхание — «Отравление газом».`); }
+      if (w.poison && !t.gas && t.team === 'player' && !t.dead && this.isSquad(t) && addWoundId(t.base, 'gassed')) { this.float(t, 'Отравление', '#a8c890'); this.hooks.log(`${t.name}: пагубное дыхание — «Отравление газом».`); }
       if (crit) this.gainCourage(a, 'точный удар');
       if (t.dead && t.team === 'enemy') this.gainCourage(a, 'враг повержен');
       if (w.splash) {
-        for (const o of this.units.filter((o) => !o.dead && o !== t && cheb(o, t) === 1)) await this.damage(o, randInt(w.splash[0], w.splash[1]), false);
+        for (const o of this.units.filter((o) => !o.dead && o !== t && cheb(o, t) === 1)) await this.damage(o, Math.max(1, randInt(w.splash[0], w.splash[1]) - (o.splinter ? 1 : 0)), false);
       }
     } else {
       this.float(t, 'Промах', '#b8b8a8');
@@ -893,6 +902,70 @@ export const Combat = {
       if (!r.success) { a.hp = Math.max(1, a.hp - 1); this.float(a, '−1 (разряд)', '#d8ff70'); this.hooks.log(`Отдача разряда: ${a.name} теряет 1 ОЗ [Сила: d20 ${r.roll}${str >= 0 ? '+' : ''}${str} против 12].`); }
       else this.hooks.log(`${a.name} выдерживает отдачу разряда [Сила: d20 ${r.roll}${str >= 0 ? '+' : ''}${str} против 12].`);
     }
+  },
+
+  /** Изношенный огнестрел клинит на 1–2 на d20: выстрела нет, патрон испорчен. */
+  jams(a: Unit, wkey: string, roll: number) {
+    if (!a.worn.includes(wkey) || !WEAPONS[wkey].ammoType || roll > 2) return false;
+    if (a.ammo[wkey] > 0) a.ammo[wkey]--;
+    a.jam.push(wkey);
+    this.float(a, 'Заклинило!', '#e8a050');
+    this.burst(a.px + (a.flip ? -14 : 14), a.py - 14, '#8a8a80', 6, 30);
+    this.hooks.log(`${a.name}: ${WEAPONS[wkey].name} клинит — изношенный механизм. Нужна перезарядка, чтобы расклинить.`);
+    return true;
+  },
+
+  /** Пулемётная очередь: несколько выстрелов с −3, каждый — свой бросок; цель и всех рядом с ней прижимает (подавление). */
+  async burstAttack(a: Unit, t: Unit, wkey: string, bonus: number) {
+    const w = WEAPONS[wkey];
+    if (t.x !== a.x) a.flip = t.x < a.x;
+    const shots = Math.min(w.burst!, a.ammo[wkey] ?? w.burst!);
+    this.hooks.log(`${a.name} открывает огонь на подавление: ${w.name}, очередь в ${shots}.`);
+    let hits = 0;
+    for (let k = 0; k < shots && !t.dead; k++) {
+      const info = this.attackInfo(a, a, t, wkey, bonus - 3) ?? { bonus: 0, dc: 99, chance: 0 };
+      const roll = check(info.bonus, info.dc), rt = `d20: ${roll.roll}${info.bonus >= 0 ? '+' : ''}${info.bonus} против ${info.dc}`;
+      if (this.jams(a, wkey, roll.roll)) break;
+      a.ammo[wkey]--;
+      Sfx.shot(wkey);
+      this.muzzle(a, t, roll.success);
+      await sleep(110);
+      if (!roll.success) { this.hooks.log(`  пуля ${k + 1}: мимо [${rt}]`); continue; }
+      hits++;
+      let d = randInt(w.dmg[0], w.dmg[1]) - (a.st.weak ? 1 : 0);
+      if (roll.crit) d = Math.ceil(d * 1.5);
+      const absorbed = roll.crit ? 0 : Math.min(d - 1, t.armor);
+      d = Math.max(1, d - absorbed);
+      this.hooks.log(`  пуля ${k + 1}: ${roll.crit ? 'КРИТ! ' : ''}${d} урона${absorbed ? ` (броня −${absorbed})` : ''} [${rt}]`);
+      await this.damage(t, d, roll.crit);
+      if (roll.crit) this.gainCourage(a, 'точный удар');
+      if (t.dead && t.team === 'enemy') this.gainCourage(a, 'враг повержен');
+    }
+    if (!hits) this.float(t, 'Промах', '#b8b8a8');
+    // подавление: цель и все её соседи из той же стороны прижаты до конца своего хода
+    const pinned = this.units.filter((o) => !o.dead && !o.downed && o.team === t.team && cheb(o, t) <= 1);
+    for (const o of pinned) { o.st.supp = o.team === 'player' ? 2 : 1; this.float(o, 'Подавлен', '#e8c070'); }
+    if (pinned.length) this.hooks.log(`Под огнём: ${pinned.map((o) => o.name).join(', ')} — −2 к атакам и к перемещению на ход.`);
+    await sleep(260);
+  },
+
+  /** После боя: оружие, которым работали, изнашивается (идеальное → изношенное, изношенное → сломанное). */
+  wearAfterBattle(): string[] {
+    const out: string[] = [];
+    for (const u of this.units) {
+      if (!this.isSquad(u) || !u.base.equip) continue;
+      for (const slot of ['main', 'side'] as const) {
+        const id = u.base.equip[slot];
+        if (!id) continue;
+        const it = itemOf(id), c = condOf(id);
+        if (!it.weapon || !u.fired.includes(it.weapon) || c === 'broken') continue;
+        const fire = !!WEAPONS[it.weapon].ammoType;
+        if (Math.random() >= (c === 'ok' ? (fire ? 0.08 : 0.05) : (fire ? 0.12 : 0.08))) continue;
+        if (c === 'ok') { u.base.equip[slot] = withCond(id, 'worn'); out.push(`${u.name}: ${it.name} — оружие износилось, ${fire ? 'может клинить' : 'бьёт слабее'}.`); }
+        else { delete u.base.equip[slot]; G.stash.push(withCond(id, 'broken')); out.push(`${u.name}: ${it.name} — оружие сломалось и убрано в обоз, нужна починка.`); }
+      }
+    }
+    return out;
   },
 
   /** Зловонное дыхание: облако на w.breath клеток вперёд по направлению к цели; каждый в полосе — бросок атаки, урон и слабость. */
@@ -913,6 +986,7 @@ export const Combat = {
     for (const c of cells) {
       const v = this.units.find((u) => !u.dead && u !== a && u.x === c.x && u.y === c.y);
       if (!v) continue;
+      if (v.gas) { this.float(v, 'Противогаз', '#a8b860'); this.hooks.log(`${v.name}: противогаз держит — зловоние не действует.`); continue; }
       const info = this.attackInfo(a, a, v, wkey, bonus) ?? { bonus: w.atk + bonus, dc: v.def, chance: 0 };
       const roll = check(info.bonus, info.dc), rt = `d20: ${roll.roll}${info.bonus >= 0 ? '+' : ''}${info.bonus} против ${info.dc}`;
       if (!roll.success) { this.float(v, 'Увернулся', '#b8b8a8'); this.hooks.log(`${v.name} успевает отвернуться от облака [${rt}]`); continue; }
@@ -1010,18 +1084,27 @@ export const Combat = {
     await sleep(300);
   },
 
-  async grenade(u: Unit, tx: number, ty: number) {
+  async grenade(u: Unit, tx: number, ty: number, dyn = false) {
     const x = tx * CT + CT / 2, y = ty * CT + CT / 2;
-    this.float(u, 'Взрывчатка!', '#e8d070');
+    this.float(u, dyn ? 'Динамит!' : 'Граната!', '#e8d070');
     const sx = u.px, sy = u.py - 16;
     await this.tween(420, (k) => {
       this.parts.push({ x: lerp(sx, x, k), y: lerp(sy, y, k) - Math.sin(k * Math.PI) * 70, vx: 0, vy: 0, life: 0.25, max: 0.25, color: '#666', size: 2, g: 0 });
     });
-    this.shake = 11;
-    this.burst(x, y, '#ffb050', 40, 160); this.burst(x, y, '#555', 30, 90);
+    this.shake = dyn ? 15 : 11;
+    this.burst(x, y, '#ffb050', dyn ? 60 : 40, dyn ? 200 : 160); this.burst(x, y, '#555', dyn ? 45 : 30, 90);
     this.fx.push({ type: 'ring', x1: x, y1: y, x2: 0, y2: 0, color: '#ffb050', life: 0.4, max: 0.4 });
-    this.hooks.log(`${u.name} бросает взрывчатку!`);
-    for (const o of this.units.filter((o) => !o.dead && cheb(o, { x: tx, y: ty }) <= 1)) { const d = randInt(3, 5); await this.damage(o, o.blast ? Math.ceil(d / 2) : d, false); }
+    this.hooks.log(dyn ? `${u.name} бросает динамитную шашку!` : `${u.name} бросает гранату!`);
+    if (dyn) { // лёгкие укрытия — мешки, ящики, заборы — разносит
+      let broke = 0;
+      for (let yy = ty - 1; yy <= ty + 1; yy++) for (let xx = tx - 1; xx <= tx + 1; xx++) {
+        if (yy < 0 || xx < 0 || yy >= CH || xx >= CW) continue;
+        const ch = this.map[yy][xx];
+        if (ch === 'c' || ch === 'f') { this.map[yy][xx] = ','; broke++; this.burst(xx * CT + CT / 2, yy * CT + CT / 2, '#6a4a2a', 14, 80); }
+      }
+      if (broke) { this.hooks.log('Взрыв разносит укрытия в щепки.'); this.renderBg(); }
+    }
+    for (const o of this.units.filter((o) => !o.dead && cheb(o, { x: tx, y: ty }) <= 1)) { let d = dyn ? randInt(5, 8) : randInt(3, 5); if (o.splinter) d -= 1; await this.damage(o, Math.max(1, o.blast ? Math.ceil(d / 2) : d), false); }
     await sleep(350);
   },
 
@@ -1043,6 +1126,7 @@ export const Combat = {
         const u = this.units.find((x) => x.base === s)!;
         s.hp = Math.min(effMaxHp(s), u.downed ? 1 : u.hp); // тяжелораненые выживают с 1 ОЗ
       });
+      this.wearNotes = this.wearAfterBattle();
       this.hooks.victory(this.def.id);
       return true;
     }
@@ -1260,7 +1344,7 @@ export const Combat = {
       }
       if (u.terror) { c.fillStyle = '#b58cff'; c.font = 'bold 12px serif'; c.fillText('◉', x + bw + 2, y + 4); }
       { // оккультные состояния — значки над полоской здоровья
-        const ICON: Record<string, [string, string]> = { weak: ['☣', '#a8b860'], hex: ['✥', '#9fef6a'], rot: ['☠', '#9fef6a'], ward: ['✥', '#e8e0b0'], pact: ['⛧', '#e05030'], commanded: ['⛧', '#e05030'], fortune: ['☉', '#f0e090'], omen: ['☾', '#b58cff'], stars: ['✶', '#f0e090'], bound: ['ᛟ', '#c8a0ff'] };
+        const ICON: Record<string, [string, string]> = { weak: ['☣', '#a8b860'], supp: ['⇊', '#e8c070'], hex: ['✥', '#9fef6a'], rot: ['☠', '#9fef6a'], ward: ['✥', '#e8e0b0'], pact: ['⛧', '#e05030'], commanded: ['⛧', '#e05030'], fortune: ['☉', '#f0e090'], omen: ['☾', '#b58cff'], stars: ['✶', '#f0e090'], bound: ['ᛟ', '#c8a0ff'] };
         let ix = x; c.font = 'bold 11px serif';
         for (const k of Object.keys(u.st)) { const ic = ICON[k]; if (!ic) continue; c.fillStyle = ic[1]; c.fillText(ic[0], ix, y - 8); ix += 10; }
         if (u.summon) { c.fillStyle = '#e05030'; c.fillText(`⛧${u.summon}`, ix, y - 8); }

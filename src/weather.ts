@@ -6,7 +6,7 @@
 //  медленнее, в туман хуже видно (места находятся ближе).
 //  Звуков нет — только картинка.
 // ============================================================
-import { G } from './state';
+import { G, lampLevel } from './state';
 import { Sfx } from './sfx';
 
 export type WeatherKind = 'clear' | 'overcast' | 'fog' | 'rain' | 'storm';
@@ -70,9 +70,9 @@ export const Weather = {
     return { ambient: 0.6, tint: baseTint, vig: baseVig };
   },
   /** Скорость отряда на карте. */
-  speedK() { const k = this.shown(); return k === 'storm' ? 0.7 : k === 'rain' ? 0.85 : 1; },
-  /** Дальность обзора на карте (находки мест). */
-  sightK() { const k = this.shown(); return k === 'fog' ? 0.55 : k === 'storm' ? 0.75 : 1; },
+  speedK() { const k = this.shown(), l = lampLevel(); return k === 'storm' ? [0.7, 0.8, 0.88][l] : k === 'rain' ? [0.85, 0.92, 1][l] : 1; },
+  /** Дальность обзора на карте (находки мест); фонарь отряда помогает держать путь и замечать места. */
+  sightK() { const k = this.shown(), l = lampLevel(); return (k === 'fog' ? [0.55, 0.72, 0.88][l] : k === 'storm' ? [0.75, 0.85, 0.95][l] : 1) * [1, 1.1, 1.2][l]; },
 
   /** Поверх освещённого кадра низкого разрешения: туман, дождь, отблеск молнии. ox/oy — сдвиг камеры (сейчас не нужен: дымка экранная). */
   draw(c: CanvasRenderingContext2D, w: number, h: number, t: number, _ox = 0, _oy = 0) {

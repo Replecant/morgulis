@@ -69,13 +69,22 @@ Combat.hooks = {
     G.mode = returnMode;
     hint();
     if (id === 'ruins') { G.flags.scavDone = true; Dialog.start('after_scav'); }
-    if (id.startsWith('band_')) { World.bandLoot = id.slice(5).split('+').length; World.killBand(); Dialog.start('after_band'); }
+    if (id.startsWith('band_')) {
+      const kinds = id.slice(5).split('+');
+      World.bandLoot = kinds.length; World.killBand();
+      // трофей: иногда — оружие одного из бандитов, обычно потрёпанное
+      const TROPHY: Record<string, string> = { bandit_gun: 'rifle', bandit_shot: 'sawnoff', bandit_axe: 'axe', bandit_boss: 'revolver' };
+      const k = TROPHY[kinds[Math.floor(Math.random() * kinds.length)]];
+      World.bandTrophy = k && Math.random() < 0.45 ? k + (Math.random() < 0.25 ? '~b' : '~w') : '';
+      Dialog.start('after_band');
+    }
     if (id.startsWith('hungry')) { World.killHungry(); Dialog.start('after_hungry'); }
     if (id === 'lake') { World.killDemon(); Dialog.start('after_demon'); }
     if (id.startsWith('loyal')) { World.killLoyal(); Dialog.start('after_loyal'); }
     if (id === 'coven') Dialog.start('after_coven');
     if (id.startsWith('dsq_')) { World.killDsq(); Dialog.start('after_dsq'); }
     if (id.startsWith('trench')) { World.killDead(); World.deadHit = null; Dialog.start('after_dead'); }
+    if (Combat.wearNotes.length) toast(Combat.wearNotes.join(' '));
     refreshHud();
   },
   defeat(id) {

@@ -4,7 +4,7 @@
 import { TAU } from './util';
 import { drawSprite, clearSpriteCache } from './sprites';
 import { Character, PROFESSIONS } from './rules';
-import { ITEMS } from './items';
+import { itemOf } from './items';
 import type { UnitBase } from './data';
 
 type Ctx = CanvasRenderingContext2D;
@@ -19,7 +19,7 @@ interface Style {
   horns?: string; eyes?: string; // рога (цвет) и горящие глаза — у демонов и ведьм ковена
   puttees?: string; webbing?: string; respirator?: boolean; tabs?: string; number?: boolean; // number — нашивка с номером (заключённые) // военная форма: обмотки, ремни с подсумками, противогаз, петлицы
   limbs?: Partial<Record<string, string>>; // утраченные части тела и протезы (prosthetics.ts) — видны на фигурке // траншейные мертвецы: гнилая кожа, светящиеся глаза; газовые баллоны за спиной
-  weapon?: 'saber' | 'rifle' | 'fork' | 'musket' | 'hammer' | 'staff' | 'pole' | 'bottle' | 'book' | 'wrench' | 'bag' | 'knife' | 'pistol' | 'goad' | 'shovel' | 'sawnoff' | 'shotgun';
+  weapon?: 'saber' | 'rifle' | 'fork' | 'musket' | 'hammer' | 'staff' | 'pole' | 'bottle' | 'book' | 'wrench' | 'bag' | 'knife' | 'pistol' | 'goad' | 'shovel' | 'sawnoff' | 'shotgun' | 'mg';
   scale?: number;
 }
 
@@ -167,14 +167,15 @@ const WEAPON_LOOK: Record<string, Style['weapon']> = {
   carbine: 'rifle', rifle: 'rifle', musket: 'musket', sawnoff: 'sawnoff', saber: 'saber', knife: 'knife', bayonet: 'knife',
   axe: 'hammer', hammer: 'hammer', wrench: 'wrench', revolver: 'pistol', autopistol: 'pistol',
   huntrifle: 'rifle', exprifle: 'rifle', shotgun2: 'shotgun', pumpshot: 'shotgun', flamer: 'shotgun',
+  mg: 'mg', spade: 'shovel', trenchclub: 'hammer', rdagger: 'knife',
 };
 /** Пересобрать внешний вид бойцов отряда по снаряжению: головной убор, кираса, оружие в руках. */
 export function applyEquipLooks(squad: UnitBase[]) {
   for (const b of squad) {
     const base = STYLES[b.kind];
     if (!base || !b.equip) continue;
-    const head = b.equip.head ? ITEMS[b.equip.head] : null;
-    const main = b.equip.main ? ITEMS[b.equip.main] : null;
+    const head = b.equip.head ? itemOf(b.equip.head) : null;
+    const main = b.equip.main ? itemOf(b.equip.main) : null;
     const tool = base.weapon === 'book' || base.weapon === 'bag';
     const key = 'eq_' + b.id;
     clearSpriteCache(key);
@@ -183,6 +184,7 @@ export function applyEquipLooks(squad: UnitBase[]) {
       hat: head?.hat, hatC: head?.hat === 'helmet' ? '#3d4030' : head?.hat === 'cap' ? (base.hat === 'cap' ? base.hatC : '#211a16') : undefined,
       hair: base.hair ?? (head ? undefined : '#3a2a1a'),
       cuirass: b.equip.body === 'cuirass',
+      mask: b.equip.face === 'gasmask' ? true : base.mask,
       limbs: b.limbs && Object.keys(b.limbs).length ? { ...b.limbs } : undefined,
       weapon: main?.weapon === 'revolver' && tool ? base.weapon : main?.weapon ? WEAPON_LOOK[main.weapon] : undefined,
     };

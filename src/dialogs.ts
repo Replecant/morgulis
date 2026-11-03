@@ -9,6 +9,7 @@ import { addWound, folkHeal } from './wounds';
 import { World } from './worldmap';
 import { LANG, tr } from './i18n';
 
+import { itemName } from './items';
 
 type Flags = typeof G;
 type Txt = string | ((g: Flags) => string);
@@ -1086,7 +1087,7 @@ const WORLD_DIALOGS: Record<string, DTree> = {
       { t: '[Механика] Разобрать то, что осталось', check: { skill: 'mechanics', dc: 15, ok: 'ok', fail: 'fail' } },
       { t: 'Уйти', go: 'bye' },
     ] },
-    ok: { s: 'nar', t: 'Вы снимаете с рамы армейский подсумок, прикрученный проволокой, и вытаскиваете из бардачка пачку бинтов. (В обоз: подсумок гренадера. Получено: 1 бинт.)', do: (g) => { F(g).lorryDone = true; g.stash.push('grenadier'); g.supplies.bandage += 1; } },
+    ok: { s: 'nar', t: 'Вы снимаете с рамы армейский подсумок, прикрученный проволокой, и вытаскиваете из бардачка пачку бинтов. В подсумке — две гранаты. (Получено: 2 гранаты, 1 бинт.)', do: (g) => { F(g).lorryDone = true; g.supplies.grenade += 2; g.supplies.bandage += 1; } },
     fail: { s: 'nar', t: 'Ржавый болт срывается, и вы рассекаете ладонь о край рамы. Ничего полезного. (−1 ОЗ)', do: (g) => { F(g).lorryDone = true; const b = g.squad[0]; b.hp = Math.max(1, b.hp - 1); } },
     empty: { s: 'nar', t: 'Остов грузовика. Больше тут нечего снимать.' },
     bye: { s: 'nar', t: 'Вы идёте дальше.' },
@@ -1207,8 +1208,8 @@ const WORLD_DIALOGS: Record<string, DTree> = {
     a: { s: 'nar', t: 'Оборванцы лежат в пыли. У них почти ничего нет — нож с выщербленным лезвием и горсть медяков. (Получено: 2 шиллинга.)', do: (g) => { g.money += 2; } },
   } },
   after_band: { start: 'a', nodes: {
-    a: { s: 'nar', t: () => { const n = World.bandLoot; return `Бандиты повержены. В их мешках — награбленное у других путников. (Получено: ${6 * n} шиллингов, ${3 * n} винтовочных и ${2 * n} пистолетных патронов, ${Math.ceil(n / 2)} бинт., 1 паёк.)`; },
-      do: (g) => { const n = World.bandLoot; g.money += 6 * n; g.supplies.ammo_rifle += 3 * n; g.supplies.ammo_pistol += 2 * n; g.supplies.bandage += Math.ceil(n / 2); g.supplies.ration += 1; } },
+    a: { s: 'nar', t: () => { const n = World.bandLoot; return `Бандиты повержены. В их мешках — награбленное у других путников. (Получено: ${6 * n} шиллингов, ${3 * n} винтовочных и ${2 * n} пистолетных патронов, ${Math.ceil(n / 2)} бинт., 1 паёк.)` + (World.bandTrophy ? ` ${tr('В обоз:')} ${itemName(World.bandTrophy).toLowerCase()}.` : ''); },
+      do: (g) => { const n = World.bandLoot; g.money += 6 * n; g.supplies.ammo_rifle += 3 * n; g.supplies.ammo_pistol += 2 * n; g.supplies.bandage += Math.ceil(n / 2); g.supplies.ration += 1; if (World.bandTrophy) g.stash.push(World.bandTrophy); World.bandTrophy = ''; } },
   } },
   hunger: { start: 'a', nodes: {
     a: { s: 'nar', t: 'Пайки кончились. Голод забирает силы. (−2 ОЗ. Найдите еду: пайки дают в деревнях, их находят в руинах и у мародёров.)' },
@@ -1239,7 +1240,7 @@ const WORLD_DIALOGS: Record<string, DTree> = {
     blind: { s: 'abe', t: 'Смотрел на Око слишком долго. Мальчишкой хотел понять, что оно такое. Понял только, что глаза — не для этого.', go: 'a' },
     bye: { s: 'abe', t: 'Иди.' },
   } },
-  adit: { start: 'a', nodes: { a: { s: 'nar', t: 'Вход в старую штольню, укреплённый почерневшими балками. Из темноты тянет сыростью и грибным духом. Глубже — тьма, где не светят даже грибы. (Штольня — в разработке.)' } } },
+  adit: { start: 'a', nodes: { a: { s: 'nar', t: 'Вход в старую штольню, укреплённый почерневшими балками. Из темноты тянет сыростью и грибным духом. Глубже — тьма, где не светят даже грибы.' } } },
   cellar: { start: 'a', nodes: { a: { s: 'nar', t: 'Грибной погреб, вкопанный в холм. Изнутри — тёплый влажный воздух и слабое зелёное свечение.' } } },
   hut: { start: 'a', nodes: { a: { s: 'nar', t: 'Хижина на сваях. Крыша поросла мхом так густо, что сливается с болотом.' } } },
   hut_agnes: { start: 'a', nodes: { a: { s: 'nar', t: 'Дом Агнес. В окне светится гриб в стеклянной банке.' } } },

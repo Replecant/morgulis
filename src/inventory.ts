@@ -4,7 +4,7 @@
 // ============================================================
 import { G } from './state';
 import { UnitBase } from './data';
-import { ITEMS, Item, ItemKind, SLOTS, SLOT_ORDER, Slot, KIND_NAMES, canEquip, equipStats, itemStatLines, CONSUMABLES, CONS_ORDER, Consumable } from './items';
+import { ItemKind, SLOTS, SLOT_ORDER, Slot, KIND_NAMES, canEquip, equipStats, itemStatLines, CONSUMABLES, CONS_ORDER, Consumable, itemOf, itemName, condOf, COND_NAME } from './items';
 import { woundMods, effMaxHp } from './wounds';
 import { drawFigure, applyEquipLooks } from './gfx';
 import { h } from './book';
@@ -13,7 +13,7 @@ import { pixelize, outline } from './px';
 import { withFrame } from './frames';
 
 // ------------------------------------------------------------ иконки предметов
-export const KIND_COLOR: Record<ItemKind, string> = { tool: '#6a8a8a', weapon: '#a07a4a', head: '#7a8a6a', body: '#6a7a8a', hands: '#8a7a5a', legs: '#7a6a5a', charm: '#9a7ab0', belt: '#a08a50' };
+export const KIND_COLOR: Record<ItemKind, string> = { tool: '#6a8a8a', weapon: '#a07a4a', head: '#7a8a6a', body: '#6a7a8a', hands: '#8a7a5a', legs: '#7a6a5a', charm: '#9a7ab0', face: '#8a9a7a' };
 
 const iconCache = new Map<string, HTMLCanvasElement>();
 /** Пиксельная иконка: рисунок в сетке S/2, контур и блик, увеличение ×2 без сглаживания. */
@@ -67,9 +67,19 @@ function drawItemIconVec(c: CanvasRenderingContext2D, icon: string, S = 52) {
     case 'paw': c.fillStyle = '#b0a080'; c.beginPath(); c.ellipse(26, 32, 7, 11, -0.3, 0, TAU); c.fill(); for (const [x, y] of [[20, 20], [26, 17], [32, 20]]) { c.beginPath(); c.arc(x, y, 3, 0, TAU); c.fill(); } L([30, 42, 36, 48], '#8a6a3a', 2); break;
     case 'herb': c.fillStyle = '#6a5a3a'; c.beginPath(); c.ellipse(26, 32, 11, 12, 0, 0, TAU); c.fill(); L([20, 22, 26, 18, 32, 22], '#3a2a1a', 2); L([26, 18, 26, 8], '#7a9a5a', 2); L([26, 12, 20, 6], '#7a9a5a', 2); L([26, 12, 32, 7], '#7a9a5a', 2); break;
     case 'locket': L([18, 6, 26, 18, 34, 6], '#b09040', 1.5); c.fillStyle = '#c0a050'; c.beginPath(); c.ellipse(26, 30, 10, 12, 0, 0, TAU); c.fill(); c.fillStyle = '#e8dcc0'; c.beginPath(); c.ellipse(26, 30, 6, 8, 0, 0, TAU); c.fill(); c.fillStyle = '#5a4a3a'; c.beginPath(); c.arc(26, 28, 2.5, 0, TAU); c.fill(); break;
-    case 'belt': R(6, 22, 40, 8, leather); R(12, 18, 10, 14, '#4a3018'); R(30, 18, 10, 14, '#4a3018'); R(23, 23, 6, 6, '#c09a52'); break;
-    case 'bandolier': L([10, 8, 42, 44], leather, 8); for (let i = 0; i < 6; i++) R(13 + i * 5, 12 + i * 5.5, 3, 6, '#c0a060'); break;
-    case 'belt_gren': R(6, 22, 40, 8, leather); R(10, 18, 12, 14, '#4a3018'); c.fillStyle = '#3a3a34'; c.beginPath(); c.arc(36, 24, 7, 0, TAU); c.fill(); L([36, 17, 38, 12], '#888', 2); break;
+    case 'carbine': L([10, 38, 40, 18], wood, 5); L([30, 25, 44, 15], steel, 2.5); R(20, 28, 4, 4, dark); break;
+    case 'sawnoff': L([12, 36, 26, 28], wood, 7); L([24, 28, 40, 20], steel, 3); L([24, 32, 40, 24], steel, 3); break;
+    case 'mg': L([6, 36, 26, 30], wood, 6); R(20, 24, 22, 7, '#3a3c38'); L([40, 27, 50, 25], steel, 3); R(24, 31, 8, 7, '#4a4c40'); L([36, 31, 32, 44], '#555', 2); L([38, 31, 42, 44], '#555', 2); for (let i = 0; i < 4; i++) R(12 + i * 3, 33 + i * 2, 2, 4, '#c0a060'); break;
+    case 'tclub': L([14, 44, 34, 14], wood, 6); for (const [x, y] of [[28, 20], [31, 17], [26, 25], [33, 21], [29, 24]]) R(x, y, 3, 2, '#9a9a90'); L([18, 38, 22, 33], '#6a6a60', 7); break;
+    case 'spade': L([14, 44, 30, 22], wood, 4); R(12, 40, 6, 6, '#3a2a1a'); c.fillStyle = '#6a6e60'; c.beginPath(); c.moveTo(28, 14); c.lineTo(40, 8); c.lineTo(44, 18); c.lineTo(34, 26); c.closePath(); c.fill(); L([40, 8, 44, 18], '#b8bab0', 1.5); break;
+    case 'rdagger': L([20, 34, 40, 10], '#c8c0b0', 3); L([28, 26, 34, 20], '#6a5a8a', 1.4); L([14, 38, 22, 30], '#1a1414', 5); L([16, 28, 26, 38], '#8a6a30', 2.6); c.fillStyle = '#a02020'; c.beginPath(); c.arc(12, 42, 2.5, 0, TAU); c.fill(); break;
+    case 'steelhelm': c.fillStyle = '#4a4e44'; c.beginPath(); c.arc(26, 28, 15, Math.PI, TAU); c.fill(); R(11, 28, 30, 7, '#4a4e44'); R(9, 33, 8, 6, '#40443a'); R(35, 33, 8, 6, '#40443a'); R(18, 22, 16, 3, '#6a6e64'); R(22, 12, 8, 3, '#5a5e54'); break;
+    case 'smask': c.fillStyle = '#6a6c66'; c.beginPath(); c.ellipse(26, 20, 15, 9, 0, 0, TAU); c.fill(); c.fillStyle = '#1a1a18'; R(15, 17, 8, 3, '#1a1a18'); R(29, 17, 8, 3, '#1a1a18'); for (let y = 28; y < 44; y += 3) for (let x = 14 + (y % 2) * 2; x < 38; x += 4) R(x, y, 2, 2, '#8a8c84'); break;
+    case 'goggles': L([6, 24, 46, 24], leather, 4); for (const x of [18, 34]) { c.fillStyle = '#5a4a3a'; c.beginPath(); c.arc(x, 24, 8, 0, TAU); c.fill(); c.fillStyle = '#9ab8b0'; c.beginPath(); c.arc(x, 24, 5, 0, TAU); c.fill(); } R(24, 22, 4, 4, '#5a4a3a'); break;
+    case 'oillamp': L([18, 12, 26, 6, 34, 12], '#555', 2); R(17, 12, 18, 4, '#5a5a50'); R(18, 16, 16, 20, '#c8b070'); c.fillStyle = '#f0c060'; c.beginPath(); c.ellipse(26, 27, 4, 6, 0, 0, TAU); c.fill(); R(16, 36, 20, 6, '#5a5a50'); L([18, 16, 18, 36], '#444', 1.5); L([34, 16, 34, 36], '#444', 1.5); break;
+    case 'elamp': R(12, 18, 22, 18, '#a08040'); R(14, 20, 18, 3, '#c8a860'); c.fillStyle = '#e8f0ff'; c.beginPath(); c.ellipse(38, 27, 6, 10, 0, 0, TAU); c.fill(); R(32, 17, 4, 20, '#8a6a30'); L([16, 18, 20, 10, 28, 10, 32, 18], '#555', 2); R(16, 28, 6, 4, '#2a2a28'); break;
+    case 'dynamite': for (let i = 0; i < 3; i++) R(13 + i * 9, 18, 8, 24, '#a83a26'); R(12, 26, 28, 3, '#d8c890'); R(12, 34, 28, 3, '#d8c890'); L([26, 18, 30, 10, 38, 8], '#888', 1.5); c.fillStyle = '#ffd060'; c.beginPath(); c.arc(39, 8, 2.5, 0, TAU); c.fill(); break;
+    case 'ammo_mg': for (let i = 0; i < 6; i++) { const x = 6 + i * 7, y = 18 + i * 3; R(x, y + 5, 5, 14, '#b08a40'); c.fillStyle = '#8a6a3a'; c.beginPath(); c.ellipse(x + 2.5, y + 5, 2.5, 4, 0, Math.PI, TAU); c.fill(); } L([6, 36, 48, 50], '#4a3a22', 3); break;
     case 'autopistol': R(12, 18, 28, 7, '#2a2a28'); R(13, 19, 26, 2, steel); L([16, 25, 12, 40], wood, 6); R(22, 25, 4, 6, '#1a1a18'); break;
     case 'pump': L([6, 40, 30, 22], wood, 7); L([26, 24, 48, 10], steel, 3.5); L([30, 25, 40, 18], '#4a3420', 5); break;
     case 'flamer': c.fillStyle = '#6a3a20'; c.beginPath(); c.roundRect(6, 14, 14, 30, 6); c.fill(); R(8, 12, 10, 4, '#444'); L([18, 34, 30, 30, 46, 20], '#555', 4); c.fillStyle = '#f0a040'; c.beginPath(); c.arc(47, 19, 3, 0, TAU); c.fill(); break;
@@ -102,9 +112,18 @@ function drawItemIconVec(c: CanvasRenderingContext2D, icon: string, S = 52) {
   c.restore();
 }
 
-function iconCanvas(it: Item, size = 52) {
+/** Иконка экземпляра: рисунок предмета + метка состояния (изношено — жёлтая трещина, сломано — красный крест). */
+function iconCanvas(id: string, size = 52) {
   const cv = h('canvas', { width: size, height: size, class: 'icv' });
-  drawItemIcon(cv.getContext('2d')!, it.icon, size);
+  const c = cv.getContext('2d')!, cond = condOf(id);
+  drawItemIcon(c, itemOf(id).icon, size);
+  if (cond !== 'ok') {
+    const k = size / 52, x = size - 15 * k, y = size - 15 * k;
+    c.fillStyle = '#0c0e0a'; c.fillRect(x - 2 * k, y - 2 * k, 15 * k, 15 * k);
+    c.fillStyle = cond === 'worn' ? '#e0a83a' : '#d04030';
+    if (cond === 'worn') { for (let i = 0; i < 5; i++) c.fillRect(x + (i % 2 ? 6 : 3) * k + i * k, y + i * 2.2 * k, 3 * k, 3 * k); }
+    else for (let i = 0; i < 5; i++) { c.fillRect(x + i * 2.2 * k, y + i * 2.2 * k, 3 * k, 3 * k); c.fillRect(x + (8.8 - i * 2.2) * k, y + i * 2.2 * k, 3 * k, 3 * k); }
+  }
   return cv;
 }
 
@@ -119,7 +138,7 @@ export function memberStats(b: UnitBase) {
     atkR: b.atkR + m.atkR + e.atkR,
     move: Math.max(2, b.move + m.move + e.move),
     horror: (b.horror ?? 0) + m.horror + e.horror,
-    grenades: e.grenades,
+    weapon: b.equip?.main ? COND_NAME[condOf(b.equip.main)] : '—',
     courage: e.courage,
   };
 }
@@ -129,14 +148,14 @@ const sg = (n: number) => (n >= 0 ? `+${n}` : `−${-n}`);
 // координаты ячеек слотов (левый верхний угол) и точки на теле, к которым ведут линии
 // «человечек» 360×320: ячейки по бокам, линии к частям тела пиксельной фигурки (масштаб 6)
 const SLOT_POS: Record<Slot, { x: number; y: number; ax: number; ay: number; side: 'l' | 'r' }> = {
-  head:  { x: 10, y: 10, ax: 180, ay: 130, side: 'l' },
+  head:  { x: 10, y: 10, ax: 180, ay: 126, side: 'l' },
   body:  { x: 10, y: 86, ax: 176, ay: 190, side: 'l' },
   hands: { x: 10, y: 162, ax: 138, ay: 204, side: 'l' },
   legs:  { x: 10, y: 238, ax: 172, ay: 252, side: 'l' },
-  charm: { x: 294, y: 10, ax: 184, ay: 172, side: 'r' },
+  face:  { x: 294, y: 10, ax: 186, ay: 140, side: 'r' },
   main:  { x: 294, y: 86, ax: 224, ay: 200, side: 'r' },
   side:  { x: 294, y: 162, ax: 156, ay: 222, side: 'r' },
-  belt:  { x: 294, y: 238, ax: 190, ay: 214, side: 'r' },
+  charm: { x: 294, y: 238, ax: 184, ay: 172, side: 'r' },
 };
 const CELL = 56;
 
@@ -147,7 +166,7 @@ export const Inventory = {
   member: 0,
   sel: null as Sel,
   filter: 'all' as 'all' | ItemKind | 'armor',
-  hover: null as Item | null,
+  hover: null as string | null, // id экземпляра под курсором
   onClose: () => {},
 
   show(onClose: () => void) {
@@ -197,7 +216,7 @@ export const Inventory = {
     this.sel = null; this.changed();
   },
   autoEquip(idx: number) {
-    const it = ITEMS[G.stash[idx]];
+    const it = itemOf(G.stash[idx]);
     if (it.kind === 'tool') return; // спецснаряжение не надевается — работает из обоза
     const eq = G.squad[this.member].equip ?? {};
     let slot = SLOT_ORDER.find((s) => SLOTS[s].kind === it.kind)!;
@@ -253,16 +272,16 @@ export const Inventory = {
     const stats = h('div', { class: 'inv-stats' },
       ...([
         ['ОЗ', st.hp], ['Защита', st.def], ['Поглощение', st.armor], ['Атака вблизи', sg(st.atkM)],
-        ['Стрельба', sg(st.atkR)], ['Перемещение', st.move], ['Стойкость', sg(st.horror)], ['Гранат за бой', st.grenades],
+        ['Стрельба', sg(st.atkR)], ['Перемещение', st.move], ['Стойкость', sg(st.horror)], ['Оружие', st.weapon],
       ] as [string, string | number][]).map(([k, v]) => h('div', { class: 'st' }, h('span', {}, k), h('b', {}, String(v)))),
       st.courage ? h('div', { class: 'st wide' }, h('span', {}, 'Кураж в начале боя'), h('b', {}, '✦'.repeat(st.courage))) : null,
     );
 
     // обоз
-    const FILTERS: [typeof this.filter, string][] = [['all', 'Всё'], ['weapon', 'Оружие'], ['armor', 'Броня'], ['charm', 'Обереги'], ['belt', 'Патронташи'], ['tool', 'Снаряжение']];
+    const FILTERS: [typeof this.filter, string][] = [['all', 'Всё'], ['weapon', 'Оружие'], ['armor', 'Броня'], ['face', 'Лицо'], ['charm', 'Обереги'], ['tool', 'Снаряжение']];
     const isArmor = (k: ItemKind) => k === 'head' || k === 'body' || k === 'hands' || k === 'legs';
     const shown = G.stash.map((id, idx) => ({ id, idx })).filter(({ id }) => {
-      const k = ITEMS[id].kind;
+      const k = itemOf(id).kind;
       return this.filter === 'all' || (this.filter === 'armor' ? isArmor(k) : k === this.filter);
     });
     const cells: HTMLElement[] = shown.map(({ id, idx }) => this.stashCell(id, idx));
@@ -291,13 +310,13 @@ export const Inventory = {
 
   slotCell(slot: Slot, id: string | undefined, can: boolean) {
     const p = SLOT_POS[slot];
-    const it = id ? ITEMS[id] : null;
+    const it = id ? itemOf(id) : null;
     const selected = this.sel?.from === 'slot' && this.sel.slot === slot;
     const cell = h('div', {
       class: `slot${it ? ' full' : ''}${can ? ' can' : ''}${selected ? ' sel' : ''}`,
       style: `left:${p.x}px;top:${p.y}px;${it ? `border-color:${KIND_COLOR[it.kind]}` : ''}`,
-      draggable: it ? 'true' : undefined, title: it ? it.name : SLOTS[slot].name,
-    }, it ? iconCanvas(it) : h('span', { class: 'ph' }, SLOT_GLYPH[slot]), h('div', { class: 'slabel' }, SLOTS[slot].name));
+      draggable: it ? 'true' : undefined, title: it ? itemName(id!) : SLOTS[slot].name,
+    }, it ? iconCanvas(id!) : h('span', { class: 'ph' }, SLOT_GLYPH[slot]), h('div', { class: 'slabel' }, SLOTS[slot].name));
     cell.onclick = () => {
       if (this.sel?.from === 'stash') { if (!this.equipFromStash(this.sel.idx, slot)) flash(cell); return; }
       if (this.sel?.from === 'slot' && this.sel.slot !== slot) { this.moveSlot(this.sel.slot, slot); return; }
@@ -305,7 +324,7 @@ export const Inventory = {
     };
     cell.ondblclick = () => this.unequip(slot);
     cell.oncontextmenu = (e) => { e.preventDefault(); this.unequip(slot); };
-    cell.onmouseenter = () => { this.hover = it; this.updateDetail(); };
+    cell.onmouseenter = () => { this.hover = id ?? null; this.updateDetail(); };
     cell.onmouseleave = () => { this.hover = null; this.updateDetail(); };
     cell.ondragstart = (e) => { dragData = { from: 'slot', slot }; e.dataTransfer!.setData('text/plain', slot); this.highlight(this.validSlots(id).filter((s) => s !== slot)); };
     cell.ondragend = () => { dragData = null; this.highlight([]); };
@@ -324,12 +343,12 @@ export const Inventory = {
   },
 
   stashCell(id: string, idx: number) {
-    const it = ITEMS[id];
+    const it = itemOf(id);
     const selected = this.sel?.from === 'stash' && this.sel.idx === idx;
-    const cell = h('div', { class: 'scell' + (selected ? ' sel' : ''), draggable: 'true', title: it.name, style: `border-color:${KIND_COLOR[it.kind]}` }, iconCanvas(it, 46));
+    const cell = h('div', { class: 'scell' + (selected ? ' sel' : ''), draggable: 'true', title: itemName(id), style: `border-color:${KIND_COLOR[it.kind]}` }, iconCanvas(id, 46));
     cell.onclick = () => { this.sel = selected ? null : { from: 'stash', idx }; this.hover = null; this.render(); };
     cell.ondblclick = () => this.autoEquip(idx);
-    cell.onmouseenter = () => { this.hover = it; this.updateDetail(); };
+    cell.onmouseenter = () => { this.hover = id; this.updateDetail(); };
     cell.onmouseleave = () => { this.hover = null; this.updateDetail(); };
     cell.ondragstart = (e) => { dragData = { from: 'stash', idx }; e.dataTransfer!.setData('text/plain', id); this.highlight(this.validSlots(id)); };
     cell.ondragend = () => { dragData = null; this.highlight([]); };
@@ -367,7 +386,7 @@ export const Inventory = {
   },
   fillDetail(box: HTMLElement) {
     const selId = this.selId();
-    const it = this.hover ?? (selId ? ITEMS[selId] : null);
+    const iid = this.hover ?? selId ?? null, it = iid ? itemOf(iid) : null;
     box.replaceChildren();
     if (this.hoverCons) {
       const c = this.hoverCons, cv = h('canvas', { width: 40, height: 40, class: 'icv' });
@@ -378,19 +397,19 @@ export const Inventory = {
     }
     if (!it) { box.append(h('div', { class: 'none' }, 'Наведите на вещь, чтобы увидеть её свойства.')); return; }
     const b = G.squad[this.member];
-    const slots = this.validSlots(it.id);
-    const worn = slots.map((s) => b.equip?.[s]).filter((x): x is string => !!x && x !== it.id);
+    const slots = SLOT_ORDER.filter((s) => SLOTS[s].kind === it.kind);
+    const worn = slots.map((s) => b.equip?.[s]).filter((x): x is string => !!x && x !== iid);
     box.append(
-      h('div', { class: 'dh' }, iconCanvas(it, 40), h('div', {}, h('b', {}, it.name), h('div', { class: 'dk' }, KIND_NAMES[it.kind]))),
-      h('div', { class: 'dstats' }, ...itemStatLines(it).map((l) => h('div', {}, l))),
+      h('div', { class: 'dh' }, iconCanvas(iid!, 40), h('div', {}, h('b', {}, itemName(iid!)), h('div', { class: 'dk' }, KIND_NAMES[it.kind]))),
+      h('div', { class: 'dstats' }, ...itemStatLines(iid!).map((l) => h('div', {}, l))),
       h('div', { class: 'ddesc' }, it.desc),
-      ...(worn.length ? [h('div', { class: 'dcmp' }, `Сейчас надето: ${worn.map((w) => ITEMS[w].name).join(', ')}`)] : []),
+      ...(worn.length ? [h('div', { class: 'dcmp' }, `Сейчас надето: ${worn.map((w) => itemName(w)).join(', ')}`)] : []),
     );
     if (!this.hover && this.sel) {
       const btns = h('div', { class: 'dbtns' });
       if (this.sel.from === 'stash') {
         const idx = this.sel.idx;
-        btns.append(h('button', { class: 'btn', onclick: () => this.autoEquip(idx) }, 'Надеть'));
+        if (it.kind !== 'tool' && condOf(iid!) !== 'broken') btns.append(h('button', { class: 'btn', onclick: () => this.autoEquip(idx) }, 'Надеть'));
       } else {
         const slot = this.sel.slot;
         btns.append(h('button', { class: 'btn', onclick: () => this.unequip(slot) }, 'Снять в обоз'));
@@ -400,7 +419,7 @@ export const Inventory = {
   },
 };
 
-const SLOT_GLYPH: Record<Slot, string> = { main: '⚔', side: '†', head: '☗', body: '▣', hands: '☚', legs: '⫴', charm: '❂', belt: '≡' };
+const SLOT_GLYPH: Record<Slot, string> = { main: '⚔', side: '†', head: '☗', body: '▣', hands: '☚', legs: '⫴', charm: '❂', face: '◎' };
 
 let dragData: { from: 'stash'; idx: number } | { from: 'slot'; slot: Slot } | null = null;
 function dragId(): string | undefined {

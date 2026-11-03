@@ -57,6 +57,9 @@ export function journal(): { text: string; done: boolean }[] {
 /** Есть ли у отряда предмет (спецснаряжение лежит в обозе). */
 export const hasTool = (id: string) => G.stash.includes(id) || G.squad.some((b) => Object.values(b.equip ?? {}).includes(id));
 
+/** Фонарь отряда: 0 — нет, 1 — масляный, 2 — электрический. */
+export const lampLevel = () => (hasTool('elamp') ? 2 : hasTool('oillamp') ? 1 : 0);
+
 /** Бонус спецснаряжения к проверке навыка. */
 export function gearBonus(skill: SkillKey): number {
   let b = limbSkill(G.squad[0], skill); // утраченные конечности и протезы героя

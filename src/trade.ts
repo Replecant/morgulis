@@ -4,13 +4,13 @@
 //  расходники продаются пачками без ограничений.
 // ============================================================
 import { G } from './state';
-import { ITEMS, CONSUMABLES, CONS_ORDER, ConsId, sellPrice, KIND_NAMES, itemStatLines } from './items';
+import { CONSUMABLES, CONS_ORDER, ConsId, sellPrice, KIND_NAMES, itemStatLines, itemOf, itemName, itemPrice, condOf, withCond, repairPrice } from './items';
 import { drawItemIcon, KIND_COLOR } from './inventory';
 import { h } from './book';
 import { $, keepScroll } from './util';
 import { withFrame } from './frames';
 
-interface Shop { name: string; greet: string; items: Record<string, number>; cons: ConsId[] }
+interface Shop { name: string; greet: string; items: Record<string, number>; cons: ConsId[]; repair?: boolean } // repair — чинит оружие
 
 export const SHOPS: Record<string, Shop> = {
   // ---------------- деревни: провиант и немного своего товара
@@ -31,7 +31,7 @@ export const SHOPS: Record<string, Shop> = {
   },
   abe: {
     name: 'Слепой Эйб — старые вещи', greet: 'Руками трогай, глазами не верь. Тут всё настоящее.',
-    items: { ritualkit: 2, rabbitfoot: 1, locket: 1 },
+    items: { ritualkit: 2, rabbitfoot: 1, locket: 1, oillamp: 1, 'revolver~w': 1 },
     cons: [],
   },
   // ---------------- земли баронессы
@@ -42,8 +42,8 @@ export const SHOPS: Record<string, Shop> = {
   },
   hailstone: {
     name: 'Скупщик лома — Хейлстоун', greet: 'Всё, что звенит, — ко мне. Кое-что из найденного продам.',
-    items: { helmet: 1, tools: 1 },
-    cons: ['ration', 'ammo_rifle'],
+    items: { helmet: 1, tools: 1, smask: 1, spade: 1, 'carbine~w': 1, 'rifle~w': 1, 'mg~b': 1 },
+    cons: ['ration', 'ammo_rifle'], repair: true,
   },
   mossley: {
     name: 'Ровена — Мосслей', greet: 'Сушёные грибы, вяленое жучье мясо, настойка от боли.',
@@ -52,17 +52,17 @@ export const SHOPS: Record<string, Shop> = {
   },
   bquarter: {
     name: 'Интендант — форт баронессы', greet: 'Казённое снаряжение. Каждая вещь — по ведомости.',
-    items: { rifle: 2, helmet: 2, greatcoat: 2, quilted: 1, bandolier: 1, boots: 1, gloves: 1 },
-    cons: ['ammo_rifle', 'ammo_pistol', 'grenade', 'ration', 'bandage', 'medkit'],
+    items: { rifle: 2, carbine: 2, spade: 2, helmet: 2, steelhelm: 1, greatcoat: 2, quilted: 1, boots: 1, gloves: 1, goggles: 1, oillamp: 1 },
+    cons: ['ammo_rifle', 'ammo_pistol', 'ammo_mg', 'grenade', 'ration', 'bandage', 'medkit'], repair: true,
   },
   // ---------------- юг: земли Винферда
-  greywell: { name: 'Контора промысла — Грейвелл', greet: 'По накладной и с квитанцией. Иначе — никак.', items: { wrench: 1, gloves: 1 }, cons: ['ration', 'filter', 'bandage'] },
+  greywell: { name: 'Контора промысла — Грейвелл', greet: 'По накладной и с квитанцией. Иначе — никак.', items: { wrench: 1, gloves: 1, goggles: 1, oillamp: 1 }, cons: ['ration', 'filter', 'bandage'], repair: true },
   bramley: { name: 'Старший погонщик — Брэмли', greet: 'Мясо, панцирь — всё с номером.', items: { chitin: 2 }, cons: ['ration'] },
   willowbrook: { name: 'Староста — Уиллоубрук', greet: 'Рыба вяленая, грибы сушёные, настойка от боли.', items: { wormwood: 1 }, cons: ['ration', 'painkiller'] },
-  ironcliff: { name: 'Штейгер — Айронклифф', greet: 'Каски, инструмент, патроны со склада. Всё казённое — с клеймом.', items: { helmet: 2, tools: 1, boots: 1 }, cons: ['ammo_rifle', 'ration'] },
-  wf_market: { name: 'Торговые ряды — форт Винферда', greet: 'Лучший выбор по эту сторону пустоши. Ценники, клейма, квитанции.', items: { rifle: 1, huntrifle: 1, revolver: 1, autopistol: 1, pumpshot: 1, greatcoat: 1, quilted: 1, leather: 1, boots: 2, gloves: 1, gasmask: 1, bandolier: 1, pouches: 1, cap: 1 }, cons: ['ammo_pistol', 'ammo_rifle', 'ammo_shell', 'grenade', 'smoke', 'ration', 'bandage', 'medkit', 'antiseptic', 'painkiller', 'filter'] },
+  ironcliff: { name: 'Штейгер — Айронклифф', greet: 'Каски, инструмент, патроны со склада. Всё казённое — с клеймом.', items: { helmet: 2, tools: 1, boots: 1, hammer: 1, oillamp: 2, goggles: 1 }, cons: ['ammo_rifle', 'dynamite', 'ration'], repair: true },
+  wf_market: { name: 'Торговые ряды — форт Винферда', greet: 'Лучший выбор по эту сторону пустоши. Ценники, клейма, квитанции.', items: { rifle: 1, carbine: 1, huntrifle: 1, revolver: 1, autopistol: 1, pumpshot: 1, mg: 1, greatcoat: 1, quilted: 1, leather: 1, steelhelm: 1, boots: 2, gloves: 1, gasmask: 1, smask: 1, goggles: 1, oillamp: 1, elamp: 1, cap: 1 }, repair: true, cons: ['ammo_pistol', 'ammo_rifle', 'ammo_shell', 'ammo_mg', 'grenade', 'dynamite', 'smoke', 'ration', 'bandage', 'medkit', 'antiseptic', 'painkiller', 'filter'] },
   // ---------------- ковен
-  coven: { name: 'Старшая ведьма — ковен', greet: 'Бери, что глянется. Платят у нас по-разному — сегодня шиллингами.', items: { ritualkit: 2, grimoire: 1, locket: 1, rabbitfoot: 1 }, cons: ['painkiller', 'tissue'] },
+  coven: { name: 'Старшая ведьма — ковен', greet: 'Бери, что глянется. Платят у нас по-разному — сегодня шиллингами.', items: { ritualkit: 2, grimoire: 1, rdagger: 1, locket: 1, rabbitfoot: 1 }, cons: ['painkiller', 'tissue'] },
   // ---------------- знахари
   wise_fen: { name: 'Шептунья — Фенмор', greet: 'Ладанки от дурного глаза, лапки на удачу, отвар от боли. Остальное — сам.', items: { wormwood: 2, rabbitfoot: 1 }, cons: ['painkiller', 'bandage'] },
   wise_moss: { name: 'Знахарь — Мосслей', greet: 'Обереги, травы, нитки с узлами. Бери, пока никто не видит.', items: { wormwood: 1, rabbitfoot: 1, ritualkit: 1 }, cons: ['painkiller'] },
@@ -70,7 +70,7 @@ export const SHOPS: Record<string, Shop> = {
   // ---------------- север
   svoboda: {
     name: 'Пункт распределения — форт Свобода', greet: 'Без карточки — за шиллинги. Бери и уходи.',
-    items: { clothes: 1, cap: 1 },
+    items: { clothes: 1, cap: 1, trenchclub: 1, 'carbine~w': 1 },
     cons: ['ration', 'bandage', 'filter'],
   },
   hawley: {
@@ -85,7 +85,7 @@ export const SHOPS: Record<string, Shop> = {
   },
   tarwell: {
     name: 'Старший нефтяник — Тарвелл', greet: 'Пайки по норме. Фильтры для противогазов — из старых запасов.',
-    items: {},
+    items: { goggles: 1, smask: 1 },
     cons: ['ration', 'filter'],
   },
   // ---------------- форт
@@ -96,8 +96,8 @@ export const SHOPS: Record<string, Shop> = {
   },
   market: {
     name: 'Торговец — рынок Среднего города', greet: 'Лучший товар в округе. Цены — тоже лучшие. Для меня.',
-    items: { revolver: 1, autopistol: 1, rifle: 1, huntrifle: 1, shotgun2: 1, pumpshot: 1, saber: 1, greatcoat: 1, gloves: 1, boots: 1, apron: 1, pouches: 1, tools: 1, lockpicks: 1, grimoire: 1, helmet: 2, quilted: 1, cuirass: 1, sapper: 1, greaves: 1, shootgloves: 1, bandolier: 1, grenadier: 1, flamer: 1, exprifle: 1 },
-    cons: ['ammo_pistol', 'ammo_rifle', 'ammo_shell', 'grenade', 'smoke', 'ration'],
+    items: { revolver: 1, autopistol: 1, carbine: 1, rifle: 1, huntrifle: 1, shotgun2: 1, pumpshot: 1, mg: 1, saber: 1, hammer: 1, trenchclub: 1, spade: 1, greatcoat: 1, gloves: 1, boots: 1, apron: 1, tools: 1, lockpicks: 1, grimoire: 1, helmet: 2, steelhelm: 1, smask: 1, goggles: 1, quilted: 1, cuirass: 1, sapper: 1, greaves: 1, shootgloves: 1, oillamp: 1, elamp: 1, flamer: 1, exprifle: 1, 'shotgun2~w': 1 },
+    cons: ['ammo_pistol', 'ammo_rifle', 'ammo_shell', 'ammo_mg', 'grenade', 'dynamite', 'smoke', 'ration'], repair: true,
   },
 };
 
@@ -119,11 +119,18 @@ export const Trade = {
   close() { this.open = false; $('trade').classList.add('hidden'); this.onClose(); },
 
   buyItem(id: string) {
-    const it = ITEMS[id], st = stock[this.shop];
+    const st = stock[this.shop], price = itemPrice(id);
     if (!st[id]) return;
-    if (G.money < it.price) { this.note = `Не хватает шиллингов: нужно ${it.price}.`; return this.render(); }
-    G.money -= it.price; st[id]--; G.stash.push(id);
-    this.note = `Куплено: ${it.name} за ${it.price} ш.`;
+    if (G.money < price) { this.note = `Не хватает шиллингов: нужно ${price}.`; return this.render(); }
+    G.money -= price; st[id]--; G.stash.push(id);
+    this.note = `Куплено: ${itemName(id)} за ${price} ш.`;
+    this.render();
+  },
+  repairItem(idx: number) {
+    const id = G.stash[idx], p = repairPrice(id);
+    if (!p || G.money < p) return;
+    G.money -= p; G.stash[idx] = withCond(id, 'ok');
+    this.note = `Починено: ${itemOf(id).name} — снова в идеальном состоянии. (−${p} ш.)`;
     this.render();
   },
   buyCons(id: ConsId) {
@@ -134,10 +141,10 @@ export const Trade = {
     this.render();
   },
   sellItem(idx: number) {
-    const id = G.stash[idx], it = ITEMS[id], p = sellPrice(it.price);
+    const id = G.stash[idx], p = sellPrice(itemPrice(id));
     G.stash.splice(idx, 1); G.money += p;
     stock[this.shop][id] = (stock[this.shop][id] ?? 0) + 1;
-    this.note = `Продано: ${it.name} за ${p} ш.`;
+    this.note = `Продано: ${itemName(id)} за ${p} ш.`;
     this.render();
   },
   sellCons(id: ConsId) {
@@ -172,13 +179,14 @@ export const Trade = {
     }
     for (const [id, n] of Object.entries(st)) {
       if (!n) continue;
-      const it = ITEMS[id];
-      buy.push(row(icon(it.icon, KIND_COLOR[it.kind]), it.name + (it.rare ? ' ★' : ''), `${KIND_NAMES[it.kind]} · осталось ${n}`, `${it.price} ш.`, 'Купить', G.money >= it.price ? () => this.buyItem(id) : null, [it.name, it.desc, ...itemStatLines(it)]));
+      const it = itemOf(id), pr = itemPrice(id);
+      buy.push(row(icon(it.icon, KIND_COLOR[it.kind]), itemName(id) + (it.rare ? ' ★' : ''), `${KIND_NAMES[it.kind]} · осталось ${n}`, `${pr} ш.`, 'Купить', G.money >= pr ? () => this.buyItem(id) : null, [itemName(id), it.desc, ...itemStatLines(id)]));
     }
     const sell: HTMLElement[] = [];
     G.stash.forEach((id, idx) => {
-      const it = ITEMS[id], p = sellPrice(it.price);
-      sell.push(row(icon(it.icon, KIND_COLOR[it.kind]), it.name, KIND_NAMES[it.kind], `${p} ш.`, 'Продать', () => this.sellItem(idx), [it.name, it.desc, `Продажа: ${p} ш.`]));
+      const it = itemOf(id), p = sellPrice(itemPrice(id)), rp = shop.repair ? repairPrice(id) : 0;
+      if (rp) sell.push(row(icon(it.icon, KIND_COLOR[it.kind]), `Починить: ${it.name}`, condOf(id) === 'broken' ? 'сломано' : 'изношено', `${rp} ш.`, 'Починить', G.money >= rp ? () => this.repairItem(idx) : null, [itemName(id), 'Мастер приведёт оружие в идеальное состояние.', `Починка: ${rp} ш.`]));
+      sell.push(row(icon(it.icon, KIND_COLOR[it.kind]), itemName(id), KIND_NAMES[it.kind], `${p} ш.`, 'Продать', () => this.sellItem(idx), [itemName(id), it.desc, `Продажа: ${p} ш.`]));
     });
     for (const id of CONS_ORDER) {
       const c = CONSUMABLES[id];
@@ -193,7 +201,7 @@ export const Trade = {
         h('button', { class: 'btn', onclick: () => this.close() }, 'Закрыть [Esc]')),
       h('div', { class: 'tcols' },
         h('div', { class: 'tcol' }, h('div', { class: 'th' }, 'Товар'), h('div', { class: 'tlist' }, ...buy)),
-        h('div', { class: 'tcol' }, h('div', { class: 'th' }, 'Ваш обоз — продажа за полцены'), h('div', { class: 'tlist' }, ...sell))),
+        h('div', { class: 'tcol' }, h('div', { class: 'th' }, shop.repair ? 'Ваш обоз — продажа за полцены, починка оружия' : 'Ваш обоз — продажа за полцены'), h('div', { class: 'tlist' }, ...sell))),
       info,
     )));
   },

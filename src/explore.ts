@@ -3,7 +3,7 @@
 //  Эшфорд (масло), Ричморд (жуки), тракт и железная дорога к форту барона.
 //  Большая карта с камерой; статичные объекты рисуются один раз в спрайты.
 // ============================================================
-import { G } from './state';
+import { G, lampLevel } from './state';
 import { bfs, pathTo, DIRS4, lerp, seeded, TAU, Pt, clamp } from './util';
 import { flicker } from './gfx';
 import { PixelView, applyLight, PLight, T, LW, LH, PS, ppx, pline } from './px';
@@ -1160,7 +1160,7 @@ export const Explore = {
         L(o.x * T + l.x, o.y * T + l.y, l.r, a, l.color);
       }
     }
-    L(p.rx * T + T / 2, p.ry * T + T / 2, 74, 0.8, '#d8c890');
+    { const lamp = lampLevel(); L(p.rx * T + T / 2, p.ry * T + T / 2, [74, 104, 136][lamp], [0.8, 0.88, 0.95][lamp], lamp === 2 ? '#e8ecd8' : '#d8c890'); } // свет героя; фонарь — шире
     const wl = Weather.light([0.82, 1, 0.76], 0.35);
     applyLight(c, VW, VH, lights, wl.ambient, wl.tint, wl.vig);
     Weather.draw(c, VW, VH, t, cx, cy);

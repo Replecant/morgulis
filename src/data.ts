@@ -17,12 +17,15 @@ export interface Weapon {
   ignoreCover?: boolean;
   splash?: [number, number];
   magic?: boolean;
-  ammoType?: 'ammo_pistol' | 'ammo_rifle' | 'ammo_shell'; // чем перезаряжается (нет — заряды только на бой)
+  ammoType?: 'ammo_pistol' | 'ammo_rifle' | 'ammo_shell' | 'ammo_mg'; // чем перезаряжается (нет — заряды только на бой)
   poison?: boolean;    // попадание отравляет (лёгкое ранение «Отравление газом»)
   shot?: boolean;      // дробь: −1 урона за клетку дальше оптимальной
   pierce?: boolean;    // пробивает броню
   closePen?: number;   // штраф к попаданию в упор (соседняя клетка); по умолчанию у огнестрела 3, у пистолетов 1, у дробовиков 0
   breath?: number;     // дыхание: бьёт всех в полосе на столько клеток вперёд и вешает слабость
+  burst?: number;      // очередь: столько выстрелов за атаку, каждый с −3; цель и её соседи подавлены
+  antiDemon?: number;  // прибавка к урону по демоническим существам
+  heavy?: boolean;     // тяжёлое: −1 к перемещению
 }
 
 export const WEAPONS: Record<string, Weapon> = {
@@ -35,12 +38,13 @@ export const WEAPONS: Record<string, Weapon> = {
   shotgun2:  { name: 'Двуствольный дробовик', type: 'ranged', closePen: 0, range: 5, opt: 2, atk: 1, dmg: [5, 8], ammo: 2, ammoType: 'ammo_shell', shot: true },
   pumpshot:  { name: 'Помповый дробовик', type: 'ranged', closePen: 0, range: 5, opt: 2, atk: 1, dmg: [4, 7], ammo: 5, ammoType: 'ammo_shell', shot: true },
   flamer:    { name: 'Огнемёт', type: 'ranged', closePen: 0, range: 4, opt: 4, atk: 2, dmg: [4, 6], ammo: 3, ignoreCover: true, splash: [2, 3] },
+  mg:        { name: 'Ручной пулемёт', type: 'ranged', range: 10, opt: 6, atk: 0, dmg: [3, 5], ammo: 15, ammoType: 'ammo_mg', burst: 3, heavy: true },
   exprifle:  { name: 'Экспериментальная винтовка', type: 'ranged', range: 12, opt: 9, atk: 2, dmg: [6, 8], ammo: 4, ammoType: 'ammo_rifle', pierce: true },
   bayonet:   { name: 'Штык', type: 'melee', atk: 0, dmg: [2, 4] },
   knife:     { name: 'Нож', type: 'melee', atk: 1, dmg: [2, 4] },
   wrench:    { name: 'Тяжёлый гаечный ключ', type: 'melee', atk: 0, dmg: [3, 5] },
   sawnoff:   { name: 'Обрез', type: 'ranged', closePen: 0, range: 4, opt: 2, atk: 0, dmg: [4, 7], ammo: 2, ammoType: 'ammo_shell', shot: true },
-  axe:       { name: 'Пожарный топор', type: 'melee', atk: 0, dmg: [3, 7] },
+  axe:       { name: 'Топор', type: 'melee', atk: 0, dmg: [3, 7] },
   fists:     { name: 'Кулаки', type: 'melee', atk: 0, dmg: [1, 2] },
   pitchfork: { name: 'Вилы', type: 'melee', atk: 0, dmg: [2, 4] },
   musket:    { name: 'Старое ружьё', type: 'ranged', range: 7, opt: 3, atk: -1, dmg: [2, 4] },
@@ -52,8 +56,10 @@ export const WEAPONS: Record<string, Weapon> = {
   rustbayonet: { name: 'Ржавый штык', type: 'melee', atk: 0, dmg: [2, 4] },
   oldrifle:  { name: 'Гнилая винтовка', type: 'ranged', range: 9, opt: 5, atk: -1, dmg: [3, 5] },
   gasbreath: { name: 'Газовый выдох', type: 'ranged', closePen: 0, range: 3, opt: 3, atk: 1, dmg: [2, 3], ignoreCover: true, splash: [1, 2] },
-  trenchclub:{ name: 'Окопная лопата', type: 'melee', atk: 0, dmg: [3, 6] },
-  hammer:    { name: 'Кузнечный молот', type: 'melee', atk: 0, dmg: [3, 6] },
+  trenchclub:{ name: 'Траншейная дубинка', type: 'melee', atk: 1, dmg: [3, 5] },
+  spade:     { name: 'Сапёрная лопатка', type: 'melee', atk: 0, dmg: [3, 6] },
+  rdagger:   { name: 'Ритуальный кинжал', type: 'melee', atk: 1, dmg: [2, 4], antiDemon: 3 },
+  hammer:    { name: 'Двуручный молот', type: 'melee', atk: -1, dmg: [4, 8] },
   claws:     { name: 'Когти', type: 'melee', atk: 1, dmg: [2, 3] },
   hexfire:   { name: 'Ведьмин огонь', type: 'ranged', range: 7, opt: 7, atk: 1, dmg: [2, 4], ignoreCover: true, magic: true },
   houndbite: { name: 'Клыки', type: 'melee', atk: 2, dmg: [3, 6] },
@@ -62,9 +68,10 @@ export const WEAPONS: Record<string, Weapon> = {
 };
 
 export const ABILITIES: Record<string, { name: string; desc: string }> = {
-  reload:     { name: 'Перезарядка', desc: '1 ОД. Дозарядить оружие патронами из запаса.' },
+  reload:     { name: 'Перезарядка', desc: '1 ОД. Дозарядить оружие патронами из запаса и расклинить заклинившее.' },
   rally:      { name: 'Командный клич', desc: '1 ОД. Союзник в радиусе 6 получает +1 ОД. Раз за бой.' },
-  grenade:    { name: 'Граната', desc: 'Завершает ход. Взрыв 3×3, урон 3–5 — и своим тоже!' },
+  grenade:    { name: 'Граната', desc: 'Завершает ход. Бросок до 5 клеток, взрыв 3×3, урон 3–5 — и своим тоже!' },
+  dynamite:   { name: 'Динамит', desc: 'Завершает ход. Бросок до 4 клеток, взрыв 3×3, урон 5–8 — и своим тоже! Мешки, ящики и заборы в облаке разлетаются.' },
   smoke:      { name: 'Дым', desc: '1 ОД. Дымовое облако 3×3 на два хода: закрывает обзор, стоящим в дыму +3 к Защите.' },
   bandage:    { name: 'Бинт', desc: '1 ОД. Себе или соседу: +3 ОЗ и бонус Медицины. Поднимает тяжелораненого.' },
   medkit:     { name: 'Аптечка', desc: '1 ОД. Себе или соседу: +6 ОЗ и бонус Медицины. Поднимает тяжелораненого.' },
@@ -165,7 +172,7 @@ export const ENEMIES: Record<string, UnitBase> = {
   dead_soldier: E('dead_soldier', 'Окопный мертвец', 'dead_soldier', 9, 3, ['rustbayonet'], 'melee', 2, 9),
   dead_rifle:   E('dead_rifle', 'Мертвец-стрелок', 'dead_rifle', 7, 3, ['oldrifle', 'rustbayonet'], 'ranged', 1, 9),
   dead_gas:     E('dead_gas', 'Газовый мертвец', 'dead_gas', 9, 3, ['gasbreath'], 'ranged', 1, 9),
-  dead_sapper:  E('dead_sapper', 'Мертвец-сапёр в панцире', 'dead_sapper', 16, 2, ['trenchclub'], 'melee', 3, 10, { armor: 2 }),
+  dead_sapper:  E('dead_sapper', 'Мертвец-сапёр в панцире', 'dead_sapper', 16, 2, ['spade'], 'melee', 3, 10, { armor: 2 }),
 };
 
 export interface BattleDef {

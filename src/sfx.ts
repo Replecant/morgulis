@@ -20,7 +20,7 @@ const shotRifle = new Audio(shotRifleUrl); shotRifle.preload = 'auto';
 const shotPistol = new Audio(shotPistolUrl); shotPistol.preload = 'auto';
 const PISTOLS = new Set(['revolver', 'autopistol']);
 /** Оружие, которому подходит звук выстрела ружья: длинноствольное. */
-const RIFLES = new Set(['rifle', 'huntrifle', 'carbine', 'musket', 'oldrifle', 'exprifle']);
+const RIFLES = new Set(['rifle', 'huntrifle', 'carbine', 'musket', 'oldrifle', 'exprifle', 'mg']);
 
 export const Sfx = {
   get volume() { return VOL; },

@@ -7,7 +7,9 @@ import { G } from './state';
 import { seeded, TAU, clamp, dist, Pt } from './util';
 import { PixelView, LW, LH, PS, PLight, applyLight, prect, ppx, pline, pellipse, pshadow, outline, pixelize, shade } from './px';
 import { miniSprite } from './sprites';
-import { hasTool } from './state';
+import { lampLevel } from './state';
+import { itemOf } from './items';
+import type { UnitBase } from './data';
 import { addWoundId } from './wounds';
 import { Debug } from './debug';
 import { Weather } from './weather';
@@ -271,6 +273,7 @@ export const World = {
   bands: [] as Band[],
   bandHit: null as Band | null,
   bandLoot: 2, // сколько бандитов было в разбитой шайке — для добычи
+  bandTrophy: '', // трофейное оружие (id экземпляра с состоянием) или пусто
   onArrive: (_l: Loc) => {},
   onEncounter: () => {},
   onPatrol: (_owner: PatrolOwner) => {},
@@ -624,21 +627,24 @@ export const World = {
       if (cl.y < 60 || cl.y > WH - 60) cl.vy = -cl.vy;
     }
     const inside = this.clouds.some((cl) => dist(cl, p) < cl.r * 0.8);
-    const mask = hasTool('gasmask') && G.supplies.filter > 0;
-    if (inside && !this.inGas) this.onGas(mask ? 'Едкое облако. Вы натягиваете противогаз.' : 'Едкое облако! Без противогаза газ обжигает лёгкие — выбирайтесь скорее.');
+    // противогаз защищает того, на ком он надет (слот «Лицо»), пока есть фильтры
+    const masked = (b: UnitBase) => !!b.equip?.face && itemOf(b.equip.face).gas && G.supplies.filter > 0;
+    const bare = G.squad.filter((b) => !masked(b)), any = bare.length < G.squad.length;
+    if (inside && !this.inGas) this.onGas(!bare.length ? 'Едкое облако. Отряд натягивает противогазы.' : any ? `Едкое облако! Противогазы натянуты, но ${bare.map((b) => b.name).join(', ')} без маски — выбирайтесь скорее.` : 'Едкое облако! Без противогазов газ обжигает лёгкие — выбирайтесь скорее.');
     this.inGas = inside;
     if (!inside) return;
-    if (mask) {
+    if (any) {
       this.filterUse += hours;
       if (this.filterUse >= 3) { this.filterUse = 0; G.supplies.filter--; this.onGas(`Фильтр противогаза отработал (осталось ${G.supplies.filter}).`); }
-      return;
     }
+    if (!bare.length) return;
     this.gasDose += hours;
     while (this.gasDose >= 1) {
       this.gasDose -= 1;
       let poisoned = false;
-      for (const b of G.squad) { b.hp = Math.max(1, b.hp - 2); if (addWoundId(b, 'gassed')) poisoned = true; }
-      this.onGas(poisoned ? 'Отравление газом: кашель, резь в глазах (−2 ОЗ, −1 к атакам до привала).' : 'Газ жжёт лёгкие: −2 ОЗ.');
+      for (const b of bare) { b.hp = Math.max(1, b.hp - 2); if (addWoundId(b, 'gassed')) poisoned = true; }
+      const msg = poisoned ? 'Отравление газом: кашель, резь в глазах (−2 ОЗ, −1 к атакам до привала).' : 'Газ жжёт лёгкие: −2 ОЗ.';
+      this.onGas(any ? `${bare.map((b) => b.name).join(', ')}: ${msg[0].toLowerCase()}${msg.slice(1)}` : msg);
     }
   },
   inCloud(q: Pt) { return this.clouds.some((cl) => dist(cl, q) < cl.r * 0.8); },
@@ -833,7 +839,7 @@ export const World = {
       if (l.kind === 'fort') L(l.x, l.y - 30, 100, 0.6, '#e8d090');
     }
     L(fl.x, fl.y - 30, 80, 0.7 + Math.sin(t * 9) * 0.08, '#ff9a40');
-    L(p.x, p.y, 58, 0.55, '#d8c890');
+    { const lamp = lampLevel(); L(p.x, p.y, [58, 84, 112][lamp], [0.55, 0.65, 0.75][lamp], lamp === 2 ? '#e8ecd8' : '#d8c890'); } // фонарь отряда
     for (const pt of this.patrols) { const q = this.patrolPos(pt); L(q.x, q.y - 8, pt.owner === 'wfcar' ? 46 : 34, 0.5, '#f0d090'); } // фонарь патруля, фары бронемашины
     for (const g of this.dead) if (g.alive && g.seen) L(g.x, g.y - 6, 22, 0.35, '#a8f070'); // гнилушечный отсвет глаз
     const wl = Weather.light([0.84, 1, 0.78], 0.3);

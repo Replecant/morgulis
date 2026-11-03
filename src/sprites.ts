@@ -47,7 +47,7 @@ export function drawSprite(c: Ctx, kind: string, x: number, y: number, o: Sprite
 
 // ============================================================ сборка персонажа
 /** Оружие, которое в бою держат «на изготовку» — так его легче различить. */
-const AIM = new Set(['rifle', 'musket', 'shotgun', 'sawnoff', 'pistol', 'knife']);
+const AIM = new Set(['rifle', 'musket', 'shotgun', 'sawnoff', 'pistol', 'knife', 'mg']);
 /** Вид фигурки для боя: стрелки и бойцы с ножом — в стойке с оружием на изготовку (ключ с суффиксом «#aim»). */
 export function combatKind(kind: string) { const st = STYLES[kind]; return st && st.weapon && AIM.has(st.weapon) && st.limbs?.armR !== 'lost' ? kind + '#aim' : kind; }
 
@@ -280,6 +280,15 @@ function buildChar(kind0: string, frame: number): HTMLCanvasElement {
         R(ax + 4, ay + 1, 9, 3, dark); R(ax + 4, ay + 1, 9, 1, STEEL_L); R(ax + 4, ay + 2, 9, 1, STEEL); R(ax + 12, ay + 1, 1, 3, '#f0f4ea');
         hand2(ax + 7, ay + 4);
         break;
+      case 'mg': // ручной пулемёт: толстая тёмная коробка, длинный ствол с кожухом, сошки, короб с лентой
+        sleeve(ax - 1, ay + 3, 4); hand2(ax + 3, ay + 4);
+        R(ax - 3, ay + 2, 6, 3, wood); R(ax - 3, ay + 4, 6, 1, woodD);
+        R(ax + 3, ay + 1, 8, 4, dark); R(ax + 3, ay + 1, 8, 1, STEEL);
+        R(ax + 11, ay + 1, EDGE - ax - 11, 2, '#5a5e58'); R(ax + 11, ay + 1, EDGE - ax - 11, 1, STEEL_L); P(EDGE - 1, ay + 1, '#f0f4ea');
+        pline(c, EDGE - 4, ay + 3, EDGE - 6, ay + 7, dark); pline(c, EDGE - 4, ay + 3, EDGE - 2, ay + 7, dark);
+        R(ax + 5, ay + 5, 4, 3, '#5a5c48'); R(ax + 5, ay + 5, 4, 1, '#7a7c64'); P(ax + 4, ay + 7, BRASS); P(ax + 3, ay + 8, BRASS);
+        hand2(ax + 9, ay + 4);
+        break;
       case 'sawnoff': // обрез у бедра: короткие толстые стволы, рукоять
         R(ax, ay, 2, 7, coat); R(ax + 1, ay, 1, 7, coatD); hand2(ax, ay + 7);
         R(ax + 2, ay + 6, 6, 3, dark); R(ax + 2, ay + 6, 6, 1, STEEL_L); R(ax + 2, ay + 7, 6, 1, STEEL); R(ax + 7, ay + 6, 1, 3, '#f0f4ea');
@@ -325,6 +334,13 @@ function buildChar(kind0: string, frame: number): HTMLCanvasElement {
     case 'shotgun': { // дробовик: длинный, толстые тёмные стволы, тёмное дерево, без штыка
       pline(c, 9, sy(tBot), 18, sy(tTop - 3), '#4a2e1a', 2);
       pline(c, 15, sy(tTop + 1), 21, sy(tTop - 7), '#2e2e2a', 2); pline(c, 16, sy(tTop + 1), 21, sy(tTop - 6), '#6a6a64');
+      hand(); R(9, sy(tTop + 6), 2, 2, skin);
+      break;
+    }
+    case 'mg': { // пулемёт на плече: толстый тёмный ствол, коробка, короб с лентой
+      pline(c, 9, sy(tBot), 17, sy(tTop - 3), '#5a3a1e', 2);
+      pline(c, 14, sy(tTop + 1), 21, sy(tTop - 8), '#2e302e', 2); pline(c, 15, sy(tTop + 1), 21, sy(tTop - 7), '#6a6e68');
+      R(12, sy(tTop + 2), 3, 3, '#5a5c48'); P(12, sy(tTop + 2), '#7a7c64');
       hand(); R(9, sy(tTop + 6), 2, 2, skin);
       break;
     }
@@ -630,6 +646,7 @@ export function miniSprite(kind: string, frame = 0): HTMLCanvasElement {
     case 'pistol': R(9, 8, 3, 1, '#3a3a36'); ppx(c, 11, 8, STEEL_L); break;
     case 'sawnoff': R(8, 9, 4, 1, '#3a3a36'); ppx(c, 11, 8, STEEL_L); break;
     case 'shotgun': R(9, 3, 1, 9, '#4a2e1a'); R(9, 1, 1, 3, '#3a3a36'); break;
+    case 'mg': R(9, 2, 1, 10, '#2e302e'); R(8, 6, 3, 2, '#5a5c48'); R(9, 0, 1, 2, STEEL_L); break;
   }
   c.setTransform(1, 0, 0, 1, 0, 0);
   outline(cv, INK);
