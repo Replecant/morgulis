@@ -16,7 +16,7 @@ import { Debug } from './debug';
 import { Weather } from './weather';
 
 const VW = 960, VH = 640;
-export const WW = 3200, WH = 2500;
+export const WW = 3800, WH = 2500; // восточный край — траншейное море тянется дальше, чем видно
 /** Восточнее — Траншейное море: здесь когда-то, ещё до катаклизма, столкнулись армии Империи и баронов-сепаратистов. */
 export const HELL_X = 2280;
 /** Восточный край прежней карты (земли Олдриджа). */
@@ -242,8 +242,8 @@ const rollFor = (fac: Band['fac']) => (fac === 'deserter' ? deserterRoll() : ban
 const LOYAL_START: [number, number][] = [[880, -620], [1420, -620], [300, -450]];
 const inHell = (q: Pt) => q.x > HELL_X && !peaksAt(q, 40); // север отрезан горами
 // ------------------------------------------------------------ траншейное море: мертвецы и культ — враждуют между собой
-const HELL_DEAD_START: [number, number][] = [[2700, 600], [2900, 1500], [2550, 1900], [3000, 2250], [2850, 250]];
-const HELL_CULT_START: [number, number][] = [[2980, 900], [2720, 2150], [3080, 1700]];
+const HELL_DEAD_START: [number, number][] = [[2700, 600], [2900, 1500], [2550, 1900], [3000, 2250], [2850, 250], [3400, 900], [3600, 1900], [3300, 2300]];
+const HELL_CULT_START: [number, number][] = [[2980, 900], [2720, 2150], [3080, 1700], [3500, 1350], [3650, 500]];
 /** Где бродят: в море траншей, подальше от Вольницы, Поста 314 и края карты. */
 const hellWild = (q: Pt) => inHell(q) && q.y > 60 && q.y < WH - 80 && q.x < WW - 50 && !LOCS.some((l) => l.kind !== 'poi' && dist(l, q) < 220);
 const pickW = (pool: [string, number][]) => { let r = Math.random() * pool.reduce((s, [, w]) => s + w, 0); return pool.find(([, w]) => (r -= w) < 0)![0]; };
@@ -389,7 +389,7 @@ export const World = {
     ];
     this.lastDay = Math.floor(G.clock / 24);
     // первый выходит из Эшфорда к форту, второй — из форта к Ричморду: идут навстречу и расходятся
-    this.clouds = [[2500, 400], [2800, 1300], [2650, 2050], [3000, 700], [2400, -600], [2900, -200], [300, 1520], [-700, 1660], [1100, 2120], [-1500, 2000], [600, 2210], [-300, 1750], [200, 300], [760, 1080], [1250, 560], [-300, 420], [-650, 900], [1560, 1120], [900, 180], [-1250, 220], [-2050, 950], [-1500, 1150], [-2300, 380]].map(([x, y], i) => ({
+    this.clouds = [[2500, 400], [2800, 1300], [2650, 2050], [3000, 700], [2400, -600], [2900, -200], [300, 1520], [-700, 1660], [1100, 2120], [-1500, 2000], [600, 2210], [-300, 1750], [200, 300], [760, 1080], [1250, 560], [-300, 420], [-650, 900], [1560, 1120], [900, 180], [-1250, 220], [-2050, 950], [-1500, 1150], [-2300, 380], [3400, 600], [3600, 1700], [3300, 2200]].map(([x, y], i) => ({
       x, y, r: 70 + ((i * 37) % 50), vx: 9 + (i % 3) * 3, vy: ((i % 2) * 2 - 1) * 2, seed: i * 1.9 }));
     this.inGas = false; this.gasDose = 0; this.filterUse = 0; this.clashes = []; this.clashHit = null;
     this.demons = [0.6, 3.6].map((a, i) => { const q = lakeRing(a, 1.1); return { id: i, x: q.x, y: q.y, tx: q.x, ty: q.y, alive: true, respawn: 0, calm: 0, seen: false, a }; });
@@ -893,7 +893,7 @@ export const World = {
     // земли — крупными бледными буквами
     c.textAlign = 'center';
     c.font = `italic ${Math.round(ch * 0.034)}px "Old Standard TT", serif`;
-    for (const [name, wx, wy] of [['Земли Олдриджа', 1000, 1120], ['Старый фронт', -390, 1080], ['Земли Леди Харрингтон', -1700, 1150], ['Северные леса — земли Собрания', 700, -1110], ['Земли барона Винферда', 400, 1420], ['Траншейное море', 2740, 900]] as [string, number, number][])
+    for (const [name, wx, wy] of [['Земли Олдриджа', 1000, 1120], ['Старый фронт', -390, 1080], ['Земли Леди Харрингтон', -1700, 1150], ['Северные леса — земли Собрания', 700, -1110], ['Земли барона Винферда', 400, 1420], ['Траншейное море', 3000, 900]] as [string, number, number][])
       text(name, X(wx), Y(wy), 'rgba(216,206,170,0.7)');
     // места: точка и название
     let hov: Loc | null = null;
@@ -1267,12 +1267,12 @@ function renderBackground(): HTMLCanvasElement {
   { // Траншейное море: бурая перепаханная земля, ядовитая дымка; к западу — резкий край
     c.fillStyle = '#3a3226'; c.fillRect(HELL_X, WY0, WW - HELL_X, WH - WY0);
     const rh = seeded(6061);
-    for (let i = 0; i < 1400; i++) {
+    for (let i = 0; i < 1400 * (WW - HELL_X) / 920; i++) {
       const x = HELL_X + rh() * (WW - HELL_X), y = WY0 + rh() * (WH - WY0), rr = 20 + rh() * 70;
       c.fillStyle = rh() < 0.6 ? 'rgba(24,20,14,0.35)' : 'rgba(100,90,66,0.22)';
       c.beginPath(); c.ellipse(x, y, rr, rr * 0.6, rh() * 3, 0, TAU); c.fill();
     }
-    for (let i = 0; i < 40; i++) {
+    for (let i = 0; i < 40 * (WW - HELL_X) / 920; i++) {
       const x = HELL_X + 80 + rh() * (WW - HELL_X - 80), y = WY0 + rh() * (WH - WY0), rr = 80 + rh() * 120, g = c.createRadialGradient(x, y, 0, x, y, rr);
       g.addColorStop(0, 'rgba(120,150,60,0.18)'); g.addColorStop(1, 'rgba(120,150,60,0)'); c.fillStyle = g; c.fillRect(x - rr, y - rr, rr * 2, rr * 2);
     }
@@ -1662,19 +1662,20 @@ function drawMountains(c: CanvasRenderingContext2D, r: () => number) {
 /** Траншейное море: воронка на воронке, джунгли траншей во все стороны, проволока, остовы, кресты. */
 function drawHell(c: CanvasRenderingContext2D, thick: Thick) {
   const r = seeded(7333), X0 = HELL_X / 2, X1 = WW / 2, Y0 = WY0 / 2, Y1 = WH / 2;
+  const kk = (X1 - X0) / 460; // плотность — как на прежней ширине моря
   // рваный край: земля обрывается — гребень бруствера и осыпь вдоль всей границы
   for (let y = Y0; y < Y1; y++) {
     const x = X0 + Math.round(Math.sin(y / 9) * 3 + Math.sin(y / 31) * 6 + (r() - 0.5) * 3);
     prect(c, x - 2, y, 3, 1, '#6a5c44'); ppx(c, x + 1, y, '#1a150e'); if (r() < 0.3) ppx(c, x - 4 - Math.floor(r() * 4), y, '#4a4234');
   }
   // воронки внахлёст, гуще, чем на старом фронте
-  for (let i = 0; i < 2600; i++) {
+  for (let i = 0; i < 2600 * kk; i++) {
     const x = Math.round(X0 + 6 + r() * (X1 - X0 - 6)), y = Math.round(Y0 + r() * (Y1 - Y0)), sz = 2 + Math.round(r() * r() * 9);
     pellipse(c, x, y + 1, sz + 1, Math.ceil(sz * 0.6) + 1, '#5e5440'); pellipse(c, x, y, sz, Math.ceil(sz * 0.6), '#1c1812');
     if (r() < 0.35) pellipse(c, x, y + 1, Math.max(1, sz - 2), Math.max(1, Math.ceil(sz * 0.3)), r() < 0.5 ? '#2e3a26' : '#3a3a22');
   }
   // джунгли траншей: ломаные во все стороны, с ответвлениями
-  for (let i = 0; i < 90; i++) {
+  for (let i = 0; i < 90 * kk; i++) {
     let x = X0 + 10 + r() * (X1 - X0 - 20), y = Y0 + r() * (Y1 - Y0), a = r() * TAU;
     const pts: number[][] = [[x, y]], n = 6 + Math.floor(r() * 14);
     for (let k = 0; k < n; k++) {
@@ -1684,20 +1685,20 @@ function drawHell(c: CanvasRenderingContext2D, thick: Thick) {
     thick(pts, '#6a5c44', 5); thick(pts, '#120f0a', 3); if (r() < 0.6) thick(pts, '#3a2e1e', 1, [1, 2]);
   }
   // колючая проволока клубками
-  for (let i = 0; i < 160; i++) {
+  for (let i = 0; i < 160 * kk; i++) {
     const x = X0 + 8 + r() * (X1 - X0 - 10), y = Y0 + r() * (Y1 - Y0), len = 6 + r() * 16;
     for (let k = 0; k < len; k++) { const px = x + k, py = y + Math.sin(k * 1.1) * 1.5; if (r() < 0.8) ppx(c, px, py, k % 2 ? '#8a8a80' : '#6e6e66'); if (k % 5 === 0) prect(c, Math.round(px), Math.round(y) - 2, 1, 3, '#3a2c1e'); }
   }
   // обломанные стволы, кресты-могилы, каски на винтовках
-  for (let i = 0; i < 220; i++) {
+  for (let i = 0; i < 220 * kk; i++) {
     const x = Math.round(X0 + 8 + r() * (X1 - X0 - 10)), y = Math.round(Y0 + r() * (Y1 - Y0)), k = r();
     if (k < 0.5) { const h = 2 + Math.round(r() * 3); prect(c, x, y - h, 1, h, '#1c1a15'); ppx(c, x + (r() < 0.5 ? 1 : -1), y - h, '#2c2820'); }
     else if (k < 0.8) { prect(c, x, y - 4, 1, 5, '#4a3a26'); prect(c, x - 1, y - 3, 3, 1, '#4a3a26'); }
     else { prect(c, x, y - 5, 1, 6, '#3a2c1e'); prect(c, x - 1, y - 7, 3, 2, '#4a4e3a'); }
   }
   // остовы бронемашин и пушек — их тут больше, чем на старом фронте
-  for (let i = 0; i < 9; i++) { const x = X0 + 30 + r() * (X1 - X0 - 50), y = Y0 + 20 + r() * (Y1 - Y0 - 40); stamp(c, x, y, 24, 14, (s) => armoredCar(s, 1, 0, r() < 0.5)); }
-  for (let i = 0; i < 6; i++) { // опрокинутые орудия: колесо и ствол
+  for (let i = 0; i < 9 * kk; i++) { const x = X0 + 30 + r() * (X1 - X0 - 50), y = Y0 + 20 + r() * (Y1 - Y0 - 40); stamp(c, x, y, 24, 14, (s) => armoredCar(s, 1, 0, r() < 0.5)); }
+  for (let i = 0; i < 6 * kk; i++) { // опрокинутые орудия: колесо и ствол
     const x = Math.round(X0 + 30 + r() * (X1 - X0 - 50)), y = Math.round(Y0 + 20 + r() * (Y1 - Y0 - 40));
     pellipse(c, x, y, 3, 3, '#2a2420'); ppx(c, x, y, '#6a5a40'); pline(c, x, y - 1, x + 9, y - 4, '#3a3a36', 2);
   }

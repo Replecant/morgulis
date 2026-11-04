@@ -4,7 +4,7 @@ import { START_STASH, PROF_START, CONS_ORDER, ConsId } from './items';
 import type { SkillKey } from './rules';
 import { limbSkill } from './prosthetics';
 
-export type Mode = 'title' | 'create' | 'world' | 'explore' | 'crawl' | 'combat' | 'end';
+export type Mode = 'title' | 'create' | 'world' | 'explore' | 'combat' | 'end';
 
 export const G = {
   mode: 'title' as Mode,
