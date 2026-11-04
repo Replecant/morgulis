@@ -4,13 +4,13 @@
 // ============================================================
 import './style.css';
 import { installI18n, tr } from './i18n';
-import { G, resetGame, alexIn, arthurIn, ivyIn } from './state';
+import { G, resetGame, alexIn, arthurIn, ivyIn, ferglowIn } from './state';
 import { Explore } from './explore';
 import { World, clockText, LOCS } from './worldmap';
 import { Combat, CT } from './combat';
 import { Dialog, refreshHud, exploreHint, toast, combatShow, combatLog, combatPanel, screen, hideScreen, openSquad, closeSquad, squadOpen } from './ui';
 import { setPcStyle, applyEquipLooks } from './gfx';
-import { makeAlex, makeArthur, makeIvy, CLASH, refreshLeader } from './data';
+import { makeAlex, makeArthur, makeIvy, makeFerglow, CLASH, refreshLeader } from './data';
 import { Inventory } from './inventory';
 import { Sheet } from './sheet';
 import { Music } from './music';
@@ -98,6 +98,7 @@ function toScene(id: string, at?: { x: number; y: number }) {
   alexLeft(id);
   alexSee(ALEX_SCENE[id]);
   if (id === 'svoboda' && arthurIn() && !G.flags.arthurSawUncle) alexPending = 'arthur_svoboda'; // Артур видит повешенного дядю
+  if (id === 'coven' && ferglowIn() && !G.flags.ferglowSawCoven && !G.flags.covenDead) alexPending = 'ferglow_coven'; // Ферглоу в восторге от ковена
   if (id === 'richmord' && G.flags.alexDadDenounced) { G.flags.alexDadBeaten = true; if (alexIn() && !G.flags.alexSawDad) alexPending = 'alex_dad_seen'; } // донос сделал своё: на следующий заход отец избит
   G.mode = 'explore';
   if (!G.flags['visited_' + id]) gainXp(XP.scene); // первый визит
@@ -208,8 +209,8 @@ Debug.onTeleport = (id) => {
 World.onRevo = () => Dialog.start('revo_arthur');
 World.onRat = (msg) => toast(msg);
 // отладка: взять спутника в отряд или убрать (флаги вербовки — как при обычной вербовке)
-Debug.companions = [{ id: 'alex', name: 'Александр' }, { id: 'arthur', name: 'Артур Сильвер' }, { id: 'ivy', name: 'Айви Гримшоу' }];
-const JOINED: Record<string, string> = { alex: 'alexJoined', arthur: 'arthurJoined', ivy: 'ivyJoined' };
+Debug.companions = [{ id: 'alex', name: 'Александр' }, { id: 'arthur', name: 'Артур Сильвер' }, { id: 'ivy', name: 'Айви Гримшоу' }, { id: 'ferglow', name: 'Уильям Ферглоу' }];
+const JOINED: Record<string, string> = { alex: 'alexJoined', arthur: 'arthurJoined', ivy: 'ivyJoined', ferglow: 'ferglowJoined' };
 Debug.onCompanion = (id) => {
   if (G.squad.some((b) => b.id === id)) { // убрать — и вернуть на его место в мире (можно снова позвать обычным путём)
     G.squad = G.squad.filter((b) => b.id !== id); G.flags[JOINED[id]] = false;
@@ -260,6 +261,7 @@ Dialog.onAction = (act) => {
   else if (act.startsWith('move:')) { const c = G.pc, k = act.slice(5); if (c && COURAGE[k] && pendingMove(c)?.includes(k)) { c.courageMoves = [...knownMoves(c), k]; toast(`Приём куража: ${COURAGE[k].name}`); if (pendingTalent(c) || pendingMove(c)) levelPending = true; } }
   else if (act === 'recruit_arthur') { if (!arthurIn()) { G.squad.push(makeArthur()); applyEquipLooks(G.squad); if (G.mode === 'explore') Explore.enter(Explore.scene, Explore.player); toast('Артур Сильвер в отряде'); refreshHud(); } }
   else if (act === 'recruit_ivy') { if (!ivyIn()) { G.squad.push(makeIvy()); applyEquipLooks(G.squad); if (G.mode === 'explore') Explore.enter(Explore.scene, Explore.player); toast('Айви Гримшоу в отряде'); refreshHud(); } }
+  else if (act === 'recruit_ferglow') { if (!ferglowIn()) { G.squad.push(makeFerglow()); applyEquipLooks(G.squad); if (G.mode === 'explore') Explore.enter(Explore.scene, Explore.player); toast('Уильям Ферглоу в отряде'); refreshHud(); } }
   else if (act === 'ivy_betray') { G.squad = G.squad.filter((b) => b.id !== 'ivy'); applyEquipLooks(G.squad); World.spareRevo(48); if (G.mode === 'explore') Explore.enter(Explore.scene, Explore.player); refreshHud(); }
   else if (act === 'ivy_gone') { if (G.mode === 'explore') Explore.enter(Explore.scene, Explore.player); }
   else if (act === 'arthur_betray') { G.squad = G.squad.filter((b) => b.id !== 'arthur'); applyEquipLooks(G.squad); World.spareRevo(48); refreshHud(); }

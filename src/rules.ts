@@ -285,7 +285,7 @@ export const COURAGE_START: Record<ProfId, string[]> = {
   soldier: ['charge', 'rush'], shooter: ['pierce', 'rush'], saboteur: ['rush', 'grit'],
   occultist: ['grit', 'brace'], technician: ['brace', 'volley'], medic: ['rescue', 'grit'],
 };
-export const COMPANION_MOVES: Record<string, string[]> = { alex: ['rush', 'rescue'], arthur: ['pierce', 'brace'], ivy: ['rescue', 'grit'] };
+export const COMPANION_MOVES: Record<string, string[]> = { alex: ['rush', 'rescue'], arthur: ['pierce', 'brace'], ivy: ['rescue', 'grit'], ferglow: ['brace', 'inspire'] };
 export const MOVE_LEVELS = [3, 5];
 export const knownMoves = (c: Character) => c.courageMoves ?? COURAGE_START[c.prof];
 /** Выбор нового приёма куража ждёт героя: уровень 3 / 5 достигнут, а приёмов меньше положенного. */

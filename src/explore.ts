@@ -830,6 +830,7 @@ export const Explore = {
     NPC('guard1', 'Стражник', 'guard', 99, 48, 'guard');
     NPC('guard2', 'Стражник', 'guard', 99, 52, 'guard');
     NPC('trader', 'Торговец', 'sutler', 157, 47, 'trader');
+    NPC('ferglow', 'Джентльмен в цилиндре', 'ferglow', 163, 38, 'ferglow', () => !G.flags.ferglowJoined); // временно: его место — в Империи
     NPC('prosthetist', 'Протезист', 'medic_civ', 167, 56, 'prosthetist');
     NPC('surgeon', 'Подпольный хирург', 'surgeon_under', 142, 65, 'surgeon');
     NPC('alex_changed', 'Александр', 'alex_changed', 139, 65, 'alex_changed', () => !!G.flags.alexSoldLeft);

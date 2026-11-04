@@ -87,7 +87,7 @@ function mkUnit(b: UnitBase, team: Unit['team'], x: number, y: number): Unit {
   const u: Unit = {
     uid: ++UID, team, base: b, name: b.name, kind: b.look ?? b.kind, x, y, px: x * CT + CT / 2, py: y * CT + CT / 2,
     hp: b.hp, maxHp: player ? effMaxHp(b) : b.maxHp, move: Math.max(2, b.move + m.move + (e?.move ?? 0) - (player && e ? loadMovePen() : 0)), ap: 0,
-    weapons: e ? e.weapons : b.weapons.slice(), ammo: {}, abil,
+    weapons: e ? [...(b.innate ?? []), ...e.weapons.filter((w) => !(b.innate?.length && w === 'fists'))] : b.weapons.slice(), ammo: {}, abil,
     atkM: b.atkM + m.atkM + (e?.atkM ?? 0), atkR: b.atkR + m.atkR + (e?.atkR ?? 0), def: b.def + m.def + (e?.def ?? 0),
     armor: (b.armor ?? 0) + (e?.armor ?? 0), dmgM: b.dmgM ?? 0,
     horror: (b.horror ?? 0) + m.horror + (e?.horror ?? 0), med: b.med ?? 0,
@@ -594,6 +594,20 @@ export const Combat = {
       const aimB = tal(u, 'h_sniper') ? 6 : 4;
       if (this.hitChance(u, target, w, aimB) <= 0) return T('Цель вне досягаемости или не видна');
       this.run(async () => { this.float(u, 'Прицел…', '#d8c890'); await sleep(350); await this.attack(u, target, w, aimB); u.ap = 0; });
+    } else if (key === 'wimp') { // Ферглоу призывает беса на соседнюю клетку
+      if (cheb(u, { x: tx, y: ty }) !== 1 || !this.walk(tx, ty) || this.unitAt(tx, ty)) return T('Выберите свободную клетку рядом');
+      this.run(async () => {
+        u.abil.wimp--; u.ap = 0;
+        const ok = check(4, 12).success; // опытный демонолог: почти всегда слушается
+        this.float(u, '«Явись, слуга!»', '#e05030');
+        const imp = mkUnit(ENEMIES.imp, ok ? 'player' : 'enemy', tx, ty);
+        imp.flash = 0.3; imp.name = ok ? 'Бес Ферглоу' : 'Своевольный бес';
+        if (ok) { imp.summon = 3; imp.ap = 0; }
+        this.units.push(imp);
+        this.burst(tx * CT + CT / 2, ty * CT + CT / 2, '#e05030', 26, 70);
+        this.hooks.log(ok ? `${u.name} небрежно щёлкает пальцами — из воздуха выступает бес и кланяется ему. Служит 3 раунда.` : `Бес является, смотрит на ${u.name} и хихикает. Служить он не будет.`);
+        await sleep(400);
+      });
     } else if (key === 'rally') {
       if (!target || target.team !== 'player' || target === u || dist(u, target) > 6.5) return T('Выберите союзника в радиусе 6');
       this.run(async () => {

@@ -141,6 +141,8 @@ export const STYLES: Record<string, Style> = {
   cult_g: { coat: '#363a2e', legs: '#282a22', belt: '#3a2a1a', webbing: '#4a4636', puttees: '#3a3e30', ragged: true, hat: 'helmet', hatC: '#3a3e30', skin: '#b49c86', beard: '#4a3a2a', weapon: 'rifle' },
   // Айви Гримшоу: шинель армии Харрингтон с отпоротыми петлицами, фартук в бурых пятнах, рыжие волосы, санитарная повязка
   ivy: { coat: '#4e5040', legs: '#3a3c30', belt: '#5a3a22', apron: '#7a6a5a', band: true, skin: '#d4b498', hair: '#8a4a22', longHair: true, weapon: 'knife' },
+  // Уильям Ферглоу: джентри из Империи — сюртук безупречного кроя, золотая кайма, белый воротничок, напомаженные волосы
+  ferglow: { coat: '#2a2430', legs: '#161418', belt: '#1a1418', trim: '#c8a050', collar: true, hat: 'tophat', hatC: '#141214', skin: '#dcc8b4', hair: '#1c1814', weapon: 'staff' },
   // Вольница: шайка из траншей — бандиты, анархисты, беглые и прочие
   arthur: { coat: '#3a2a34', legs: '#1e1a1e', belt: '#2a1d12', trim: '#9a8048', collar: true, skin: '#d4bca4', hair: '#b09868', weapon: 'saber' },
   vol_orator: { coat: '#3a3a30', legs: '#24241e', hat: 'flatcap', hatC: '#1a1a16', armband: '#141210', skin: '#c0a488', beard: '#4a3a2a', weapon: 'book' },

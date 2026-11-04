@@ -192,7 +192,7 @@ export function openSquad(onClose: () => void) {
       mb.disabled = G.supplies.medkit <= 0 || (s.hp >= max && !woundsOf(s).some((w) => !w.heavy));
       mb.onclick = () => { log = useMedkit(s) ?? ''; render(); };
       acts.append(bb, ' ', mb);
-      if (s.id === 'alex' || s.id === 'arthur' || s.id === 'ivy') { // со спутниками можно поговорить
+      if (['alex', 'arthur', 'ivy', 'ferglow'].includes(s.id)) { // со спутниками можно поговорить
         const tb = document.createElement('button');
         tb.className = 'btn'; tb.textContent = 'Поговорить';
         tb.onclick = () => { closeSquad(onClose); Dialog.start(s.id + '_talk'); };

@@ -58,6 +58,7 @@ export const WEAPONS: Record<string, Weapon> = {
   oldrifle:  { name: 'Гнилая винтовка', type: 'ranged', range: 9, opt: 5, atk: -1, dmg: [3, 5] },
   gasbreath: { name: 'Газовый выдох', type: 'ranged', closePen: 0, range: 3, opt: 3, atk: 1, dmg: [2, 3], ignoreCover: true, splash: [1, 2], poison: true, gas: true },
   deadfist:  { name: 'Кулаки', type: 'melee', atk: 1, dmg: [2, 3] },
+  demonfire: { name: 'Демоническое пламя', type: 'ranged', closePen: 0, range: 7, opt: 6, atk: 1, dmg: [3, 5], ammo: 3, ignoreCover: true, magic: true }, // Ферглоу: три раза за бой, сквозь укрытия
   deadgrenade: { name: 'Старая граната', type: 'ranged', closePen: 0, range: 5, opt: 5, atk: 0, dmg: [3, 5], ammo: 2, ignoreCover: true, splash: [2, 3] }, // мертвец-гренадер: две на бой, взрыв задевает и своих
   trenchclub:{ name: 'Траншейная дубинка', type: 'melee', atk: 1, dmg: [3, 5] },
   spade:     { name: 'Сапёрная лопатка', type: 'melee', atk: 0, dmg: [3, 6] },
@@ -80,6 +81,7 @@ export const ABILITIES: Record<string, { name: string; desc: string }> = {
   medkit:     { name: 'Аптечка', desc: '1 ОД. Себе или соседу: +6 ОЗ и бонус Медицины. Поднимает тяжелораненого.' },
   painkiller: { name: 'Обезбол.', desc: '1 ОД. Себе: +3 ОЗ и +1 кураж.' },
   aim:        { name: 'Прицельный выстрел', desc: '2 ОД. Выстрел с +4 к броску атаки.' },
+  wimp:       { name: 'Призыв беса', desc: 'Раз за бой, завершает ход (Ферглоу). Бес появляется на соседней клетке и служит отряду 3 раунда. Редко — своеволит.' },
   galvanic:   { name: 'Гальв. разряд', desc: 'Без ОД, раз за бой (гальваническая рука). Следующий удар в ближнем бою: +2 к атаке и урону. После удара — проверка Силы КС 12, провал: −1 ОЗ.' },
 };
 
@@ -112,6 +114,7 @@ export interface UnitBase {
   demonic?: boolean;
   boss?: boolean;
   courage0?: number;     // кураж в начале боя от талантов
+  innate?: string[];     // оружие, которое не зависит от снаряжения (оккультное пламя Ферглоу)
   tflags?: string[];     // таланты профессии героя (для боя)
 }
 
@@ -166,6 +169,15 @@ export function makeIvy(): UnitBase {
     id: 'ivy', name: 'Айви', kind: 'ivy', hp: 10, maxHp: 10, move: 4,
     weapons: ['revolver', 'knife'], atkM: 1, atkR: 1, def: 13, armor: 0, dmgM: 0, horror: 1, med: 4, str: 1, wounds: [],
     equip: { main: 'revolver', side: 'knife', body: 'clothes' }, abil: {},
+  };
+}
+
+/** Уильям Ферглоу — джентри из Империи, член имперского оккультного общества, демонолог: демоническое пламя и призыв беса. */
+export function makeFerglow(): UnitBase {
+  return {
+    id: 'ferglow', name: 'Уильям', kind: 'ferglow', hp: 9, maxHp: 9, move: 4,
+    weapons: ['demonfire', 'revolver', 'rdagger'], innate: ['demonfire'], atkM: 0, atkR: 2, def: 13, armor: 0, dmgM: 0, horror: 3, med: 0, str: -1, wounds: [],
+    equip: { main: 'revolver', side: 'rdagger', head: 'tophat', body: 'clothes' }, abil: { wimp: 1 },
   };
 }
 
