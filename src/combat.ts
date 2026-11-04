@@ -1077,7 +1077,7 @@ export const Combat = {
       if (w.shot) d = Math.max(1, d - Math.max(0, Math.floor(dist(a, t) - w.opt!)) - (t.splinter ? 1 : 0)); // дробь теряет силу
       const crit = roll.crit || (tal(a, 'h_deadeye') && w.type === 'ranged' && roll.roll >= 15); // 16+ на костях (у «Смертельного выстрела» — 15+): полуторный урон, броня не спасает
       if (crit) d = Math.ceil(d * 1.5);
-      const absorbed = crit || w.pierce || opts.pierce ? 0 : Math.min(d - 1, t.armor);
+      const absorbed = crit || w.pierce || w.gas || opts.pierce ? 0 : Math.min(d - 1, t.armor); // газ броня не держит — только противогаз
       d -= absorbed;
       this.hooks.log(`${a.name} → ${t.name}: ${w.name}, ${crit ? 'КРИТ! ' : ''}${d} урона${absorbed ? ` (броня −${absorbed})` : ''} [${rollTxt}]`);
       await this.damage(t, d, crit);

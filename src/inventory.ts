@@ -185,8 +185,10 @@ export const Inventory = {
   onClose: () => {},
 
   show(onClose: () => void) {
-    this.open = true; this.onClose = onClose; this.sel = null; this.note = '';
+    this.onClose = onClose; this.sel = null; this.note = '';
+    if (!G.squad[this.member]) this.member = 0; // боец, открытый в прошлый раз, мог уйти из отряда
     this.render();
+    this.open = true;                            // только после отрисовки: при сбое окно не «зависнет» открытым
     withFrame('inv', $('inv'), () => { if (this.open) $('inv').classList.remove('hidden'); });
   },
   close() {
@@ -265,6 +267,7 @@ export const Inventory = {
   // ---------------------------------------------- отрисовка
   render() {
     const root = $('inv');
+    if (!G.squad[this.member]) { this.member = 0; this.sel = null; }
     const b = G.squad[this.member];
     const eq = b.equip ?? (b.equip = {});
     const selId = this.selId();
