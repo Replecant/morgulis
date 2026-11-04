@@ -4,7 +4,7 @@
 // ============================================================
 import './style.css';
 import { installI18n, tr } from './i18n';
-import { G, resetGame, alexIn, arthurIn, ivyIn, ferglowIn, undeadCompanion } from './state';
+import { G, resetGame, alexIn, arthurIn, arthurAlive, ivyIn, ferglowIn, undeadCompanion } from './state';
 import { Explore } from './explore';
 import { World, clockText, LOCS } from './worldmap';
 import { Combat, CT } from './combat';
@@ -222,7 +222,7 @@ Debug.onCompanion = (id) => {
   Dialog.onAction('recruit_' + id);
 };
 World.onPatrol = (owner) => (World.hunts(owner) ? (World.revoHit = World.patrolNear(World.party, 60), World.onRevo(owner)) : Dialog.start(owner === 'baroness' ? 'enc_bpatrol' : owner === 'revo' ? 'enc_revo' : owner === 'winford' ? 'enc_wfpatrol' : owner === 'wfcar' ? 'enc_wfcar' : 'enc_patrol'));
-World.onLoyal = () => Dialog.start(arthurIn() ? 'loyal_arthur' : 'enc_loyal');
+World.onLoyal = () => Dialog.start(arthurAlive() ? 'loyal_arthur' : 'enc_loyal');
 World.onDsq = () => Dialog.start(World.dsqHit?.hell ? 'enc_cult' : 'enc_dsq');
 World.onDiscover = (l) => { const n = l.kind === 'poi' ? XP.poi : XP.place; toast(`Замечено: ${l.name} (+${n} опыта)`); gainXp(n); };
 World.onDead = () => Dialog.start(World.deadHit?.hell ? 'enc_hdead' : 'enc_dead');

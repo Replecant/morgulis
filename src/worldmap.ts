@@ -3,7 +3,7 @@
 //  отряд свободно ходит по карте, время идёт, деревни — входы
 //  в локальные сцены, примечательности — события на карте.
 // ============================================================
-import { G, arthurIn, ratIn } from './state';
+import { G, arthurAlive, ratIn } from './state';
 import { seeded, TAU, clamp, dist, Pt } from './util';
 import { PixelView, LW, LH, PS, PLight, applyLight, prect, ppx, pline, pellipse, pshadow, outline, pixelize, shade } from './px';
 import { miniSprite } from './sprites';
@@ -356,7 +356,7 @@ export const World = {
   revoHit: null as Patrol | null,
   onRevo: (_owner: PatrolOwner) => {},
   /** Кого из отряда ищет этот хозяин патрулей: братья — Артура в лицо (и тех, кто дрался с их патрулями). Айви не ищет никто — она никто. */
-  hunts(owner: PatrolOwner) { return owner === 'revo' ? arthurIn() || !!G.flags.svobodaWanted : false; },
+  hunts(owner: PatrolOwner) { return owner === 'revo' ? arthurAlive() || !!G.flags.svobodaWanted : false; }, // мертвеца-Артура братья не узнают — лица у него, считай, нет
   /** Ручная крыса пищит: рядом мертвецы или газ. */
   onRat: (_msg: string) => {},
   ratNear: false, ratDeadAt: -99,
