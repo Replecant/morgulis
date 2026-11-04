@@ -160,6 +160,15 @@ export function makeArthur(): UnitBase {
   };
 }
 
+/** Айви Гримшоу — армейский медик, сбежавшая от Леди Харрингтон; лучшая перевязка в отряде, револьвер и нож. */
+export function makeIvy(): UnitBase {
+  return {
+    id: 'ivy', name: 'Айви', kind: 'ivy', hp: 10, maxHp: 10, move: 4,
+    weapons: ['revolver', 'knife'], atkM: 1, atkR: 1, def: 13, armor: 0, dmgM: 0, horror: 1, med: 4, str: 1, wounds: [],
+    equip: { main: 'revolver', side: 'knife', body: 'clothes' }, abil: {},
+  };
+}
+
 /** Игрок начинает один — отряд пока состоит только из героя. */
 export function makeSquad(c: Character): UnitBase[] {
   return [makeLeader(c)];
@@ -194,6 +203,7 @@ export const ENEMIES: Record<string, UnitBase> = {
   bsoldier:      E('bsoldier', 'Солдат Леди Харрингтон', 'bguard', 10, 4, ['rifle', 'bayonet'], 'ranged', 3, 12),
   wf_soldier:    E('wf_soldier', 'Солдат Винферда', 'wfguard', 10, 4, ['rifle', 'bayonet'], 'ranged', 3, 12),
   brother_fighter: E('brother_fighter', 'Брат свободы', 'brother', 9, 4, ['carbine', 'bayonet'], 'ranged', 2, 11),
+  b_officer:       E('b_officer', 'Офицер Леди Харрингтон', 'bofficer', 13, 4, ['revolver', 'saber'], 'ranged', 3, 12, { armor: 1 }),
   brother_off:     E('brother_off', 'Старший брат', 'brother_off', 12, 4, ['revolver', 'bayonet'], 'ranged', 3, 12, { armor: 1 }),
   bandit_boss: E('bandit_boss', 'Главарь шайки', 'bandit_boss', 15, 4, ['revolver', 'saber'], 'ranged', 4, 12, { armor: 1 }),
   // морской демон: громадный, скользкий (высокая Защита), ядовитое дыхание
@@ -280,6 +290,10 @@ export function battleDef(id: string, _flags: Record<string, boolean | undefined
       enemies: [{ t: 'salamander', x: 17, y: 5 }],
       lights: [[12, 3, 220, '#6a9a8a'], [3, 10, 110, '#e8c070']],
     };
+  }
+  if (id === 'bpat') { // патруль баронессы узнал дезертира (или отряд в её списках): бой в пустоши
+    const w = battleDef('waste', _flags);
+    return { ...w, id, title: 'Патруль Леди Харрингтон', enemies: [{ t: 'b_officer', x: 20, y: 7, ammo: { revolver: 6 } }, { t: 'bsoldier', x: 18, y: 4, ammo: { rifle: 5 } }, { t: 'bsoldier', x: 18, y: 10, ammo: { rifle: 5 } }, { t: 'bsoldier', x: 21, y: 11, ammo: { rifle: 5 } }] };
   }
   if (id === 'revo') { // братья свободы узнали Артура (или вас — по спискам разыскиваемых): бой в северном лесу
     const f = battleDef('loyal2', _flags);

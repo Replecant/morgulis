@@ -63,6 +63,7 @@ export const hasRepairKit = () => hasTool('tools') || hasTool('ctools');
 /** Александр в отряде. */
 export const alexIn = () => G.squad.some((b) => b.id === 'alex');
 export const arthurIn = () => G.squad.some((b) => b.id === 'arthur');
+export const ivyIn = () => G.squad.some((b) => b.id === 'ivy');
 /** Ручная крыса в слоте оберега у кого-то из отряда — чует мертвецов и газ. */
 export const ratIn = () => G.squad.some((b) => (b.equip?.charm ?? '').split('~')[0] === 'rat');
 /** Где Александр должен побывать: крупные форты и край мира. */

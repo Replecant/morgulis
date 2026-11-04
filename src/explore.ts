@@ -649,6 +649,7 @@ export const Explore = {
     for (const row of [37, 41, 45]) for (let x = 942; x < 955; x += 3) if (!taken(x, row, 2, 2)) B('tent', x, row, 2, 2, { name: 'Палатка', talk: 'wf_tent' });
     for (const [x, y] of [[930, 30], [944, 29], [925, 35]]) B('campfire', x, y, 1, 1, { dynamic: true, name: 'Костёр', talk: 'slumfire' });
     B('standpipe', 937, 29, 1, 1, { name: 'Колонка', talk: 'standpipe' });
+    B('tent', 950, 48, 2, 2, { name: 'Палатка на отшибе', talk: 'ivy_tent' }); // здесь прячется Айви Гримшоу
     // ---- Форт Винферда, ярус 1: торговые ряды, дома, мастерские
     for (let x = 960; x <= 1008; x += 2) { if (x < 982 || x > 986) B('wall', x, 67, 2, 1); if (x < 982 || x > 985) B('wall', x, 7, 2, 1); } // стены вплотную к воротам
     for (let y = 8; y < 67; y++) { B('wall', 960, y, 1, 1); B('wall', 1009, y, 1, 1); }
@@ -860,6 +861,7 @@ export const Explore = {
     NPC('wf_steiger', 'Штейгер', 'wfminer', 896, 28, 'wf_steiger');
     NPC('wf_resclerk', 'Чиновник по расселению', 'wfclerk', 946, 21, 'wf_resclerk');
     NPC('wf_refelder', 'Старшая из беженцев', 'refugee_w', 930, 32, 'wf_refelder');
+    NPC('ivy', 'Беженка у палатки', 'ivy', 952, 49, 'ivy', () => !G.flags.ivyJoined && !G.flags.ivyBetrayed);
     NPC('wf_gate1', 'Часовой', 'wfguard', 982, 65, 'wf_gateguard'); NPC('wf_gate2', 'Часовой', 'wfguard', 986, 65, 'wf_gateguard');
     NPC('wf_trader', 'Купец торговых рядов', 'sutler', 981, 49, 'wf_trader');
     NPC('wf_chclerk', 'Писарь канцелярии', 'wfclerk', 966, 44, 'wf_chclerk');

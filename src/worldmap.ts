@@ -3,7 +3,7 @@
 //  отряд свободно ходит по карте, время идёт, деревни — входы
 //  в локальные сцены, примечательности — события на карте.
 // ============================================================
-import { G, arthurIn, ratIn } from './state';
+import { G, arthurIn, ivyIn, ratIn } from './state';
 import { seeded, TAU, clamp, dist, Pt } from './util';
 import { PixelView, LW, LH, PS, PLight, applyLight, prect, ppx, pline, pellipse, pshadow, outline, pixelize, shade } from './px';
 import { miniSprite } from './sprites';
@@ -353,7 +353,9 @@ export const World = {
   onPatrol: (_owner: PatrolOwner) => {},
   /** Братья свободы узнали Артура (или отряд в списках разыскиваемых). */
   revoHit: null as Patrol | null,
-  onRevo: () => {},
+  onRevo: (_owner: PatrolOwner) => {},
+  /** Кого из отряда ищет этот хозяин патрулей: братья — Артура, баронесса — Айви (и тех, кто дрался с их патрулями). */
+  hunts(owner: PatrolOwner) { return owner === 'revo' ? arthurIn() || !!G.flags.svobodaWanted : owner === 'baroness' ? ivyIn() || !!G.flags.harringtonWanted : false; },
   /** Ручная крыса пищит: рядом мертвецы или газ. */
   onRat: (_msg: string) => {},
   ratNear: false, ratDeadAt: -99,
@@ -521,9 +523,9 @@ export const World = {
       if (day > this.lastDay) { this.lastDay = day; this.onDay(); }
       this.updatePatrols(dt);
       // на землях Собрания: патруль братьев узнаёт Артура в лицо (или отряд — по спискам) и останавливает
-      if (!Debug.invisible && !this.revoHit && (arthurIn() || G.flags.svobodaWanted)) {
-        const pt = this.patrols.find((x) => x.owner === 'revo' && !this.inClash(x) && (x.spare ?? 0) <= G.clock && (x.beaten ?? 0) <= G.clock && dist(this.patrolPos(x), p) < 45);
-        if (pt) { p.moving = false; this.pending = null; this.pendingPatrol = null; this.route = []; G.keys.clear(); this.revoHit = pt; this.onRevo(); return; }
+      if (!Debug.invisible && !this.revoHit) {
+        const pt = this.patrols.find((x) => this.hunts(x.owner) && !this.inClash(x) && (x.spare ?? 0) <= G.clock && (x.beaten ?? 0) <= G.clock && dist(this.patrolPos(x), p) < 45);
+        if (pt) { p.moving = false; this.pending = null; this.pendingPatrol = null; this.route = []; G.keys.clear(); this.revoHit = pt; this.onRevo(pt.owner); return; }
       }
       this.updateDead(dt);
       this.updateClouds(dt);

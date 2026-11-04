@@ -4,13 +4,13 @@
 // ============================================================
 import './style.css';
 import { installI18n, tr } from './i18n';
-import { G, resetGame, alexIn, arthurIn } from './state';
+import { G, resetGame, alexIn, arthurIn, ivyIn } from './state';
 import { Explore } from './explore';
 import { World, clockText, LOCS } from './worldmap';
 import { Combat, CT } from './combat';
 import { Dialog, refreshHud, exploreHint, toast, combatShow, combatLog, combatPanel, screen, hideScreen, openSquad, closeSquad, squadOpen } from './ui';
 import { setPcStyle, applyEquipLooks } from './gfx';
-import { makeAlex, makeArthur, CLASH, refreshLeader } from './data';
+import { makeAlex, makeArthur, makeIvy, CLASH, refreshLeader } from './data';
 import { Inventory } from './inventory';
 import { Sheet } from './sheet';
 import { Music } from './music';
@@ -139,6 +139,7 @@ Combat.hooks = {
     if (id.startsWith('dsq_')) { World.killDsq(); Dialog.start('after_dsq'); }
     if (id.startsWith('dsqh_')) { World.killDsq(); Dialog.start('after_cult'); }
     if (id === 'revo') { World.beatRevo(); Dialog.start('after_revo'); }
+    if (id === 'bpat') { World.beatRevo(); Dialog.start('after_bpat'); }
     if (id.startsWith('trench')) { World.killDead(); World.deadHit = null; Dialog.start('after_dead'); }
     if (Combat.wearNotes.length) toast(Combat.wearNotes.join(' '));
     refreshHud();
@@ -150,6 +151,7 @@ Combat.hooks = {
       : id.startsWith('trench') ? 'Мертвецы теперь будут лакомиться вашей плотью'
       : id.startsWith('dsqh_') ? 'Культ отдал вас демонам'
       : id === 'revo' ? 'Братья свободы повесили вас на площади — рядом с бароном'
+      : id === 'bpat' ? 'Вас расстреляли у стены форта — как пособника дезертира'
       : 'Ещё одна душа сгинула под взглядом Ока';
     const last = Save.latest();
     screen(
@@ -203,9 +205,9 @@ Debug.onTeleport = (id) => {
   World.updateLocation(); World.discover(); refreshHud();
   toast(`Телепорт: ${l.name}`);
 };
-World.onRevo = () => Dialog.start('revo_arthur');
+World.onRevo = (owner) => Dialog.start(owner === 'baroness' ? 'bpatrol_ivy' : 'revo_arthur');
 World.onRat = (msg) => toast(msg);
-World.onPatrol = (owner) => (owner === 'revo' && (arthurIn() || G.flags.svobodaWanted) ? (World.revoHit = World.patrolNear(World.party, 60), Dialog.start('revo_arthur')) : Dialog.start(owner === 'baroness' ? 'enc_bpatrol' : owner === 'revo' ? 'enc_revo' : owner === 'winford' ? 'enc_wfpatrol' : owner === 'wfcar' ? 'enc_wfcar' : 'enc_patrol'));
+World.onPatrol = (owner) => (World.hunts(owner) ? (World.revoHit = World.patrolNear(World.party, 60), World.onRevo(owner)) : Dialog.start(owner === 'baroness' ? 'enc_bpatrol' : owner === 'revo' ? 'enc_revo' : owner === 'winford' ? 'enc_wfpatrol' : owner === 'wfcar' ? 'enc_wfcar' : 'enc_patrol'));
 World.onLoyal = () => Dialog.start(arthurIn() ? 'loyal_arthur' : 'enc_loyal');
 World.onDsq = () => Dialog.start(World.dsqHit?.hell ? 'enc_cult' : 'enc_dsq');
 World.onDiscover = (l) => { const n = l.kind === 'poi' ? XP.poi : XP.place; toast(`Замечено: ${l.name} (+${n} опыта)`); gainXp(n); };
@@ -246,6 +248,10 @@ Dialog.onAction = (act) => {
   else if (act.startsWith('talent:')) { const c = G.pc, t = classTalent(act.slice(7)); if (c && t && pendingTalent(c)?.some((x) => x.id === t.id)) { (c.classTalents ??= []).push(t.id); refreshLeader(c, G.squad[0]); toast(`Талант: ${t.name}`); refreshHud(); if (pendingTalent(c) || pendingMove(c)) levelPending = true; } }
   else if (act.startsWith('move:')) { const c = G.pc, k = act.slice(5); if (c && COURAGE[k] && pendingMove(c)?.includes(k)) { c.courageMoves = [...knownMoves(c), k]; toast(`Приём куража: ${COURAGE[k].name}`); if (pendingTalent(c) || pendingMove(c)) levelPending = true; } }
   else if (act === 'recruit_arthur') { if (!arthurIn()) { G.squad.push(makeArthur()); applyEquipLooks(G.squad); if (G.mode === 'explore') Explore.enter(Explore.scene, Explore.player); toast('Артур Сильвер в отряде'); refreshHud(); } }
+  else if (act === 'recruit_ivy') { if (!ivyIn()) { G.squad.push(makeIvy()); applyEquipLooks(G.squad); if (G.mode === 'explore') Explore.enter(Explore.scene, Explore.player); toast('Айви Гримшоу в отряде'); refreshHud(); } }
+  else if (act === 'ivy_betray') { G.squad = G.squad.filter((b) => b.id !== 'ivy'); applyEquipLooks(G.squad); World.spareRevo(48); if (G.mode === 'explore') Explore.enter(Explore.scene, Explore.player); refreshHud(); }
+  else if (act === 'ivy_gone') { if (G.mode === 'explore') Explore.enter(Explore.scene, Explore.player); }
+  else if (act === 'battle_bpat') startBattle('bpat');
   else if (act === 'arthur_betray') { G.squad = G.squad.filter((b) => b.id !== 'arthur'); applyEquipLooks(G.squad); World.spareRevo(48); refreshHud(); }
   else if (act === 'revo_spare') World.spareRevo(24);
   else if (act === 'revo_spare_short') World.spareRevo(8);
