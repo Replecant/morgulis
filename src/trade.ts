@@ -44,7 +44,7 @@ export const SHOPS: Record<string, Shop> = {
   // ---------------- Траншейное море
   volnitsa: {
     name: 'Барыга — Вольница', greet: 'С чужого плеча, без вопросов. Сломанное — дешевле, целое — дороже, краденое — как повезёт.',
-    items: { sawnoff: 1, 'revolver~w': 1, 'rifle~w': 1, 'carbine~b': 1, trenchclub: 1, knife: 1, leather: 1, smask: 1, lockpicks: 1, oillamp: 1 },
+    items: { rat: 1, sawnoff: 1, 'revolver~w': 1, 'rifle~w': 1, 'carbine~b': 1, trenchclub: 1, knife: 1, leather: 1, smask: 1, lockpicks: 1, oillamp: 1 },
     cons: ['ammo_pistol', 'ammo_rifle', 'ammo_shell', 'dynamite', 'ration', 'bandage', 'painkiller'],
   },
   post314: {
@@ -108,7 +108,7 @@ export const SHOPS: Record<string, Shop> = {
   },
   market: {
     name: 'Торговец — рынок Среднего города', greet: 'Лучший товар в округе. Цены — тоже лучшие. Для меня.',
-    items: { revolver: 1, autopistol: 1, carbine: 1, rifle: 1, huntrifle: 1, shotgun2: 1, pumpshot: 1, mg: 1, saber: 1, hammer: 1, trenchclub: 1, spade: 1, greatcoat: 1, gloves: 1, boots: 1, apron: 1, tools: 1, lockpicks: 1, grimoire: 1, helmet: 2, steelhelm: 1, smask: 1, goggles: 1, quilted: 1, cuirass: 1, sapper: 1, greaves: 1, shootgloves: 1, oillamp: 1, elamp: 1, flamer: 1, exprifle: 1, 'shotgun2~w': 1 },
+    items: { rat: 2, revolver: 1, autopistol: 1, carbine: 1, rifle: 1, huntrifle: 1, shotgun2: 1, pumpshot: 1, mg: 1, saber: 1, hammer: 1, trenchclub: 1, spade: 1, greatcoat: 1, gloves: 1, boots: 1, apron: 1, tools: 1, lockpicks: 1, grimoire: 1, helmet: 2, steelhelm: 1, smask: 1, goggles: 1, quilted: 1, cuirass: 1, sapper: 1, greaves: 1, shootgloves: 1, oillamp: 1, elamp: 1, flamer: 1, exprifle: 1, 'shotgun2~w': 1 },
     cons: ['ammo_pistol', 'ammo_rifle', 'ammo_shell', 'ammo_mg', 'grenade', 'dynamite', 'smoke', 'parts', 'ration'], repair: true,
   },
 };

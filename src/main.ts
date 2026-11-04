@@ -190,6 +190,7 @@ Debug.onTeleport = (id) => {
   toast(`Телепорт: ${l.name}`);
 };
 World.onRevo = () => Dialog.start('revo_arthur');
+World.onRat = (msg) => toast(msg);
 World.onPatrol = (owner) => (owner === 'revo' && (arthurIn() || G.flags.svobodaWanted) ? (World.revoHit = World.patrolNear(World.party, 60), Dialog.start('revo_arthur')) : Dialog.start(owner === 'baroness' ? 'enc_bpatrol' : owner === 'revo' ? 'enc_revo' : owner === 'winford' ? 'enc_wfpatrol' : owner === 'wfcar' ? 'enc_wfcar' : 'enc_patrol'));
 World.onLoyal = () => Dialog.start(arthurIn() ? 'loyal_arthur' : 'enc_loyal');
 World.onDsq = () => Dialog.start(World.dsqHit?.hell ? 'enc_cult' : 'enc_dsq');

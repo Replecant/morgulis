@@ -67,6 +67,13 @@ function drawItemIconVec(c: CanvasRenderingContext2D, icon: string, S = 52) {
     case 'gloves': case 'gloves_thin': { const col = icon === 'gloves' ? leather : '#7a5a3a'; c.fillStyle = col; c.beginPath(); c.roundRect(14, 18, 16, 20, 4); c.fill(); for (let i = 0; i < 4; i++) R(14 + i * 4, icon === 'gloves_thin' && i === 0 ? 14 : 8, 3.5, 12, col); R(28, 20, 8, 5, col); R(14, 36, 16, 6, '#3a2414'); break; }
     case 'boots': c.fillStyle = '#2a1e16'; c.beginPath(); c.moveTo(16, 8); c.lineTo(28, 8); c.lineTo(28, 34); c.lineTo(42, 38); c.lineTo(42, 44); c.lineTo(14, 44); c.closePath(); c.fill(); R(16, 12, 12, 2, '#4a3a2a'); break;
     case 'greaves': c.fillStyle = '#7a7c7e'; c.beginPath(); c.roundRect(18, 8, 16, 34, 6); c.fill(); c.fillStyle = '#9a9c9e'; c.beginPath(); c.arc(26, 22, 6, 0, TAU); c.fill(); break;
+    case 'rat': { // ручная крыса: серое тельце, розовые уши и хвост
+      c.fillStyle = '#7a746a'; c.beginPath(); c.ellipse(24, 32, 13, 8, -0.15, 0, TAU); c.fill();
+      c.beginPath(); c.ellipse(36, 27, 6, 5, -0.4, 0, TAU); c.fill();
+      c.fillStyle = '#c89a90'; c.beginPath(); c.arc(35, 21, 3, 0, TAU); c.fill(); c.beginPath(); c.arc(40, 23, 2.5, 0, TAU); c.fill();
+      c.fillStyle = '#141210'; c.beginPath(); c.arc(39, 27, 1.3, 0, TAU); c.fill();
+      L([12, 34, 6, 40, 8, 46, 14, 48], '#c89a90', 1.6); break;
+    }
     case 'paw': c.fillStyle = '#b0a080'; c.beginPath(); c.ellipse(26, 32, 7, 11, -0.3, 0, TAU); c.fill(); for (const [x, y] of [[20, 20], [26, 17], [32, 20]]) { c.beginPath(); c.arc(x, y, 3, 0, TAU); c.fill(); } L([30, 42, 36, 48], '#8a6a3a', 2); break;
     case 'herb': c.fillStyle = '#6a5a3a'; c.beginPath(); c.ellipse(26, 32, 11, 12, 0, 0, TAU); c.fill(); L([20, 22, 26, 18, 32, 22], '#3a2a1a', 2); L([26, 18, 26, 8], '#7a9a5a', 2); L([26, 12, 20, 6], '#7a9a5a', 2); L([26, 12, 32, 7], '#7a9a5a', 2); break;
     case 'locket': L([18, 6, 26, 18, 34, 6], '#b09040', 1.5); c.fillStyle = '#c0a050'; c.beginPath(); c.ellipse(26, 30, 10, 12, 0, 0, TAU); c.fill(); c.fillStyle = '#e8dcc0'; c.beginPath(); c.ellipse(26, 30, 6, 8, 0, 0, TAU); c.fill(); c.fillStyle = '#5a4a3a'; c.beginPath(); c.arc(26, 28, 2.5, 0, TAU); c.fill(); break;

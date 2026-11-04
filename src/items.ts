@@ -44,6 +44,7 @@ export interface Item {
   lamp?: number;            // фонарь: 1 — масляный, 2 — электрический
   hat?: 'helmet' | 'cap' | 'tophat'; // как выглядит на фигурке
   tool?: string;            // спецснаряжение: что даёт
+  sense?: boolean;          // оберег: ручная крыса — чует мертвечину и газ раньше человека
 }
 
 // имя берётся из WEAPONS лениво — чтобы не зависеть от порядка загрузки модулей
@@ -101,6 +102,7 @@ export const ITEMS: Record<string, Item> = {
   boots:       { id: 'boots', name: 'Крепкие сапоги', kind: 'legs', icon: 'boots', mods: { move: 1 }, price: 15, desc: 'Подкованные сапоги для долгих переходов: +1 к перемещению.' },
   greaves:     { id: 'greaves', name: 'Стальные поножи', kind: 'legs', icon: 'greaves', armor: 1, mods: { move: -1 }, price: 30, desc: 'Пластины на голени и колене. Защищают, но тяжелы.' },
   // ---------------- обереги (действуют на дух владельца)
+  rat: { id: 'rat', name: 'Ручная крыса', kind: 'charm', icon: 'rat', sense: true, price: 8, desc: 'Живёт за пазухой, ест крошки и опилки. Крысы пережили всё, что не пережили другие звери, — и чуют мертвечину и газ раньше человека: с ней мертвецов на карте видно издалека, а у ядовитого облака она пищит заранее.' },
   rabbitfoot: { id: 'rabbitfoot', name: 'Кроличья лапка', kind: 'charm', icon: 'paw', courage: 1, price: 12, desc: 'Высохшая лапка зверька, каких давно не водится, — старая вещь из прежнего мира. На удачу: владелец идёт в бой с одним очком куража.' },
   wormwood:   { id: 'wormwood', name: 'Полынная ладанка', kind: 'charm', icon: 'herb', mods: { horror: 2 }, price: 10, desc: 'Мешочек с горькой травой — народное средство от дурного глаза. +2 к стойкости против ужаса.' },
   locket:     { id: 'locket', name: 'Медальон с портретом', kind: 'charm', icon: 'locket', rally: true, price: 20, desc: 'Есть ради кого вернуться. Если владельца поднимут после тяжёлого ранения — он встанет с половиной ОЗ.' },
@@ -175,7 +177,7 @@ export const ITEM_WT: Record<string, number> = {
   cap: 0.2, tophat: 0.3, helmet: 1.2, steelhelm: 2.5, gasmask: 1, smask: 1, goggles: 0.3,
   clothes: 1, greatcoat: 3, leather: 4, quilted: 6, cuirass: 10, sapper: 18, chitin: 4, apron: 2,
   gloves: 0.3, shootgloves: 0.2, boots: 1.5, greaves: 3,
-  rabbitfoot: 0.1, wormwood: 0.1, locket: 0.1,
+  rabbitfoot: 0.1, rat: 0.3, wormwood: 0.1, locket: 0.1,
   tools: 6, ctools: 1.5, gauges: 1, bayonet: 0.5, lockpicks: 0.3, surgerykit: 3, grimoire: 1.5, ritualkit: 2, oillamp: 1.5, elamp: 2,
 };
 /** Вес одной штуки расходника, кг (патроны — за патрон). */

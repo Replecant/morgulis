@@ -3,7 +3,7 @@
 //  отряд свободно ходит по карте, время идёт, деревни — входы
 //  в локальные сцены, примечательности — события на карте.
 // ============================================================
-import { G, arthurIn } from './state';
+import { G, arthurIn, ratIn } from './state';
 import { seeded, TAU, clamp, dist, Pt } from './util';
 import { PixelView, LW, LH, PS, PLight, applyLight, prect, ppx, pline, pellipse, pshadow, outline, pixelize, shade } from './px';
 import { miniSprite } from './sprites';
@@ -354,6 +354,9 @@ export const World = {
   /** Братья свободы узнали Артура (или отряд в списках разыскиваемых). */
   revoHit: null as Patrol | null,
   onRevo: () => {},
+  /** Ручная крыса пищит: рядом мертвецы или газ. */
+  onRat: (_msg: string) => {},
+  ratNear: false, ratDeadAt: -99,
   spareRevo(hours: number) { const pt = this.revoHit; if (pt) pt.spare = G.clock + hours; this.revoHit = null; },
   beatRevo() { const pt = this.revoHit; if (pt) { pt.wait = 0; pt.dir = pt.dir === 1 ? -1 : 1; pt.beaten = G.clock + 24; pt.spare = G.clock + 24; } this.revoHit = null; },
   loyal: [] as Loyal[],
@@ -812,8 +815,9 @@ export const World = {
         continue;
       }
       const zone = g.hell ? hellWild : inFront;
-      const d = dist(g, p);
-      g.seen = d < 320;
+      const d = dist(g, p), rat = ratIn(), was = g.seen;
+      g.seen = d < (rat ? 480 : 320); // крыса чует мертвечину издалека
+      if (rat && g.seen && !was && G.clock - this.ratDeadAt > 4) { this.ratDeadAt = G.clock; this.onRat('Крыса за пазухой замирает, топорщит шерсть и тонко пищит. Где-то рядом мертвецы.'); }
       const chase = !Debug.invisible && d < 190 && G.clock >= g.calm && zone(p);
       if (chase) { g.tx = p.x; g.ty = p.y; }
       else if (dist(g, { x: g.tx, y: g.ty }) < 4) {
@@ -836,6 +840,11 @@ export const World = {
       if (cl.y < 60 || cl.y > WH - 60) cl.vy = -cl.vy;
     }
     const inside = this.clouds.some((cl) => dist(cl, p) < cl.r * 0.8);
+    { // крыса чует газ заранее — пока облако ещё в стороне
+      const near = this.clouds.some((cl) => dist(cl, p) < cl.r * 0.8 + 90); // в облаке — тоже «рядом»: снова пискнет, лишь когда отряд отойдёт совсем
+      if (near && !this.ratNear && !inside && ratIn()) this.onRat('Крыса беспокоится, лезет поглубже за пазуху и чихает. Впереди газ.');
+      this.ratNear = near;
+    }
     // противогаз защищает того, на ком он надет (слот «Лицо»), пока есть фильтры
     const masked = (b: UnitBase) => !!b.equip?.face && itemOf(b.equip.face).gas && G.supplies.filter > 0;
     const bare = G.squad.filter((b) => !masked(b)), any = bare.length < G.squad.length;
