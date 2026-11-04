@@ -5,6 +5,7 @@
 // ============================================================
 import { G, hasRepairKit, alexSawAll, ALEX_SIGHTS, arthurIn } from './state';
 import type { SkillKey } from './rules';
+import { pendingTalent, mastery, MAX_LEVEL, PROFESSIONS } from './rules';
 import { addWound, addWoundId, folkHeal } from './wounds';
 import { World, SOUTH_Y } from './worldmap';
 import { LANG, tr } from './i18n';
@@ -1545,6 +1546,21 @@ Object.assign(DIALOGS, WORLD_DIALOGS);
 
 // ============================================================ Траншейное море: Вольница и Пост 314
 const TRENCH_DIALOGS: Record<string, DTree> = {
+  // ---------------- новый уровень: прибавки и (на 2, 4, 6) выбор таланта профессии
+  levelup: { start: 'a', nodes: {
+    a: { s: 'nar', t: (g) => {
+      const c = g.pc!, b = g.squad[0], tal = pendingTalent(c);
+      const odd = c.level % 2 === 1;
+      return `Уровень ${c.level}${c.level >= MAX_LEVEL ? ' — последний' : ''}. Пережитое не прошло даром: максимум здоровья теперь ${b.maxHp} ОЗ.`
+        + (odd ? ` Обученные навыки выросли: теперь +${mastery(c.level) + 1}.` : '')
+        + (tal ? ` ${PROFESSIONS[c.prof].name}: выберите талант.` : '');
+    }, c: (g) => {
+      const tal = pendingTalent(g.pc);
+      return tal ? tal.map((t) => ({ t: `${t.name} — ${t.desc}`, act: 'talent:' + t.id })) : [{ t: 'Дальше', go: 'bye' }];
+    } },
+    bye: { s: 'nar', t: 'Вы идёте дальше.' },
+  } },
+
   loc_volnitsa: enterMenu('в Вольницу', 'volnitsa', 'Посреди воронок земля уходит вниз кругами: траншея в траншее, а в самой середине — выдолбленная площадка с костром. Над брустверами торчат жерди с тряпьём и брезентовые воронки дождесборников. Снизу тянет дымом и грибной сыростью. Кто-то свистит — вас заметили.'),
   loc_post314: enterMenu('на пост', 'post314', 'У самого края моря траншей, лицом на запад, — вал из мешков с песком, колючая проволока, над ним — тонкая мачта на растяжках и выцветшее знамя. Из земли горбятся бетонные спины бункеров, над одним вьётся дымок. Окрик из-за мешков: — Стой! Пост триста четырнадцать! Подходи медленно, руки на виду!'),
 

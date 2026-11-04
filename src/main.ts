@@ -10,7 +10,7 @@ import { World, clockText, LOCS } from './worldmap';
 import { Combat, CT } from './combat';
 import { Dialog, refreshHud, exploreHint, toast, combatShow, combatLog, combatPanel, screen, hideScreen, openSquad, closeSquad, squadOpen } from './ui';
 import { setPcStyle, applyEquipLooks } from './gfx';
-import { makeAlex, makeArthur, CLASH } from './data';
+import { makeAlex, makeArthur, CLASH, refreshLeader } from './data';
 import { Inventory } from './inventory';
 import { Sheet } from './sheet';
 import { Music } from './music';
@@ -26,7 +26,7 @@ import { frameReady, whenFrameReady, frameUrl } from './frames';
 import { Trade, resetShops } from './trade';
 import { drawMenuBg, showMainMenu, showAbout, openRules } from './menu';
 import { openCreation } from './creation';
-import { Character, newCharacter, quickCharacter, PROF_ORDER, ProfId } from './rules';
+import { Character, newCharacter, quickCharacter, PROF_ORDER, ProfId, LEVEL_XP, MAX_LEVEL, XP, enemyXp, pendingTalent, classTalent } from './rules';
 import { rest } from './wounds';
 import { $ } from './util';
 import { Save, type Slot } from './save';
@@ -50,6 +50,18 @@ function clashWon() {
     : { text: `Сержант вытирает лицо рукавом и долго смотрит на вас. — Подсобили. ${ally.name} такого не забывает. — Солдаты молча собирают оружие убитых и уходят по дороге.`, give: () => {} };
   Dialog.start('after_clash');
 }
+
+// ---------------------------------------------------------------- опыт и уровни
+let levelPending = false; // новый уровень: показать окно (выбор таланта), когда освободится экран
+function gainXp(n: number) {
+  const c = G.pc, b = G.squad[0];
+  if (!c || !b || n <= 0 || c.level >= MAX_LEVEL) return;
+  c.xp += n;
+  let up = false;
+  while (c.level < MAX_LEVEL && c.xp >= LEVEL_XP[c.level]) { c.level++; up = true; }
+  if (up) { refreshLeader(c, b); applyEquipLooks(G.squad); levelPending = true; toast(`Новый уровень: ${c.level}!`); refreshHud(); }
+}
+Dialog.onXp = (n) => gainXp(n);
 
 // ---------------------------------------------------------------- переходы между режимами
 // Александр: реакции на крупные форты и край мира (показываются, когда окно разговора свободно)
@@ -86,6 +98,7 @@ function toScene(id: string, at?: { x: number; y: number }) {
   alexSee(ALEX_SCENE[id]);
   if (id === 'svoboda' && arthurIn() && !G.flags.arthurSawUncle) alexPending = 'arthur_svoboda'; // Артур видит повешенного дядю
   G.mode = 'explore';
+  if (!G.flags['visited_' + id]) gainXp(XP.scene); // первый визит
   G.flags['visited_' + id] = true;
   Explore.enter(id, at);
   G.keys.clear();
@@ -105,6 +118,7 @@ Combat.hooks = {
   toast,
   victory(id) {
     combatShow(false);
+    { const xp = Combat.units.filter((u) => u.team === 'enemy').reduce((s, u) => s + enemyXp(u.base.maxHp, Math.max(u.base.atkM, u.base.atkR)), 0); if (xp) { toast(`Победа: +${xp} опыта`); gainXp(xp); } }
     G.mode = returnMode;
     hint();
     if (id === 'ruins') { G.flags.scavDone = true; Dialog.start('after_scav'); }
@@ -194,7 +208,7 @@ World.onRat = (msg) => toast(msg);
 World.onPatrol = (owner) => (owner === 'revo' && (arthurIn() || G.flags.svobodaWanted) ? (World.revoHit = World.patrolNear(World.party, 60), Dialog.start('revo_arthur')) : Dialog.start(owner === 'baroness' ? 'enc_bpatrol' : owner === 'revo' ? 'enc_revo' : owner === 'winford' ? 'enc_wfpatrol' : owner === 'wfcar' ? 'enc_wfcar' : 'enc_patrol'));
 World.onLoyal = () => Dialog.start(arthurIn() ? 'loyal_arthur' : 'enc_loyal');
 World.onDsq = () => Dialog.start(World.dsqHit?.hell ? 'enc_cult' : 'enc_dsq');
-World.onDiscover = (l) => toast(`Замечено: ${l.name}`);
+World.onDiscover = (l) => { const n = l.kind === 'poi' ? XP.poi : XP.place; toast(`Замечено: ${l.name} (+${n} опыта)`); gainXp(n); };
 World.onDead = () => Dialog.start(World.deadHit?.hell ? 'enc_hdead' : 'enc_dead');
 World.onHungry = () => Dialog.start('enc_hungry');
 World.onDemon = () => Dialog.start('enc_demon');
@@ -229,6 +243,7 @@ Dialog.onAction = (act) => {
   else if (act === 'battle_scav') startBattle('ruins');
   else if (act === 'recruit_alex') { if (!G.squad.some((s) => s.id === 'alex')) { G.squad.push(makeAlex()); applyEquipLooks(G.squad); if (G.mode === 'explore') Explore.enter(Explore.scene, Explore.player); toast('Александр в отряде'); refreshHud(); } }
   else if (act === 'alex_to_coven' || act === 'alex_sold') alexRemove();
+  else if (act.startsWith('talent:')) { const c = G.pc, t = classTalent(act.slice(7)); if (c && t && pendingTalent(c)?.some((x) => x.id === t.id)) { (c.classTalents ??= []).push(t.id); refreshLeader(c, G.squad[0]); toast(`Талант: ${t.name}`); refreshHud(); if (pendingTalent(c)) levelPending = true; } }
   else if (act === 'recruit_arthur') { if (!arthurIn()) { G.squad.push(makeArthur()); applyEquipLooks(G.squad); if (G.mode === 'explore') Explore.enter(Explore.scene, Explore.player); toast('Артур Сильвер в отряде'); refreshHud(); } }
   else if (act === 'arthur_betray') { G.squad = G.squad.filter((b) => b.id !== 'arthur'); applyEquipLooks(G.squad); World.spareRevo(48); refreshHud(); }
   else if (act === 'revo_spare') World.spareRevo(24);
@@ -437,6 +452,7 @@ function frame(now: number) {
   Dialog.update(dt);
   const free = !Dialog.active && !squadOpen() && !Inventory.open && !Trade.open && !Sheet.open && !Pause.open && !ProsthShop.open && !OccultMenu.open;
   if (alexPending && free && (G.mode === 'explore' || G.mode === 'world')) { const d = alexPending; alexPending = ''; Dialog.start(d); }
+  else if (levelPending && free && (G.mode === 'explore' || G.mode === 'world')) { levelPending = false; Dialog.start('levelup'); }
   if (G.mode === 'explore' && free) Explore.update(dt);
   if (G.mode === 'world' && free) World.update(dt);
   if (G.mode === 'combat') { Combat.update(dt); Combat.draw(ctx, G.time); }

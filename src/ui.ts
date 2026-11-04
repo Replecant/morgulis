@@ -9,7 +9,7 @@ import { drawFigure, applyEquipLooks } from './gfx';
 import { Combat } from './combat';
 import { $ } from './util';
 import { clockText } from './worldmap';
-import { skillBonus, check, checkChance, SKILLS, DC_NAMES } from './rules';
+import { skillBonus, check, checkChance, SKILLS, DC_NAMES, XP } from './rules';
 import { tr } from './i18n';
 import skullUrl from './assets/narrator-skull.webp';
 import { effMaxHp, woundsOf, bestHealer, bandageAmount, medkitAmount, bandage, useMedkit, surgery, rest } from './wounds';
@@ -23,6 +23,7 @@ export const Dialog = {
   full: '', shown: 0,
   choices: [] as Choice[],
   onAction: (_act: string) => {},
+  onXp: (_n: number) => {}, // удачная проверка навыка — немного опыта (раз за каждую проверку)
   onClose: () => {},
   closedAt: 0,
 
@@ -102,6 +103,7 @@ export const Dialog = {
       const bonus = skillBonus(G.pc, c.check.skill) + gearBonus(c.check.skill), res = check(bonus, c.check.dc);
       const tag = `[${SKILLS[c.check.skill].name}: 3d6 (${res.roll}) ${bonus >= 0 ? '+' : '−'} ${Math.abs(bonus)} = ${res.total} против ${c.check.dc} — ${res.success ? 'успех' : 'провал'}] `;
       if (!res.success) G.checkLock[this.lockKey(c)] = G.clock + 24; // провал: снова попробовать — не раньше чем через сутки
+      else if (!G.flags['xp|' + this.lockKey(c)]) { G.flags['xp|' + this.lockKey(c)] = true; this.onXp(XP.check); }
       return this.goto(res.success ? c.check.ok : c.check.fail, tag);
     }
     if (c.act) return this.close(c.act);

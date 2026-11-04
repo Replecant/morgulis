@@ -75,6 +75,10 @@ export const COURAGE: Record<string, { name: string; short: string; cost: number
 };
 const COURAGE_ORDER = ['charge', 'rush', 'last', 'rescue'];
 
+/** Талант профессии героя (rules.ts CLASS_TALENTS) — есть ли он у бойца. */
+const KNIVES = ['knife', 'bayonet', 'rdagger', 'rustbayonet'];
+const tal = (u: Unit, id: string) => !!u.base.tflags?.includes(id);
+const strainCost = (u: Unit, n: number) => (tal(u, 'o_nerves') && n > 1 ? n - 1 : n); // «Стальные нервы»
 let UID = 0;
 function mkUnit(b: UnitBase, team: Unit['team'], x: number, y: number): Unit {
   const player = team === 'player';
@@ -90,7 +94,7 @@ function mkUnit(b: UnitBase, team: Unit['team'], x: number, y: number): Unit {
     atkM: b.atkM + m.atkM + (e?.atkM ?? 0), atkR: b.atkR + m.atkR + (e?.atkR ?? 0), def: b.def + m.def + (e?.def ?? 0),
     armor: (b.armor ?? 0) + (e?.armor ?? 0), dmgM: b.dmgM ?? 0,
     horror: (b.horror ?? 0) + m.horror + (e?.horror ?? 0), med: b.med ?? 0,
-    courage: Math.min(COURAGE_MAX, e?.courage ?? 0), worn: e ? e.worn.slice() : [], jam: [], fired: [], gas: !!e?.gas, splinter: !!e?.splinter, blast: !!e?.blast, rallyCharm: !!e?.rally,
+    courage: Math.min(COURAGE_MAX, (e?.courage ?? 0) + (b.courage0 ?? 0)), worn: e ? e.worn.slice() : [], jam: [], fired: [], gas: !!e?.gas, splinter: !!e?.splinter, blast: !!e?.blast, rallyCharm: !!e?.rally,
     exposed: false, downed: false,
     ai: b.ai, leader: !!b.leader, demonic: !!b.demonic,
     dead: false, fled: false, terror: false, flip: team === 'enemy', flash: 0, seed: Math.random() * 10, cd: { summon: 0, whisper: 0 }, st: {},
@@ -223,6 +227,8 @@ export const Combat = {
     if (t.st.ward) dc += 1;
     if (t.st.stars) dc += 1;
     if (this.runes.some((r) => r.kind === 'guard' && r.x === t.x && r.y === t.y) && t.team === 'player') dc += 3;
+    if (tal(att, 'b_knife') && KNIVES.includes(wkey)) bonus += 1;          // «Ножевой бой»
+    if (tal(att, 'b_lethal') && t.hp <= t.maxHp / 2) bonus += 2;             // «Добивание»
     if (w.type === 'melee') {
       if (cheb(from, t) !== 1) return null;
       bonus += att.atkM + MELEE_EDGE; // вплотную укрытие не спасает — Защита, поднятая под 3d6, бьёт по рукопашной слабее
@@ -402,7 +408,7 @@ export const Combat = {
   /** Шанс попадания для текущего выбранного действия (для подсветки целей). */
   actionChance(u: Unit, t: Unit) {
     if (this.action.type === 'w') return this.canFire(u, this.action.key, true) ? this.hitChance(u, t, this.action.key) : 0;
-    if (this.action.key === 'aim') return this.canFire(u, u.weapons[0], true) ? this.hitChance(u, t, u.weapons[0], 4) : 0;
+    if (this.action.key === 'aim') return this.canFire(u, u.weapons[0], true) ? this.hitChance(u, t, u.weapons[0], tal(u, 'h_sniper') ? 6 : 4) : 0;
     if (this.action.type === 'c' && this.action.key === 'last') { const w = this.lastStandWeapon(u, t); return w ? this.advChance(this.hitChance(u, t, w)) : 0; }
     if (this.action.type === 'c' && this.action.key === 'charge') return this.chargeTile(u, t) ? this.hitChance({ ...u, x: this.chargeTile(u, t)!.x, y: this.chargeTile(u, t)!.y } as Unit, t, this.meleeWeapon(u)!, 2) : 0;
     return 0;
@@ -457,9 +463,9 @@ export const Combat = {
     const out: BtnInfo[] = [{ kind: 'm', key: 'back', label: '‹ Назад', desc: 'Вернуться к оружию и действиям.', disabled: false, active: false }];
     for (const id of G.known) {
       const sp = SPELLS[id];
-      const over = strain + sp.strain > STRAIN_MAX;
-      out.push({ kind: 's', key: id, label: `${SCHOOLS[sp.school].emblem} ${sp.name} (+${sp.strain})`,
-        desc: `${tr(SCHOOLS[sp.school].name)}. ${tr(sp.desc)} ${tr(`Напряжение +${sp.strain}.`)}${over ? ' ' + tr('Напряжение на пределе — нужен привал.') : ''}`,
+      const cost = strainCost(u, sp.strain), over = strain + cost > STRAIN_MAX;
+      out.push({ kind: 's', key: id, label: `${SCHOOLS[sp.school].emblem} ${sp.name} (+${cost})`,
+        desc: `${tr(SCHOOLS[sp.school].name)}. ${tr(sp.desc)} ${tr(`Напряжение +${cost}.`)}${over ? ' ' + tr('Напряжение на пределе — нужен привал.') : ''}`,
         disabled: u.ap < 1 || over, active: this.action.type === 's' && this.action.key === id });
     }
     return out;
@@ -486,7 +492,7 @@ export const Combat = {
     }
     this.run(async () => {
       u.ap = 0; // основное действие
-      addStrain(sp.strain);
+      addStrain(strainCost(u, sp.strain));
       const col = sp.school === 'demon' ? '#e05030' : sp.school === 'astro' ? '#f0e090' : sp.school === 'rune' ? '#c8a0ff' : '#9fef6a';
       this.float(u, sp.name, col);
       this.burst(u.px, u.py - 16, col, 10, 40);
@@ -574,8 +580,9 @@ export const Combat = {
       if (!target || target.team !== 'enemy') return T('Выберите врага');
       const w = u.weapons[0];
       if (!this.canFire(u, w)) return;
-      if (this.hitChance(u, target, w, 4) <= 0) return T('Цель вне досягаемости или не видна');
-      this.run(async () => { this.float(u, 'Прицел…', '#d8c890'); await sleep(350); await this.attack(u, target, w, 4); u.ap = 0; });
+      const aimB = tal(u, 'h_sniper') ? 6 : 4;
+      if (this.hitChance(u, target, w, aimB) <= 0) return T('Цель вне досягаемости или не видна');
+      this.run(async () => { this.float(u, 'Прицел…', '#d8c890'); await sleep(350); await this.attack(u, target, w, aimB); u.ap = 0; });
     } else if (key === 'rally') {
       if (!target || target.team !== 'player' || target === u || dist(u, target) > 6.5) return T('Выберите союзника в радиусе 6');
       this.run(async () => {
@@ -596,7 +603,8 @@ export const Combat = {
       this.run(async () => {
         if (kit) G.supplies.medkit--; else G.supplies.bandage--;
         u.ap -= 1;
-        const amount = kit ? medkitAmount(u.med) : bandageAmount(u.med);
+        let amount = (kit ? medkitAmount(u.med) : bandageAmount(u.med)) + (tal(u, 'm_field') ? 2 : 0);          // «Полевой хирург»
+        if (target.downed && tal(u, 'm_triage')) amount = Math.max(amount, Math.ceil(target.maxHp / 2)); // «Сортировка»
         if (target.downed) this.revive(target, amount);
         else { const h = Math.min(amount, target.maxHp - target.hp); target.hp += h; this.float(target, `+${h}`, '#8fdc7a'); }
         this.hooks.log(`${u.name}: ${kit ? 'аптечка' : 'перевязка'} — ${target === u ? 'себе' : target.name}.`);
@@ -646,8 +654,8 @@ export const Combat = {
         this.hooks.log(`${u.name} бросается в штыковую!`);
         await this.moveAlong(u, pathTo(this.reach!, CW, spot.x, spot.y), 70);
         await this.attack(u, target, w, 2, { dmg: 2 });
-        u.exposed = true; u.ap = 0;
-        if (!u.dead) this.float(u, 'Раскрыт: −2 Защита', '#d08060');
+        u.ap = 0;
+        if (!tal(u, 's_stormer')) { u.exposed = true; if (!u.dead) this.float(u, 'Раскрыт: −2 Защита', '#d08060'); }
       });
     } else if (key === 'last') {
       if (!target || target.team !== 'enemy' || target.dead) return T('Выберите врага');
@@ -657,7 +665,7 @@ export const Combat = {
         spend();
         this.hooks.log(`${u.name} идёт в последний натиск!`);
         await this.attack(u, target, w, 0, { dmg: 2, adv: true });
-        u.exposed = true; u.ap = 0;
+        u.ap = 0; if (!tal(u, 's_stormer')) u.exposed = true;
       });
     } else if (key === 'rescue') {
       if (!target || !target.downed) return T('Выберите тяжелораненого союзника');
@@ -991,9 +999,12 @@ export const Combat = {
       let d = randInt(w.dmg[0], w.dmg[1]) + (w.type === 'melee' ? a.dmgM : 0) + (opts.dmg ?? 0) - (a.st.weak ? 1 : 0);
       if (w.type === 'melee' && a.worn.includes(wkey)) d -= 1; // затупилось, расшаталось
       if (w.antiDemon && t.demonic) d += w.antiDemon;
+      if (tal(a, 'b_knife') && KNIVES.includes(wkey)) d += 2;                                    // «Ножевой бой»
+      if (tal(a, 'h_hunter') && (t.demonic || t.base.id.startsWith('dead_'))) d += 2;             // «Охотник на нечисть»
+      if (tal(a, 't_tuned') && w.type === 'ranged' && !w.magic) d += 1;                            // «Подстройка оружия»
       d = Math.max(1, d);
       if (w.shot) d = Math.max(1, d - Math.max(0, Math.floor(dist(a, t) - w.opt!)) - (t.splinter ? 1 : 0)); // дробь теряет силу
-      const crit = roll.crit; // 16+ на костях: полуторный урон, броня не спасает
+      const crit = roll.crit || (tal(a, 'h_deadeye') && w.type === 'ranged' && roll.roll >= 15); // 16+ на костях (у «Смертельного выстрела» — 15+): полуторный урон, броня не спасает
       if (crit) d = Math.ceil(d * 1.5);
       const absorbed = crit || w.pierce ? 0 : Math.min(d - 1, t.armor);
       d -= absorbed;
@@ -1060,7 +1071,7 @@ export const Combat = {
     if (!hits) this.float(t, 'Промах', '#b8b8a8');
     // подавление: цель и все её соседи из той же стороны прижаты до конца своего хода
     const pinned = this.units.filter((o) => !o.dead && !o.downed && o.team === t.team && cheb(o, t) <= 1);
-    for (const o of pinned) { o.st.supp = o.team === 'player' ? 2 : 1; this.float(o, 'Подавлен', '#e8c070'); }
+    for (const o of pinned) { if (tal(o, 'h_calm')) { this.float(o, 'Не дрогнул', '#c8d8a0'); continue; } o.st.supp = o.team === 'player' ? 2 : 1; this.float(o, 'Подавлен', '#e8c070'); }
     if (pinned.length) this.hooks.log(`Под огнём: ${pinned.map((o) => o.name).join(', ')} — −2 к атакам и к перемещению на ход.`);
     await sleep(260);
   },
@@ -1076,7 +1087,8 @@ export const Combat = {
         const it = itemOf(id), c = condOf(id);
         if (!it.weapon || !u.fired.includes(it.weapon) || c === 'broken') continue;
         const fire = !!WEAPONS[it.weapon].ammoType;
-        if (Math.random() >= (c === 'ok' ? (fire ? 0.08 : 0.05) : (fire ? 0.12 : 0.08))) continue;
+        const careful = this.units.some((x) => this.isSquad(x) && tal(x, 't_careful')) ? 0.5 : 1; // «Бережный ремонт»
+        if (Math.random() >= (c === 'ok' ? (fire ? 0.08 : 0.05) : (fire ? 0.12 : 0.08)) * careful) continue;
         if (c === 'ok') { u.base.equip[slot] = withCond(id, 'worn'); out.push(`${u.name}: ${it.name} — оружие износилось, ${fire ? 'может клинить' : 'бьёт слабее'}.`); }
         else { delete u.base.equip[slot]; G.stash.push(withCond(id, 'broken')); out.push(`${u.name}: ${it.name} — оружие сломалось и убрано в обоз, нужна починка.`); }
       }
@@ -1248,7 +1260,7 @@ export const Combat = {
       }
       if (broke) { this.hooks.log('Взрыв разносит укрытия в щепки.'); this.renderBg(); }
     }
-    for (const o of this.units.filter((o) => !o.dead && cheb(o, { x: tx, y: ty }) <= 1)) { let d = dyn ? randInt(5, 8) : randInt(3, 5); if (o.splinter) d -= 1; await this.damage(o, Math.max(1, o.blast ? Math.ceil(d / 2) : d), false); }
+    for (const o of this.units.filter((o) => !o.dead && cheb(o, { x: tx, y: ty }) <= 1)) { let d = (dyn ? randInt(5, 8) : randInt(3, 5)) + (tal(u, 'b_blast') ? 2 : 0); if (o.splinter) d -= 1; await this.damage(o, Math.max(1, o.blast ? Math.ceil(d / 2) : d), false); }
     await sleep(350);
   },
 
@@ -1549,7 +1561,7 @@ export const Combat = {
         const ch = this.actionChance(sel, u), w = WEAPONS[wk];
         if (ch > 0) {
           lines.push(`Попадание: ${ch}%   Урон: ${w.dmg[0]}–${w.dmg[1]}`);
-          const info = this.action.type === 'c' ? null : this.attackInfo(sel, sel, u, wk, this.action.key === 'aim' ? 4 : 0);
+          const info = this.action.type === 'c' ? null : this.attackInfo(sel, sel, u, wk, this.action.key === 'aim' ? (tal(sel, 'h_sniper') ? 6 : 4) : 0);
           if (info) lines.push(`3d6 ${info.bonus >= 0 ? '+' : ''}${info.bonus} против Защиты ${info.dc}`);
           if (this.action.key === 'charge') lines.push('Штыковая: +2 к атаке, +2 к урону, затем раскрыт');
           if (this.action.key === 'last') lines.push('Натиск: лучший из двух бросков, +2 к урону');

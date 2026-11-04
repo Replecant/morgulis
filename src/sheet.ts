@@ -4,7 +4,8 @@
 //  талант и умение профессии. Окно — в пиксельной рамке со скелетом.
 // ============================================================
 import { G } from './state';
-import { ATTRS, ATTR_ORDER, SKILLS, SKILL_ORDER, PROFESSIONS, TALENTS, LEVEL_XP, MAX_LEVEL, mastery, trainedSkills, skillBonus, initiative, meleeDamage, fullName } from './rules';
+import { ATTRS, ATTR_ORDER, SKILLS, SKILL_ORDER, PROFESSIONS, TALENTS, LEVEL_XP, MAX_LEVEL, mastery, trainedSkills, skillBonus, initiative, meleeDamage, fullName, CLASS_TALENTS, TALENT_LEVELS, talentsOf, pendingTalent } from './rules';
+import { Dialog } from './ui';
 import { memberStats } from './inventory';
 import { woundsOf } from './wounds';
 import { LIMB_ORDER, LIMB_NAMES, limbState, limbSkill, modsText, modsOf, partOf } from './prosthetics';
@@ -93,6 +94,16 @@ export const Sheet = {
     });
 
     const talent = TALENTS[c.talent];
+    // таланты профессии: взятые и те, что откроются на 2, 4, 6
+    const own = talentsOf(c), pend = pendingTalent(c);
+    const ctal = TALENT_LEVELS.map((lv, i) => {
+      const t = own[i];
+      if (t) return tip(h('div', { class: 'sh-skill on' }, h('i', {}, '◆'), h('span', {}, t.name), h('em', {}, `ур. ${lv}`)), `${t.name}: ${t.desc}`);
+      const opts = CLASS_TALENTS[c.prof][i];
+      return tip(h('div', { class: 'sh-skill' }, h('i', {}, '◇'), h('span', {}, lvl >= lv ? 'Выбор ждёт' : `Откроется на уровне ${lv}`), h('em', {}, `ур. ${lv}`)),
+        `На выбор: ${opts.map((o) => `${o.name} (${o.desc})`).join(' или ')}`);
+    });
+    if (pend) ctal.push(h('button', { class: 'btn', onclick: () => { this.close(); Dialog.start('levelup'); } }, 'Выбрать талант'));
     $('sheet').replaceChildren(h('div', { class: 'sh-box' },
       h('div', { class: 'sh-col a' },
         h('div', { class: 'sh-photo-wrap' }, ph),
@@ -111,8 +122,9 @@ export const Sheet = {
       h('div', { class: 'sh-col c' },
         h('div', { class: 'sh-h' }, 'Навыки ', h('span', {}, `обученные +${mb}`)),
         h('div', { class: 'sh-skills' }, ...skills),
-        h('div', { class: 'sh-feat' }, h('div', { class: 'sh-h' }, 'Талант'), h('b', {}, talent.name), ' — ', talent.desc),
-        h('div', { class: 'sh-feat' }, h('div', { class: 'sh-h' }, 'Умение профессии'), h('b', {}, prof.ability.name), ' — ', prof.ability.desc)),
+        h('div', { class: 'sh-h' }, 'Таланты'),
+        tip(h('div', { class: 'sh-skill on' }, h('i', {}, '◆'), h('span', {}, talent.name), h('em', {}, 'врожд.')), `${talent.name} (врождённый): ${talent.desc}`), ...ctal,
+        tip(h('div', { class: 'sh-skill on' }, h('i', {}, '✦'), h('span', {}, prof.ability.name), h('em', {}, 'умение')), `${prof.ability.name} — умение профессии: ${prof.ability.desc}`)),
       h('div', { class: 'sh-foot' }, info, h('button', { class: 'btn', onclick: () => this.close() }, 'Закрыть [C]')),
     ));
   },

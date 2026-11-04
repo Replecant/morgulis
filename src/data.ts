@@ -3,7 +3,7 @@
 // ============================================================
 
 import { PROF_EQUIP, SQUAD_EQUIP, Equip } from './items';
-import { Character, PROFESSIONS, maxHp, defense, meleeAttack, rangedAttack, meleeDamage, horrorSave, skillBonus } from './rules';
+import { Character, PROFESSIONS, maxHp, defense, meleeAttack, rangedAttack, meleeDamage, horrorSave, skillBonus, talentsOf, talentMod } from './rules';
 import { tr } from './i18n';
 
 export interface Weapon {
@@ -111,6 +111,8 @@ export interface UnitBase {
   leader?: boolean;
   demonic?: boolean;
   boss?: boolean;
+  courage0?: number;     // кураж в начале боя от талантов
+  tflags?: string[];     // таланты профессии героя (для боя)
 }
 
 /** Командир отряда — персонаж игрока, собранный по правилам из rules.ts. */
@@ -118,12 +120,26 @@ export function makeLeader(c: Character): UnitBase {
   const p = PROFESSIONS[c.prof];
   const hp = maxHp(c);
   return {
-    id: 'pc', name: `${tr(c.first).slice(0, 1)}. ${c.last}`, /* инициал — от имени на языке игры */ kind: 'pc', hp, maxHp: hp, move: 4,
-    weapons: p.weapons.slice(), atkM: meleeAttack(c), atkR: rangedAttack(c), def: defense(c),
-    armor: 0, dmgM: meleeDamage(c), horror: horrorSave(c), med: skillBonus(c, 'medicine'), wounds: [],
-    equip: { ...PROF_EQUIP[c.prof] }, // броня теперь даётся предметами
-    abil: { ...p.combatAbil }, leader: true,
+    id: 'pc', name: `${tr(c.first).slice(0, 1)}. ${c.last}`, /* инициал — от имени на языке игры */ kind: 'pc', hp,
+    weapons: p.weapons.slice(), wounds: [], equip: { ...PROF_EQUIP[c.prof] }, // броня теперь даётся предметами
+    leader: true, ...leaderStats(c),
   };
+}
+/** Характеристики героя из правил: уровень, черты, таланты (снаряжение и раны считаются в бою отдельно). */
+export function leaderStats(c: Character) {
+  const abil: Record<string, number> = { ...PROFESSIONS[c.prof].combatAbil };
+  for (const t of talentsOf(c)) for (const [k, n] of Object.entries(t.abil ?? {})) abil[k] = (abil[k] ?? 0) + n;
+  return {
+    maxHp: maxHp(c), move: 4 + talentMod(c, 'move'), atkM: meleeAttack(c), atkR: rangedAttack(c), def: defense(c),
+    armor: talentMod(c, 'armor'), dmgM: meleeDamage(c), horror: horrorSave(c), med: skillBonus(c, 'medicine'),
+    courage0: talentMod(c, 'courage'), tflags: talentsOf(c).map((t) => t.id), abil,
+  };
+}
+/** Пересчитать героя после нового уровня или таланта: прибавка к максимуму ОЗ добавляется и к текущим. */
+export function refreshLeader(c: Character, b: UnitBase) {
+  const s = leaderStats(c), dHp = s.maxHp - b.maxHp;
+  Object.assign(b, s);
+  b.hp = Math.max(1, Math.min(b.maxHp, b.hp + Math.max(0, dHp)));
 }
 
 /** Александр — мальчишка из Ричморда, мечтает о приключениях. Самый лёгкий и быстрый в отряде — и самый хилый. */

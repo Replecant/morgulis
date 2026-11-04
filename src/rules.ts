@@ -1,7 +1,7 @@
 // ============================================================
 //  Ролевая система Мортелиса (компьютерная адаптация)
 //  3d6 + бонус ≥ КС. Четыре характеристики, шесть профессий,
-//  10 уровней, таланты. Подробности — в RULES.md.
+//  6 уровней, таланты профессий на 2, 4 и 6. Подробности — в RULES.md.
 // ============================================================
 
 // ------------------------------------------------------------ характеристики
@@ -43,7 +43,7 @@ export interface Profession {
   desc: string;
   key: AttrKey;
   hp: number;            // ОЗ на 1 уровне (+ Сила)
-  hpLevel: number;       // прирост ОЗ за уровень (+ Сила, мин. 1)
+  hpLevel: number;       // прирост ОЗ за уровень (берётся половина, мин. 1)
   armor: number;         // поглощение урона стартовой одеждой
   skills: SkillKey[];
   ability: { name: string; desc: string };
@@ -136,6 +136,74 @@ export const TALENTS: Record<TalentId, { name: string; desc: string }> = {
 };
 export const TALENT_ORDER = Object.keys(TALENTS) as TalentId[];
 
+// ------------------------------------------------------------ таланты профессий (уровни 2, 4, 6 — выбор из двух)
+export type TalentMods = Partial<Record<'maxHp' | 'atkM' | 'atkR' | 'def' | 'armor' | 'dmgM' | 'horror' | 'move' | 'courage', number>>;
+export interface ClassTalent { id: string; name: string; desc: string; mods?: TalentMods; skills?: Partial<Record<SkillKey, number>>; abil?: Record<string, number>; signs?: number }
+export const TALENT_LEVELS = [2, 4, 6];
+const CT = (id: string, name: string, desc: string, x: Partial<ClassTalent> = {}): ClassTalent => ({ id, name, desc, ...x });
+export const CLASS_TALENTS: Record<ProfId, ClassTalent[][]> = {
+  soldier: [
+    [CT('s_trench', 'Окопная закалка', '+1 к поглощению урона: привык держать удар.', { mods: { armor: 1 } }),
+     CT('s_bayonet', 'Штыковая выучка', '+1 к атаке и +1 к урону в ближнем бою.', { mods: { atkM: 1, dmgM: 1 } })],
+    [CT('s_rally', 'Командный голос', 'В бою — «Командный клич»: союзник в радиусе 6 получает +1 ОД (раз за бой).', { abil: { rally: 1 } }),
+     CT('s_veteran', 'Ветеран', 'Каждый бой начинает с 1 очком куража; +1 к стойкости.', { mods: { courage: 1, horror: 1 } })],
+    [CT('s_unbroken', 'Несгибаемый', '+6 ОЗ и +2 к стойкости.', { mods: { maxHp: 6, horror: 2 } }),
+     CT('s_stormer', 'Штурмовик', 'После Штыковой атаки и Последнего натиска не раскрыт: Защита не падает.')],
+  ],
+  shooter: [
+    [CT('h_eye', 'Глаз охотника', '+1 к стрельбе.', { mods: { atkR: 1 } }),
+     CT('h_cover', 'Чутьё укрытий', '+1 к Защите.', { mods: { def: 1 } })],
+    [CT('h_sniper', 'Снайпер', 'Прицельный выстрел даёт +6 к броску вместо +4.'),
+     CT('h_hunter', 'Охотник на нечисть', '+2 к урону по демонам и мертвецам.')],
+    [CT('h_deadeye', 'Смертельный выстрел', 'При стрельбе крит уже с 15 на костях, а не с 16.'),
+     CT('h_calm', 'Ледяное спокойствие', 'Подавление пулемётным огнём не действует; +2 к стойкости.', { mods: { horror: 2 } })],
+  ],
+  saboteur: [
+    [CT('b_shadow', 'Тень', '+2 к Скрытности.', { skills: { stealth: 2 } }),
+     CT('b_knife', 'Ножевой бой', 'Нож, штык и ритуальный кинжал: +1 к атаке и +2 к урону.')],
+    [CT('b_blast', 'Подрывник', 'Гранаты и динамит бьют на 2 сильнее.'),
+     CT('b_quick', 'Юркий', '+1 к перемещению в бою.', { mods: { move: 1 } })],
+    [CT('b_ghost', 'Призрак', '+2 к Защите.', { mods: { def: 2 } }),
+     CT('b_lethal', 'Добивание', '+2 к атаке по врагам, у которых осталось не больше половины ОЗ.')],
+  ],
+  occultist: [
+    [CT('o_sign', 'Ученик тьмы', '+1 знак: можно постичь ещё одно заклинание.', { signs: 1 }),
+     CT('o_ward', 'Защитные знаки', '+2 к стойкости и +1 к Защите.', { mods: { horror: 2, def: 1 } })],
+    [CT('o_nerves', 'Стальные нервы', 'Заклинания дороже 1 повышают напряжение на 1 меньше.'),
+     CT('o_lore', 'Тайное знание', '+2 к Оккультизму и +1 знак.', { skills: { occult: 2 }, signs: 1 })],
+    [CT('o_master', 'Мастер ритуалов', '+2 знака.', { signs: 2 }),
+     CT('o_blood', 'Кровь и воля', '+5 ОЗ и +3 к стойкости.', { mods: { maxHp: 5, horror: 3 } })],
+  ],
+  technician: [
+    [CT('t_careful', 'Бережный ремонт', 'Оружие отряда изнашивается вдвое реже.'),
+     CT('t_hands', 'Золотые руки', '+2 к Механике.', { skills: { mechanics: 2 } })],
+    [CT('t_plate', 'Бронепластины', '+1 к поглощению урона.', { mods: { armor: 1 } }),
+     CT('t_shop', 'Закалка цеха', '+4 ОЗ и +1 к стойкости.', { mods: { maxHp: 4, horror: 1 } })],
+    [CT('t_tuned', 'Подстройка оружия', '+1 к урону огнестрельным оружием.'),
+     CT('t_calc', 'Расчёт', '+1 к стрельбе и +1 к Защите.', { mods: { atkR: 1, def: 1 } })],
+  ],
+  medic: [
+    [CT('m_field', 'Полевой хирург', 'Бинт и аптечка в бою лечат на 2 ОЗ больше.'),
+     CT('m_cold', 'Холодная голова', '+2 к стойкости и +2 к Вниманию.', { mods: { horror: 2 }, skills: { perception: 2 } })],
+    [CT('m_triage', 'Сортировка', 'Тяжелораненый, поднятый бинтом или аптечкой, встаёт с половиной ОЗ.'),
+     CT('m_steady', 'Верная рука', '+2 к Медицине (перевязки, операции) и +1 к Защите.', { skills: { medicine: 2 }, mods: { def: 1 } })],
+    [CT('m_anatomy', 'Анатом', 'Знает, куда бить: +1 к атаке и +2 к урону в ближнем бою.', { mods: { atkM: 1, dmgM: 2 } }),
+     CT('m_angel', 'Ангел окопов', '+6 ОЗ и 1 очко куража в начале каждого боя.', { mods: { maxHp: 6, courage: 1 } })],
+  ],
+};
+const ALL_CT = Object.values(CLASS_TALENTS).flat(2);
+export const classTalent = (id: string) => ALL_CT.find((t) => t.id === id);
+export const talentsOf = (c: Character | null | undefined) => (c?.classTalents ?? []).map(classTalent).filter((t): t is ClassTalent => !!t);
+export const hasTalent = (c: Character | null | undefined, id: string) => !!c?.classTalents?.includes(id);
+export const talentMod = (c: Character, k: keyof TalentMods) => talentsOf(c).reduce((s, t) => s + (t.mods?.[k] ?? 0), 0);
+export const talentSigns = (c: Character | null | undefined) => talentsOf(c).reduce((s, t) => s + (t.signs ?? 0), 0);
+/** Какой выбор таланта ждёт героя: уровень с талантом, на котором талант ещё не взят (по порядку). */
+export function pendingTalent(c: Character | null | undefined): ClassTalent[] | null {
+  if (!c) return null;
+  const tier = TALENT_LEVELS.findIndex((l, i) => c.level >= l && (c.classTalents?.length ?? 0) <= i);
+  return tier >= 0 ? CLASS_TALENTS[c.prof][tier] : null;
+}
+
 // ------------------------------------------------------------ персонаж
 export interface Character {
   first: string;
@@ -150,6 +218,7 @@ export interface Character {
   talent: TalentId;
   level: number;
   xp: number;
+  classTalents?: string[];   // таланты профессии, взятые на уровнях 2, 4, 6
 }
 
 export const HAIR = ['#1c1a18', '#4a2e1c', '#8a6a42', '#8a3e1c', '#9a968c'];
@@ -159,16 +228,16 @@ export function newCharacter(): Character {
   return {
     first: '', last: '', gender: 'm', age: 28, hair: HAIR[1], skin: SKIN[1],
     prof: 'soldier', attrs: { str: 0, dex: 0, int: 0, wil: 0 },
-    extraSkills: [], talent: 'tough', level: 1, xp: 0,
+    extraSkills: [], talent: 'tough', level: 1, xp: 0, classTalents: [],
   };
 }
 
 /** Опыт, нужный для достижения уровня (индекс = уровень − 1). */
-export const LEVEL_XP = [0, 100, 250, 450, 700, 1000, 1400, 1900, 2500, 3200];
-export const MAX_LEVEL = 10;
+export const LEVEL_XP = [0, 100, 250, 450, 700, 1000];
+export const MAX_LEVEL = 6;
 
-/** Мастерство растёт с уровнем: +1 / +2 / +3 / +4 на уровнях 1 / 4 / 7 / 10. */
-export const mastery = (lvl: number) => 1 + Math.floor((lvl - 1) / 3);
+/** Мастерство растёт с уровнем: +1 / +2 / +3 на уровнях 1 / 3 / 5 (на чётных уровнях — таланты профессии). */
+export const mastery = (lvl: number) => 1 + Math.floor((lvl - 1) / 2);
 
 export const pointsSpent = (c: Character) => ATTR_ORDER.reduce((s, k) => s + c.attrs[k], 0);
 export const pointsLeft = (c: Character) => ATTR_POINTS - pointsSpent(c);
@@ -178,23 +247,29 @@ export function trainedSkills(c: Character): SkillKey[] {
   return [...new Set([...PROFESSIONS[c.prof].skills, ...c.extraSkills])];
 }
 export function skillBonus(c: Character, s: SkillKey) {
-  return c.attrs[SKILLS[s].attr] + (trainedSkills(c).includes(s) ? mastery(c.level) + 1 : 0);
+  return c.attrs[SKILLS[s].attr] + (trainedSkills(c).includes(s) ? mastery(c.level) + 1 : 0) + talentsOf(c).reduce((n, t) => n + (t.skills?.[s] ?? 0), 0);
 }
 
 export function maxHp(c: Character) {
   const p = PROFESSIONS[c.prof];
-  const per = Math.max(1, p.hpLevel + c.attrs.str) + (c.talent === 'tough' ? 1 : 0);
-  return p.hp + c.attrs.str + (c.talent === 'tough' ? 3 : 0) + per * (c.level - 1);
+  // за уровень — половина прироста профессии (6 уровней: здоровье к концу примерно вдвое больше стартового)
+  const per = Math.max(1, Math.floor(p.hpLevel / 2)) + (c.talent === 'tough' ? 1 : 0);
+  return p.hp + c.attrs.str + (c.talent === 'tough' ? 3 : 0) + per * (c.level - 1) + talentMod(c, 'maxHp');
 }
 /** Защита: 13 + Ловкость. Под 3d6 база поднята на 3 (с d20 было 10), чтобы по открытой цели попадали примерно в 60–75%, а не в 90%. */
 export const DEF_BASE = 13;
-export const defense = (c: Character) => DEF_BASE + c.attrs.dex + (c.talent === 'quick' ? 1 : 0);
+export const defense = (c: Character) => DEF_BASE + c.attrs.dex + (c.talent === 'quick' ? 1 : 0) + talentMod(c, 'def');
 export const armorOf = (c: Character) => PROFESSIONS[c.prof].armor;
 export const initiative = (c: Character) => c.attrs.dex + (c.talent === 'quick' ? 2 : 0);
-export const meleeAttack = (c: Character) => skillBonus(c, 'melee');
-export const rangedAttack = (c: Character) => skillBonus(c, 'shooting') + (c.talent === 'steady' ? 1 : 0);
-export const meleeDamage = (c: Character) => Math.max(0, c.attrs.str) + (c.talent === 'grip' ? 1 : 0);
-export const horrorSave = (c: Character) => c.attrs.wil + (c.talent === 'cold' ? 3 : 0);
+export const meleeAttack = (c: Character) => skillBonus(c, 'melee') + talentMod(c, 'atkM');
+export const rangedAttack = (c: Character) => skillBonus(c, 'shooting') + (c.talent === 'steady' ? 1 : 0) + talentMod(c, 'atkR');
+export const meleeDamage = (c: Character) => Math.max(0, c.attrs.str) + (c.talent === 'grip' ? 1 : 0) + talentMod(c, 'dmgM');
+export const horrorSave = (c: Character) => c.attrs.wil + (c.talent === 'cold' ? 3 : 0) + talentMod(c, 'horror');
+
+// ------------------------------------------------------------ опыт
+/** Опыт за поверженного врага: тем больше, чем он крепче и опаснее. */
+export const enemyXp = (hp: number, atk: number) => Math.max(3, Math.round((hp + (atk + 2) * 3) / 2));
+export const XP = { poi: 10, place: 20, scene: 10, check: 5 } as const;
 
 // ------------------------------------------------------------ проверки
 /** Ступени сложности под 3d6. Обученный специалист с сильной характеристикой на 1-м уровне берёт обычную примерно в половине случаев. */
