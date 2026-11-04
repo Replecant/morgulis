@@ -97,6 +97,7 @@ function toScene(id: string, at?: { x: number; y: number }) {
   alexLeft(id);
   alexSee(ALEX_SCENE[id]);
   if (id === 'svoboda' && arthurIn() && !G.flags.arthurSawUncle) alexPending = 'arthur_svoboda'; // Артур видит повешенного дядю
+  if (id === 'richmord' && G.flags.alexDadDenounced) { G.flags.alexDadBeaten = true; if (alexIn() && !G.flags.alexSawDad) alexPending = 'alex_dad_seen'; } // донос сделал своё: на следующий заход отец избит
   G.mode = 'explore';
   if (!G.flags['visited_' + id]) gainXp(XP.scene); // первый визит
   G.flags['visited_' + id] = true;
