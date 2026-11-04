@@ -206,6 +206,17 @@ Debug.onTeleport = (id) => {
 };
 World.onRevo = () => Dialog.start('revo_arthur');
 World.onRat = (msg) => toast(msg);
+// отладка: взять спутника в отряд или убрать (флаги вербовки — как при обычной вербовке)
+Debug.companions = [{ id: 'alex', name: 'Александр' }, { id: 'arthur', name: 'Артур Сильвер' }, { id: 'ivy', name: 'Айви Гримшоу' }];
+const JOINED: Record<string, string> = { alex: 'alexJoined', arthur: 'arthurJoined', ivy: 'ivyJoined' };
+Debug.onCompanion = (id) => {
+  if (G.squad.some((b) => b.id === id)) { // убрать — и вернуть на его место в мире (можно снова позвать обычным путём)
+    G.squad = G.squad.filter((b) => b.id !== id); G.flags[JOINED[id]] = false;
+    applyEquipLooks(G.squad); if (G.mode === 'explore') Explore.enter(Explore.scene, Explore.player); refreshHud(); return;
+  }
+  G.flags[JOINED[id]] = true;
+  Dialog.onAction('recruit_' + id);
+};
 World.onPatrol = (owner) => (World.hunts(owner) ? (World.revoHit = World.patrolNear(World.party, 60), World.onRevo(owner)) : Dialog.start(owner === 'baroness' ? 'enc_bpatrol' : owner === 'revo' ? 'enc_revo' : owner === 'winford' ? 'enc_wfpatrol' : owner === 'wfcar' ? 'enc_wfcar' : 'enc_patrol'));
 World.onLoyal = () => Dialog.start(arthurIn() ? 'loyal_arthur' : 'enc_loyal');
 World.onDsq = () => Dialog.start(World.dsqHit?.hell ? 'enc_cult' : 'enc_dsq');

@@ -1,6 +1,6 @@
 // ============================================================
 //  Отладка (F2): бессмертие от голода, невидимость на карте,
-//  ускорение передвижения, телепорт, погода; вкладка «Предметы» —
+//  ускорение передвижения, телепорт, погода, спутники (взять/убрать); вкладка «Предметы» —
 //  выдать в обоз любую вещь (в любом состоянии), расходники, шиллинги.
 // ============================================================
 import { h } from './book';
@@ -18,6 +18,8 @@ export const Debug = {
   onTeleport: (_id: string) => {},
   onWeather: (_k: string) => {},
   onSpawn: () => {},   // обновить HUD и открытые окна после выдачи
+  onCompanion: (_id: string) => {}, // взять спутника в отряд или убрать из отряда
+  companions: [] as { id: string; name: string }[],
   tab: 'main' as 'main' | 'items' | 'prosth',
   member: 0,           // вкладка «Протезы»: чей отряд
   kind: 'weapon' as ItemKind | 'cons',
@@ -108,6 +110,10 @@ export const Debug = {
       flag('Невидимость на карте', 'invisible', 'Мародёры и мертвецы не замечают отряд.'),
       speeds,
       flag('Телепорт кликом по карте мира', 'clickTp', 'Клик по глобальной карте переносит отряд в эту точку.'),
+      h('div', { class: 'dbg-h' }, 'Спутники'),
+      h('div', { class: 'dbg-row' }, ...this.companions.map((cp) => { const on = G.squad.some((b) => b.id === cp.id);
+        return h('button', { class: 'btn' + (on ? ' active' : ''), title: on ? 'Убрать из отряда' : 'Взять в отряд', onclick: () => { this.onCompanion(cp.id); this.note = `${cp.name}: ${on ? 'убран(а) из отряда' : 'в отряде'}`; this.render(); } }, (on ? '✓ ' : '+ ') + cp.name); })),
+      ...(this.note && this.tab === 'main' ? [h('div', { class: 'dbg-note' }, this.note)] : []),
       h('div', { class: 'dbg-h' }, 'Погода'),
       h('div', { class: 'dbg-row' }, ...this.weathers.map((w) => h('button', { class: 'btn', onclick: () => this.onWeather(w.id) }, w.name)), h('button', { class: 'btn', onclick: () => this.onWeather('auto') }, 'Сама')),
       h('div', { class: 'dbg-h' }, 'Телепорт к месту'),
