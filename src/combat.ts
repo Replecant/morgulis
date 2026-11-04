@@ -421,7 +421,7 @@ export const Combat = {
     return 0;
   },
   /** Какие приёмы куража знает боец: герой — изученные с уровнями, спутники — свои. */
-  movesOf(u: Unit) { return u.base.id === 'pc' && G.pc ? knownMoves(G.pc) : COMPANION_MOVES[u.base.id] ?? []; },
+  movesOf(u: Unit) { return u.base.id === 'pc' && G.pc ? knownMoves(G.pc) : G.flags['undead_' + u.base.id] ? [] : COMPANION_MOVES[u.base.id] ?? []; }, // мертвецам кураж не нужен
   /** Огнестрел, из которого боец может выстрелить n раз подряд (для приёмов куража). */
   gunOf(u: Unit, n = 1) { return u.weapons.find((w) => WEAPONS[w].type === 'ranged' && !WEAPONS[w].magic && this.canFire(u, w, true) && (u.ammo[w] === undefined || u.ammo[w] >= n)); },
   advChance(p: number) { return Math.round(100 - (100 - p) * (100 - p) / 100); },

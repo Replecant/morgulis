@@ -191,6 +191,8 @@ export const STYLES: Record<string, Style> = {
   refugee: { coat: '#3a3a40', legs: '#22222a', hat: 'flatcap', hatC: '#2a2a30', skin: '#c0a48a', beard: '#4a3a2a', weapon: 'bag' },
   refugee_w: { coat: '#4a3a3a', dress: true, hat: 'bonnet', hatC: '#2e2424', skin: '#ccb098', hair: '#3a2a1a', longHair: true, weapon: 'bag' },
 };
+// спутники после «улучшения» Ферглоу — мертвецы: та же одежда, трупная кожа, зелёный огонёк в глазах
+for (const k of ['alex', 'arthur', 'ivy']) STYLES[k + '_dead'] = { ...STYLES[k], undead: true, skin: '#8a9a7c' };
 
 /** Внешность персонажа игрока: пол, волосы, кожа, возраст и профессия. */
 export function setPcStyle(c: Character) {

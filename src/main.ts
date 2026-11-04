@@ -4,7 +4,7 @@
 // ============================================================
 import './style.css';
 import { installI18n, tr } from './i18n';
-import { G, resetGame, alexIn, arthurIn, ivyIn, ferglowIn } from './state';
+import { G, resetGame, alexIn, arthurIn, ivyIn, ferglowIn, undeadCompanion } from './state';
 import { Explore } from './explore';
 import { World, clockText, LOCS } from './worldmap';
 import { Combat, CT } from './combat';
@@ -69,7 +69,7 @@ Dialog.onXp = (n) => gainXp(n);
 let alexPending = '';
 const ALEX_SCENE: Record<string, string> = { svoboda: 'svoboda', bfort: 'bfort', wf1: 'wfort', fort1: 'fort', fort2: 'fort' };
 function alexSee(key: string | undefined) {
-  if (!key || !alexIn() || G.flags['alexSaw_' + key]) return;
+  if (!key || !alexIn() || undeadCompanion('alex') || G.flags['alexSaw_' + key]) return; // мертвецу больше ничего не интересно
   G.flags['alexSaw_' + key] = true; alexPending = 'alex_' + key;
 }
 /** Отданный ведьмам или проданный хирургу Александр «исчезает», когда отряд уходит из сцены. */
@@ -97,9 +97,9 @@ function toWorld(fromScene?: string) {
 function toScene(id: string, at?: { x: number; y: number }) {
   alexLeft(id);
   alexSee(ALEX_SCENE[id]);
-  if (id === 'svoboda' && arthurIn() && !G.flags.arthurSawUncle) alexPending = 'arthur_svoboda'; // Артур видит повешенного дядю
+  if (id === 'svoboda' && arthurIn() && !undeadCompanion('arthur') && !G.flags.arthurSawUncle) alexPending = 'arthur_svoboda'; // Артур видит повешенного дядю
   if (id === 'coven' && ferglowIn() && !G.flags.ferglowSawCoven && !G.flags.covenDead) alexPending = 'ferglow_coven'; // Ферглоу в восторге от ковена
-  if (id === 'richmord' && G.flags.alexDadDenounced) { G.flags.alexDadBeaten = true; if (alexIn() && !G.flags.alexSawDad) alexPending = 'alex_dad_seen'; } // донос сделал своё: на следующий заход отец избит
+  if (id === 'richmord' && G.flags.alexDadDenounced) { G.flags.alexDadBeaten = true; if (alexIn() && !undeadCompanion('alex') && !G.flags.alexSawDad) alexPending = 'alex_dad_seen'; } // донос сделал своё: на следующий заход отец избит
   G.mode = 'explore';
   if (!G.flags['visited_' + id]) gainXp(XP.scene); // первый визит
   G.flags['visited_' + id] = true;
@@ -242,6 +242,8 @@ function fleshCare() {
 World.onDay = () => { // раз в сутки отряд ест
   setTimeout(() => Save.auto(), 0); // и автосохранение
   fleshCare();
+  // Ферглоу на вторые сутки в отряде (если есть кого «улучшать») заводит разговор о ритуале
+  if (ferglowIn() && !G.flags.ferglowOffered && G.squad.some((b) => ['alex', 'arthur', 'ivy'].includes(b.id) && !undeadCompanion(b.id))) { if (G.flags.ferglowDay) alexPending = 'ferglow_offer'; else G.flags.ferglowDay = true; }
   if (Debug.noHunger) { refreshHud(); return; } // отладка: голода нет
   if (G.supplies.ration > 0) { G.supplies.ration--; toast(`${clockText()}: отряд съел паёк (осталось ${G.supplies.ration})`); }
   else { G.squad.forEach((s) => (s.hp = Math.max(1, s.hp - 2))); Dialog.start('hunger'); }
@@ -261,6 +263,10 @@ Dialog.onAction = (act) => {
   else if (act.startsWith('move:')) { const c = G.pc, k = act.slice(5); if (c && COURAGE[k] && pendingMove(c)?.includes(k)) { c.courageMoves = [...knownMoves(c), k]; toast(`Приём куража: ${COURAGE[k].name}`); if (pendingTalent(c) || pendingMove(c)) levelPending = true; } }
   else if (act === 'recruit_arthur') { if (!arthurIn()) { G.squad.push(makeArthur()); applyEquipLooks(G.squad); if (G.mode === 'explore') Explore.enter(Explore.scene, Explore.player); toast('Артур Сильвер в отряде'); refreshHud(); } }
   else if (act === 'recruit_ivy') { if (!ivyIn()) { G.squad.push(makeIvy()); applyEquipLooks(G.squad); if (G.mode === 'explore') Explore.enter(Explore.scene, Explore.player); toast('Айви Гримшоу в отряде'); refreshHud(); } }
+  else if (act.startsWith('undead:')) { // ритуал Ферглоу: спутник становится мертвецом — крепче и бесстрашен, но без души
+    const id = act.slice(7), b = G.squad.find((x) => x.id === id);
+    if (b) { G.flags['undead_' + id] = true; b.kind = id + '_dead'; b.maxHp += 4; b.hp = b.maxHp; b.horror = 99; b.def -= 1; b.move = Math.max(3, b.move - 1); if (id === 'ivy') b.med = 1; applyEquipLooks(G.squad); if (G.mode === 'explore') Explore.enter(Explore.scene, Explore.player); refreshHud(); }
+  }
   else if (act === 'recruit_ferglow') { if (!ferglowIn()) { G.squad.push(makeFerglow()); applyEquipLooks(G.squad); if (G.mode === 'explore') Explore.enter(Explore.scene, Explore.player); toast('Уильям Ферглоу в отряде'); refreshHud(); } }
   else if (act === 'ivy_betray') { G.squad = G.squad.filter((b) => b.id !== 'ivy'); applyEquipLooks(G.squad); World.spareRevo(48); if (G.mode === 'explore') Explore.enter(Explore.scene, Explore.player); refreshHud(); }
   else if (act === 'ivy_gone') { if (G.mode === 'explore') Explore.enter(Explore.scene, Explore.player); }

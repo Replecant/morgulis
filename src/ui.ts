@@ -195,7 +195,7 @@ export function openSquad(onClose: () => void) {
       if (['alex', 'arthur', 'ivy', 'ferglow'].includes(s.id)) { // со спутниками можно поговорить
         const tb = document.createElement('button');
         tb.className = 'btn'; tb.textContent = 'Поговорить';
-        tb.onclick = () => { closeSquad(onClose); Dialog.start(s.id + '_talk'); };
+        tb.onclick = () => { closeSquad(onClose); Dialog.start(G.flags['undead_' + s.id] ? 'undead_talk' : s.id + '_talk'); };
         acts.append(' ', tb);
       }
       row.append(acts);

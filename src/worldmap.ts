@@ -63,6 +63,7 @@ export const LOCS: Loc[] = [
   { id: 'hawley', name: 'Хоули', kind: 'village', x: 1560, y: -300, talk: 'loc_hawley', scene: 'hawley', desc: 'Деревня жуководов. Почти не пострадала.' },
   { id: 'woodham', name: 'Вудхэм', kind: 'village', x: 380, y: -900, talk: 'loc_woodham', scene: 'woodham', desc: 'Деревня лесорубов в глубине леса.' },
   { id: 'tarwell', name: 'Тарвелл', kind: 'village', x: 1490, y: -960, talk: 'loc_tarwell', scene: 'tarwell', desc: 'Деревня нефтяников. Вышки под охраной братьев.' },
+  { id: 'cave', name: 'Пещера у подножия гор', kind: 'poi', x: 1880, y: -650, talk: 'poi_cave', desc: 'Тёмный зев в скале у подножия гор, восточнее земель Свободы. Ферглоу говорит, там можно провести ритуал.' },
   { id: 'redpost', name: 'Застава Собрания', kind: 'poi', x: 1215, y: 20, talk: 'poi_redpost', desc: 'Шлагбаум и красный флаг на въезде в северные леса.' },
   { id: 'coven', name: 'Ковен ведьм', kind: 'village', hidden: true, x: -420, y: -560, talk: 'loc_coven', scene: 'coven', desc: 'Логово ведьм в глухом лесу, в вечном зловещем тумане.' },
   { id: 'einbpost', name: 'Застава у Эйнбоу', kind: 'poi', x: 572, y: -230, talk: 'poi_einbpost', desc: 'Пост братьев свободы на дороге к сожжённой деревне.' },
@@ -2134,6 +2135,14 @@ function drawLocIcon(c: CanvasRenderingContext2D, l: Loc, r: () => number) {
         prect(s, 14, 4, 32, 12, '#4a3e30'); prect(s, 14, 4, 32, 1, '#6a5238'); for (let k = 0; k < 5; k++) prect(s, 17 + k * 6, 7, 3, 2, '#141210'); prect(s, 24, 0, 6, 4, '#4a3e30'); prect(s, 26, -3, 1, 3, '#3a3428');
         for (let k = 0; k < 4; k++) { prect(s, 14 + k * 8, 16, 6, 3, '#3a3026'); } // гусеницы корабля
         for (let k = 0; k < 6; k++) { const tx = 4 + k * 9, ty = 22 + (k % 2) * 6; prect(s, tx, ty, 7, 3, k % 3 ? '#5a4a36' : '#6a4a2a'); prect(s, tx + 2, ty - 2, 3, 2, '#5a4a36'); prect(s, tx + 5, ty - 1, 4, 1, '#4a3e30'); prect(s, tx, ty + 3, 7, 1, '#2a2218'); }
+      });
+      break;
+    case 'cave': // пещера: скальный горб, чёрный зев, у входа — кости и круг мелом
+      stamp(c, x, y + 10, 34, 26, (s) => {
+        pellipse(s, 17, 16, 16, 10, '#4a463e'); pellipse(s, 17, 13, 12, 8, '#5a564c'); pellipse(s, 17, 10, 7, 5, '#625e54');
+        pellipse(s, 17, 18, 6, 5, '#060605'); prect(s, 11, 18, 12, 4, '#060605');
+        for (let k = 0; k < 10; k++) { const a = (k / 10) * TAU; ppx(s, Math.round(17 + Math.cos(a) * 9), Math.round(23 + Math.sin(a) * 2), '#d8d4c0'); }
+        ppx(s, 8, 23, '#c8c2ae'); ppx(s, 26, 22, '#c8c2ae'); ppx(s, 17, 18, '#9adf50');
       });
       break;
     case 'deadend': // тупик: упор на рельсах, баррикада из шпал и мешков, знак
