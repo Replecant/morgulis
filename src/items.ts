@@ -101,7 +101,7 @@ export const ITEMS: Record<string, Item> = {
   boots:       { id: 'boots', name: 'Крепкие сапоги', kind: 'legs', icon: 'boots', mods: { move: 1 }, price: 15, desc: 'Подкованные сапоги для долгих переходов: +1 к перемещению.' },
   greaves:     { id: 'greaves', name: 'Стальные поножи', kind: 'legs', icon: 'greaves', armor: 1, mods: { move: -1 }, price: 30, desc: 'Пластины на голени и колене. Защищают, но тяжелы.' },
   // ---------------- обереги (действуют на дух владельца)
-  rabbitfoot: { id: 'rabbitfoot', name: 'Кроличья лапка', kind: 'charm', icon: 'paw', courage: 1, price: 12, desc: 'На удачу. Владелец идёт в бой с одним очком куража.' },
+  rabbitfoot: { id: 'rabbitfoot', name: 'Кроличья лапка', kind: 'charm', icon: 'paw', courage: 1, price: 12, desc: 'Высохшая лапка зверька, каких давно не водится, — старая вещь из прежнего мира. На удачу: владелец идёт в бой с одним очком куража.' },
   wormwood:   { id: 'wormwood', name: 'Полынная ладанка', kind: 'charm', icon: 'herb', mods: { horror: 2 }, price: 10, desc: 'Мешочек с горькой травой — народное средство от дурного глаза. +2 к стойкости против ужаса.' },
   locket:     { id: 'locket', name: 'Медальон с портретом', kind: 'charm', icon: 'locket', rally: true, price: 20, desc: 'Есть ради кого вернуться. Если владельца поднимут после тяжёлого ранения — он встанет с половиной ОЗ.' },
   // ---------------- специальное снаряжение (лежит в обозе и работает, пока оно у вас есть)
