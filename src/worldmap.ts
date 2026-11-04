@@ -983,9 +983,9 @@ export const World = {
     }
     const fr = (moving: boolean, ph = 0) => moving ? [0, 1, 2, 3][Math.floor(t * 7 + ph) % 4] : 0;
     const mini = (kind: string, x: number, y: number, flip: boolean, frame: number) => {
-      const sp = miniSprite(kind, frame), dx = Math.round(x - 6), dy = Math.round(y - 16);
+      const sp = miniSprite(kind, frame), dx = Math.round(x - sp.width / 2), dy = Math.round(y - 16);
       pshadow(lc, Math.round(x), Math.round(y), 4, 1);
-      if (flip) { lc.save(); lc.translate(dx * 2 + 12, 0); lc.scale(-1, 1); lc.drawImage(sp, dx, dy); lc.restore(); }
+      if (flip) { lc.save(); lc.translate(dx * 2 + sp.width, 0); lc.scale(-1, 1); lc.drawImage(sp, dx, dy); lc.restore(); }
       else lc.drawImage(sp, dx, dy);
     };
     // стычки: вспышки выстрелов между сторонами
