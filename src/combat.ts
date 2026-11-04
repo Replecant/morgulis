@@ -141,7 +141,11 @@ export const Combat = {
     this.units = []; this.fx = []; this.parts = []; this.floats = []; this.anims = [];
     this.ended = false; this.busy = false; this.round = 1; this.sel = null; this.reach = null; this.smoke = []; this.gasClouds = []; this.runes = []; this.magic = false;
     G.squad.forEach((s, i) => {
-      const [x, y] = def.players[i];
+      // мест в бою обычно четыре — пятый и дальше встают на ближайшие свободные клетки рядом с отрядом
+      const pos = def.players[i] ? { x: def.players[i][0], y: def.players[i][1] } : null;
+      const anchor = { x: def.players[i % def.players.length][0], y: def.players[i % def.players.length][1] };
+      const spot = pos && this.free(pos.x, pos.y) ? pos : this.closestFree(anchor, 4) ?? anchor;
+      const { x, y } = spot;
       const u = mkUnit(s, 'player', x, y);
       u.hp = Math.max(1, Math.min(u.maxHp, s.hp));
       this.units.push(u);
@@ -1016,6 +1020,12 @@ export const Combat = {
     u.ap = 0;
   },
 
+  /** Ближайшая к точке свободная клетка (а не случайная) — чтобы лишние бойцы отряда встали плечом к плечу. */
+  closestFree(u: Pt, r: number): Pt | null {
+    let best: Pt | null = null, bd = 1e9;
+    for (let y = u.y - r; y <= u.y + r; y++) for (let x = u.x - r; x <= u.x + r; x++) if (this.free(x, y)) { const d = Math.hypot(x - u.x, y - u.y); if (d < bd) { bd = d; best = { x, y }; } }
+    return best;
+  },
   freeNear(u: Pt, r: number): Pt | null {
     const spots: Pt[] = [];
     for (let y = u.y - r; y <= u.y + r; y++) for (let x = u.x - r; x <= u.x + r; x++) if (this.free(x, y)) spots.push({ x, y });

@@ -30,7 +30,8 @@ body { font-family: 'Old Standard TT', Georgia, serif; color: var(--text); }
   font-size: 14px; line-height: 1.3;
 }
 #objective b { color: var(--brass); font-weight: 700; letter-spacing: 1px; font-size: 11px; display: block; text-transform: uppercase; }
-#squadbar { position: absolute; right: 10px; top: 8px; display: flex; gap: 6px; }
+#squadbar { position: absolute; right: 10px; top: 8px; display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; max-width: calc(100% - 400px); } /* не наезжает на плашку места слева: при большом отряде — второй ряд */
+#squadbar.many .sq:not(.res) { min-width: 74px; }
 .sq { background: rgba(8, 12, 7, 0.72); padding: 4px 7px; font-size: 12px; min-width: 96px; border-top: 2px solid var(--line); }
 .sq .hp { height: 4px; background: #2a1512; margin-top: 3px; }
 .sq .hp span { display: block; height: 100%; background: var(--red); }

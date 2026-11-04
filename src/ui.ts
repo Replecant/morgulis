@@ -157,6 +157,7 @@ function drawPortrait(cv: HTMLCanvasElement, kind: string | null, scale = 3) {
 export function refreshHud() {
   const j = journal().filter((q) => !q.done);
   $('objective').innerHTML = `<b>${G.location || 'Пустошь'} · ${clockText()} · ${Weather.label()}</b>` + (j.length ? j.map((q) => `<div class="q">• ${q.text}</div>`).join('') : '<div class="q dim">Заданий нет — осмотритесь и поговорите с людьми.</div>');
+  $('squadbar').classList.toggle('many', G.squad.length >= 4);
   $('squadbar').innerHTML = G.squad.map((s) => {
     const max = effMaxHp(s), w = woundsOf(s);
     const marks = w.map((x) => `<span class="wd ${x.heavy ? 'heavy' : ''}" title="${x.name}: ${x.desc}">✚</span>`).join('');
