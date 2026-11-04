@@ -216,6 +216,7 @@ export const ENEMIES: Record<string, UnitBase> = {
   wf_soldier:    E('wf_soldier', 'Солдат Винферда', 'wfguard', 10, 4, ['rifle', 'bayonet'], 'ranged', 3, 12),
   brother_fighter: E('brother_fighter', 'Брат свободы', 'brother', 9, 4, ['carbine', 'bayonet'], 'ranged', 2, 11),
   b_officer:       E('b_officer', 'Офицер Леди Харрингтон', 'bofficer', 13, 4, ['revolver', 'saber'], 'ranged', 3, 12, { armor: 1 }),
+  ivy_foe:         E('ivy_foe', 'Айви Гримшоу', 'ivy', 10, 4, ['revolver', 'knife'], 'ranged', 3, 13),
   brother_off:     E('brother_off', 'Старший брат', 'brother_off', 12, 4, ['revolver', 'bayonet'], 'ranged', 3, 12, { armor: 1 }),
   bandit_boss: E('bandit_boss', 'Главарь шайки', 'bandit_boss', 15, 4, ['revolver', 'saber'], 'ranged', 4, 12, { armor: 1 }),
   // морской демон: громадный, скользкий (высокая Защита), ядовитое дыхание
@@ -302,6 +303,10 @@ export function battleDef(id: string, _flags: Record<string, boolean | undefined
       enemies: [{ t: 'salamander', x: 17, y: 5 }],
       lights: [[12, 3, 220, '#6a9a8a'], [3, 10, 110, '#e8c070']],
     };
+  }
+  if (id === 'ivy') { // Айви не пойдёт с мертвецом — у входа в пещеру
+    const w = battleDef('waste', _flags);
+    return { ...w, id, title: 'Айви', enemies: [{ t: 'ivy_foe', x: 16, y: 7, ammo: { revolver: 6 } }], lights: [[12, 7, 180, '#a8b890'], [3, 7, 110, '#e8c070']] };
   }
   if (id === 'revo') { // братья свободы узнали Артура (или вас — по спискам разыскиваемых): бой в северном лесу
     const f = battleDef('loyal2', _flags);
