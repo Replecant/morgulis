@@ -873,7 +873,7 @@ export const Explore = {
     NPC('coven_d2', 'Рогатая', 'demon2', 669, 36, 'coven_demon', coven);
     NPC('alex_coven', 'Александр', 'alex', 663, 35, 'alex_coven', () => !!G.flags.alexCoven && !G.flags.alexCovenGone);
     // Вольница
-    NPC('arthur', 'Артур Сильвер', 'arthur', 1091, 33, 'arthur');
+    NPC('arthur', 'Артур Сильвер', 'arthur', 1091, 33, 'arthur', () => !G.flags.arthurJoined);
     NPC('vol_orator', 'Оратор', 'vol_orator', 1084, 33, 'vol_orator');
     NPC('vol_fence', 'Барыга', 'vol_fence', 1089, 15, 'vol_fence');
     NPC('vol_water', 'Водяная', 'vol_water', 1066, 43, 'vol_water');

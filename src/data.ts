@@ -135,6 +135,15 @@ export function makeAlex(): UnitBase {
   };
 }
 
+/** Артур Сильвер — племянник повешенного барона, стрелок: охотничья винтовка и прицельный выстрел, сабля про запас. */
+export function makeArthur(): UnitBase {
+  return {
+    id: 'arthur', name: 'Артур', kind: 'arthur', hp: 12, maxHp: 12, move: 4,
+    weapons: ['huntrifle', 'saber'], atkM: 1, atkR: 3, def: 14, armor: 0, dmgM: 0, horror: 0, med: 0, str: 0, wounds: [],
+    equip: { main: 'huntrifle', side: 'saber', body: 'clothes' }, abil: { aim: 99 },
+  };
+}
+
 /** Игрок начинает один — отряд пока состоит только из героя. */
 export function makeSquad(c: Character): UnitBase[] {
   return [makeLeader(c)];
@@ -169,6 +178,7 @@ export const ENEMIES: Record<string, UnitBase> = {
   bsoldier:      E('bsoldier', 'Солдат Леди Харрингтон', 'bguard', 10, 4, ['rifle', 'bayonet'], 'ranged', 3, 12),
   wf_soldier:    E('wf_soldier', 'Солдат Винферда', 'wfguard', 10, 4, ['rifle', 'bayonet'], 'ranged', 3, 12),
   brother_fighter: E('brother_fighter', 'Брат свободы', 'brother', 9, 4, ['carbine', 'bayonet'], 'ranged', 2, 11),
+  brother_off:     E('brother_off', 'Старший брат', 'brother_off', 12, 4, ['revolver', 'bayonet'], 'ranged', 3, 12, { armor: 1 }),
   bandit_boss: E('bandit_boss', 'Главарь шайки', 'bandit_boss', 15, 4, ['revolver', 'saber'], 'ranged', 4, 12, { armor: 1 }),
   // морской демон: громадный, скользкий (высокая Защита), ядовитое дыхание
   salamander: E('salamander', 'Морской демон', 'salamander', 26, 3, ['breath', 'salbite'], 'breath', 2, 13, { armor: 1, demonic: true }),
@@ -254,6 +264,10 @@ export function battleDef(id: string, _flags: Record<string, boolean | undefined
       enemies: [{ t: 'salamander', x: 17, y: 5 }],
       lights: [[12, 3, 220, '#6a9a8a'], [3, 10, 110, '#e8c070']],
     };
+  }
+  if (id === 'revo') { // братья свободы узнали Артура (или вас — по спискам разыскиваемых): бой в северном лесу
+    const f = battleDef('loyal2', _flags);
+    return { ...f, id, title: 'Братья свободы', enemies: [{ t: 'brother_off', x: 20, y: 7, ammo: { revolver: 6 } }, { t: 'brother_fighter', x: 18, y: 4, ammo: { carbine: 4 } }, { t: 'brother_fighter', x: 18, y: 10, ammo: { carbine: 4 } }, { t: 'brother_fighter', x: 21, y: 11, ammo: { carbine: 4 } }] };
   }
   if (id.startsWith('dsqh_')) { // свора культистов и демонов в траншейном море: состав в id (dsqh_cultist+imp+hound)
     const kinds = id.slice(5).split('+'), t = trenchBattle('trench1'), pos = [{ x: 19, y: 4 }, { x: 20, y: 9 }, { x: 22, y: 6 }, { x: 21, y: 11 }];

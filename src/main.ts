@@ -4,13 +4,13 @@
 // ============================================================
 import './style.css';
 import { installI18n, tr } from './i18n';
-import { G, resetGame, alexIn } from './state';
+import { G, resetGame, alexIn, arthurIn } from './state';
 import { Explore } from './explore';
 import { World, clockText, LOCS } from './worldmap';
 import { Combat, CT } from './combat';
 import { Dialog, refreshHud, exploreHint, toast, combatShow, combatLog, combatPanel, screen, hideScreen, openSquad, closeSquad, squadOpen } from './ui';
 import { setPcStyle, applyEquipLooks } from './gfx';
-import { makeAlex, CLASH } from './data';
+import { makeAlex, makeArthur, CLASH } from './data';
 import { Inventory } from './inventory';
 import { Sheet } from './sheet';
 import { Music } from './music';
@@ -82,6 +82,7 @@ function toWorld(fromScene?: string) {
 function toScene(id: string, at?: { x: number; y: number }) {
   alexLeft(id);
   alexSee(ALEX_SCENE[id]);
+  if (id === 'svoboda' && arthurIn() && !G.flags.arthurSawUncle) alexPending = 'arthur_svoboda'; // Артур видит повешенного дядю
   G.mode = 'explore';
   G.flags['visited_' + id] = true;
   Explore.enter(id, at);
@@ -121,6 +122,7 @@ Combat.hooks = {
     if (id === 'coven') Dialog.start('after_coven');
     if (id.startsWith('dsq_')) { World.killDsq(); Dialog.start('after_dsq'); }
     if (id.startsWith('dsqh_')) { World.killDsq(); Dialog.start('after_cult'); }
+    if (id === 'revo') { World.beatRevo(); Dialog.start('after_revo'); }
     if (id.startsWith('trench')) { World.killDead(); World.deadHit = null; Dialog.start('after_dead'); }
     if (Combat.wearNotes.length) toast(Combat.wearNotes.join(' '));
     refreshHud();
@@ -131,6 +133,7 @@ Combat.hooks = {
       : id === 'lake' ? 'Морской демон утащил вас вглубь бездны'
       : id.startsWith('trench') ? 'Мертвецы теперь будут лакомиться вашей плотью'
       : id.startsWith('dsqh_') ? 'Культ отдал вас демонам'
+      : id === 'revo' ? 'Братья свободы повесили вас на площади — рядом с бароном'
       : 'Ещё одна душа сгинула под взглядом Ока';
     const last = Save.latest();
     screen(
@@ -184,7 +187,8 @@ Debug.onTeleport = (id) => {
   World.updateLocation(); World.discover(); refreshHud();
   toast(`Телепорт: ${l.name}`);
 };
-World.onPatrol = (owner) => Dialog.start(owner === 'baroness' ? 'enc_bpatrol' : owner === 'revo' ? 'enc_revo' : owner === 'winford' ? 'enc_wfpatrol' : owner === 'wfcar' ? 'enc_wfcar' : 'enc_patrol');
+World.onRevo = () => Dialog.start('revo_arthur');
+World.onPatrol = (owner) => (owner === 'revo' && (arthurIn() || G.flags.svobodaWanted) ? (World.revoHit = World.patrolNear(World.party, 60), Dialog.start('revo_arthur')) : Dialog.start(owner === 'baroness' ? 'enc_bpatrol' : owner === 'revo' ? 'enc_revo' : owner === 'winford' ? 'enc_wfpatrol' : owner === 'wfcar' ? 'enc_wfcar' : 'enc_patrol'));
 World.onLoyal = () => Dialog.start('enc_loyal');
 World.onDsq = () => Dialog.start(World.dsqHit?.hell ? 'enc_cult' : 'enc_dsq');
 World.onDiscover = (l) => toast(`Замечено: ${l.name}`);
@@ -222,6 +226,11 @@ Dialog.onAction = (act) => {
   else if (act === 'battle_scav') startBattle('ruins');
   else if (act === 'recruit_alex') { if (!G.squad.some((s) => s.id === 'alex')) { G.squad.push(makeAlex()); applyEquipLooks(G.squad); if (G.mode === 'explore') Explore.enter(Explore.scene, Explore.player); toast('Александр в отряде'); refreshHud(); } }
   else if (act === 'alex_to_coven' || act === 'alex_sold') alexRemove();
+  else if (act === 'recruit_arthur') { if (!arthurIn()) { G.squad.push(makeArthur()); applyEquipLooks(G.squad); if (G.mode === 'explore') Explore.enter(Explore.scene, Explore.player); toast('Артур Сильвер в отряде'); refreshHud(); } }
+  else if (act === 'arthur_betray') { G.squad = G.squad.filter((b) => b.id !== 'arthur'); applyEquipLooks(G.squad); World.spareRevo(48); refreshHud(); }
+  else if (act === 'revo_spare') World.spareRevo(24);
+  else if (act === 'revo_spare_short') World.spareRevo(8);
+  else if (act === 'battle_revo') startBattle('revo');
   else if (act === 'clash_a' || act === 'clash_b') { // вступить в стычку на стороне a или b
     const c = World.clashHit;
     if (c) {

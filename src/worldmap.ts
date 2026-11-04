@@ -3,7 +3,7 @@
 //  отряд свободно ходит по карте, время идёт, деревни — входы
 //  в локальные сцены, примечательности — события на карте.
 // ============================================================
-import { G } from './state';
+import { G, arthurIn } from './state';
 import { seeded, TAU, clamp, dist, Pt } from './util';
 import { PixelView, LW, LH, PS, PLight, applyLight, prect, ppx, pline, pellipse, pshadow, outline, pixelize, shade } from './px';
 import { miniSprite } from './sprites';
@@ -155,7 +155,7 @@ const PATROL_PATHS: number[][][] = [[...ROADS[2].slice().reverse(), ...ROADS[0].
 export type PatrolOwner = 'baron' | 'baroness' | 'revo' | 'winford' | 'wfcar';
 const PATROL_OWNER: PatrolOwner[] = ['baron', 'baron', 'baroness', 'revo', 'revo', 'revo', 'winford', 'wfcar', 'wfcar'];
 const PATROL_SPEED = 36;   // пикселей карты в час
-interface Patrol { path: number[][]; len: number; s: number; dir: 1 | -1; wait: number; speed: number; owner: PatrolOwner; off?: Pt; beaten?: number } // off — сошёл с дороги в погоню; beaten — до этого часа потрёпан и в бой не лезет
+interface Patrol { path: number[][]; len: number; s: number; dir: 1 | -1; wait: number; speed: number; owner: PatrolOwner; off?: Pt; beaten?: number; spare?: number } // spare — до этого часа братья не трогают отряд (отпустили, отстали) // off — сошёл с дороги в погоню; beaten — до этого часа потрёпан и в бой не лезет
 const polyLen = (pts: number[][]) => pts.reduce((a, pt, i) => (i ? a + Math.hypot(pt[0] - pts[i - 1][0], pt[1] - pts[i - 1][1]) : 0), 0);
 function polyAt(pts: number[][], s: number): Pt & { dx: number } {
   for (let i = 1; i < pts.length; i++) {
@@ -351,6 +351,11 @@ export const World = {
   onArrive: (_l: Loc) => {},
   onEncounter: () => {},
   onPatrol: (_owner: PatrolOwner) => {},
+  /** Братья свободы узнали Артура (или отряд в списках разыскиваемых). */
+  revoHit: null as Patrol | null,
+  onRevo: () => {},
+  spareRevo(hours: number) { const pt = this.revoHit; if (pt) pt.spare = G.clock + hours; this.revoHit = null; },
+  beatRevo() { const pt = this.revoHit; if (pt) { pt.wait = 0; pt.dir = pt.dir === 1 ? -1 : 1; pt.beaten = G.clock + 24; pt.spare = G.clock + 24; } this.revoHit = null; },
   loyal: [] as Loyal[],
   dsq: [] as DemonSquad[],
   dsqHit: null as DemonSquad | null,
@@ -512,6 +517,11 @@ export const World = {
       const day = Math.floor(G.clock / 24);
       if (day > this.lastDay) { this.lastDay = day; this.onDay(); }
       this.updatePatrols(dt);
+      // на землях Собрания: патруль братьев узнаёт Артура в лицо (или отряд — по спискам) и останавливает
+      if (!Debug.invisible && !this.revoHit && (arthurIn() || G.flags.svobodaWanted)) {
+        const pt = this.patrols.find((x) => x.owner === 'revo' && !this.inClash(x) && (x.spare ?? 0) <= G.clock && (x.beaten ?? 0) <= G.clock && dist(this.patrolPos(x), p) < 45);
+        if (pt) { p.moving = false; this.pending = null; this.pendingPatrol = null; this.route = []; G.keys.clear(); this.revoHit = pt; this.onRevo(); return; }
+      }
       this.updateDead(dt);
       this.updateClouds(dt);
       this.updateBand(dt);

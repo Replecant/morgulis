@@ -190,10 +190,10 @@ export function openSquad(onClose: () => void) {
       mb.disabled = G.supplies.medkit <= 0 || (s.hp >= max && !woundsOf(s).some((w) => !w.heavy));
       mb.onclick = () => { log = useMedkit(s) ?? ''; render(); };
       acts.append(bb, ' ', mb);
-      if (s.id === 'alex') { // с Александром можно поговорить
+      if (s.id === 'alex' || s.id === 'arthur') { // с Александром и Артуром можно поговорить
         const tb = document.createElement('button');
         tb.className = 'btn'; tb.textContent = 'Поговорить';
-        tb.onclick = () => { closeSquad(onClose); Dialog.start('alex_talk'); };
+        tb.onclick = () => { closeSquad(onClose); Dialog.start(s.id === 'alex' ? 'alex_talk' : 'arthur_talk'); };
         acts.append(' ', tb);
       }
       row.append(acts);
