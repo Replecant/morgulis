@@ -71,8 +71,8 @@ body { font-family: 'Old Standard TT', Georgia, serif; color: var(--text); }
 
 /* ---------- Бой ---------- */
 #cpanel {
-  position: absolute; left: 0; right: 0; bottom: 0; height: 80px;
-  display: flex; align-items: center; gap: 12px; padding: 0 12px;
+  position: absolute; left: 0; right: 0; bottom: 0; min-height: 80px; box-sizing: border-box; /* много кнопок — панель растёт вверх, а не обрезает ряд */
+  display: flex; align-items: center; gap: 12px; padding: 5px 12px;
   background: linear-gradient(#141a10, #0b0e09); border-top: 1px solid var(--line);
 }
 #cunit { display: flex; gap: 8px; align-items: center; width: 230px; flex: none; font-size: 13px; }

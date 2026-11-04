@@ -72,8 +72,15 @@ export const COURAGE: Record<string, { name: string; short: string; cost: number
   rush:   { name: 'Отчаянный рывок', short: 'Рывок', cost: 1, desc: '1 ОД. Перебежка на двойное расстояние. Каждый вражеский стрелок, который видит бойца, стреляет вслед с −3.' },
   last:   { name: 'Последний натиск', short: 'Натиск', cost: 2, desc: 'Только при ОЗ не выше трети. Атака: кость бросается дважды, берётся лучшая, +2 к урону. После — раскрыт.' },
   rescue: { name: 'Спасение товарища', short: 'Спасение', cost: 1, desc: 'Нужны 2 ОД. Бросок до 6 клеток к тяжелораненому союзнику — тот встаёт с четвертью ОЗ. По пути — огонь вслед.' },
+  grit:   { name: 'Стиснуть зубы', short: 'Зубы', cost: 1, desc: 'Без ОД. +3 ОЗ, снимает подавление и слабость.' },
+  brace:  { name: 'Стоять насмерть', short: 'Насмерть', cost: 1, desc: '1 ОД, завершает ход. До своего следующего хода +3 к Защите.' },
+  pierce: { name: 'Выстрел в щель', short: 'В щель', cost: 1, desc: 'Нужны 2 ОД и огнестрел. Выстрел с +2 к атаке — броня цели не спасает.' },
+  volley: { name: 'Шквал огня', short: 'Шквал', cost: 2, desc: 'Нужны 2 ОД и огнестрел с двумя зарядами. Два выстрела подряд по одной цели.' },
+  inspire: { name: 'Воодушевить', short: 'Воодушевить', cost: 2, desc: '1 ОД. Свои бойцы в радиусе 5: +1 кураж каждому.' },
 };
-const COURAGE_ORDER = ['charge', 'rush', 'last', 'rescue'];
+const COURAGE_ORDER = ['charge', 'rush', 'last', 'rescue', 'grit', 'brace', 'pierce', 'volley', 'inspire'];
+/** Приёмы куража, которые применяются сразу, без выбора цели. */
+const COURAGE_SELF = ['grit', 'brace', 'inspire'];
 
 /** Талант профессии героя (rules.ts CLASS_TALENTS) — есть ли он у бойца. */
 const KNIVES = ['knife', 'bayonet', 'rdagger', 'rustbayonet'];
@@ -225,6 +232,7 @@ export const Combat = {
     if (att.st.fortune) bonus += 4;
     if (att.st.omen) bonus -= 4;
     if (t.st.ward) dc += 1;
+    if (t.st.brace) dc += 3; // «Стоять насмерть»
     if (t.st.stars) dc += 1;
     if (this.runes.some((r) => r.kind === 'guard' && r.x === t.x && r.y === t.y) && t.team === 'player') dc += 3;
     if (tal(att, 'b_knife') && KNIVES.includes(wkey)) bonus += 1;          // «Ножевой бой»
@@ -293,8 +301,11 @@ export const Combat = {
   courageBlock(u: Unit, key: string): string | null {
     const c = COURAGE[key];
     if (u.courage < c.cost) return `Нужно куража: ${c.cost}`;
-    if ((key === 'charge' || key === 'rescue') && u.ap < 2) return 'Нужны 2 ОД';
+    if ((key === 'charge' || key === 'rescue' || key === 'pierce' || key === 'volley') && u.ap < 2) return 'Нужны 2 ОД';
+    if (key === 'grit') return u.hp >= u.maxHp && !u.st.supp && !u.st.weak ? 'Нечего превозмогать' : null; // без ОД
     if (u.ap < 1) return 'Нет ОД';
+    if ((key === 'pierce' || key === 'volley') && !this.gunOf(u, key === 'volley' ? 2 : 1)) return key === 'volley' ? 'Нужен огнестрел с двумя зарядами' : 'Нужен заряженный огнестрел';
+    if (key === 'inspire' && !this.alive('player').some((x) => x !== u && !x.downed && dist(u, x) <= 5.5)) return 'Рядом нет своих';
     if (key === 'charge' && !u.weapons.some((w) => WEAPONS[w].type === 'melee')) return 'Нет холодного оружия';
     if (key === 'last' && u.hp > u.maxHp / 3) return 'Только при ОЗ не выше трети';
     if (key === 'rescue' && !this.units.some((x) => x.downed)) return 'Некого спасать';
@@ -337,7 +348,9 @@ export const Combat = {
     }
     if (u.leader && G.known.length) out.push({ kind: 'm', key: 'magic', label: `✶ Оккультизм (напр. ${u.base.strain ?? 0}/${STRAIN_MAX})`, desc: 'Заклинания изученных школ. Каждое тратит основное действие и повышает оккультное напряжение.', disabled: u.ap < 1, active: false });
     if (this.isSquad(u)) for (const k of COURAGE_ORDER) {
+      if (u.courage < COURAGE[k].cost) continue; // нет куража — кнопки нет, панель не забита
       const block = this.courageBlock(u, k);
+      if (block && !/ОД/.test(block)) continue; // невозможно по условиям (нет раненых, здоровья много…) — тоже не показываем
       out.push({ kind: 'c', key: k, label: `${COURAGE[k].short} ${'✦'.repeat(COURAGE[k].cost)}`, desc: `${tr(COURAGE[k].name)}. ${tr(COURAGE[k].desc)}` + (block ? ` (${tr(block)})` : ''), disabled: !!block, active: this.action.type === 'c' && this.action.key === k });
     }
     return out;
@@ -356,6 +369,7 @@ export const Combat = {
       this.hooks.toast(sp.target === 'enemy' ? `${sp.name}: выберите врага` : sp.target === 'ally' ? `${sp.name}: выберите союзника или себя` : `${sp.name}: выберите клетку`);
       this.hooks.panel(); return;
     }
+    if (b.kind === 'c' && COURAGE_SELF.includes(b.key)) { this.useCourage(u, b.key, u.x, u.y, u); return; }
     if (b.kind === 'c') { this.action = { type: 'c', key: b.key }; this.computeReach(); this.hooks.panel(); return; }
     if (b.key === 'reload') {
       this.run(async () => {
@@ -410,9 +424,12 @@ export const Combat = {
     if (this.action.type === 'w') return this.canFire(u, this.action.key, true) ? this.hitChance(u, t, this.action.key) : 0;
     if (this.action.key === 'aim') return this.canFire(u, u.weapons[0], true) ? this.hitChance(u, t, u.weapons[0], tal(u, 'h_sniper') ? 6 : 4) : 0;
     if (this.action.type === 'c' && this.action.key === 'last') { const w = this.lastStandWeapon(u, t); return w ? this.advChance(this.hitChance(u, t, w)) : 0; }
+    if (this.action.type === 'c' && (this.action.key === 'pierce' || this.action.key === 'volley')) { const w = this.gunOf(u, this.action.key === 'volley' ? 2 : 1); return w ? this.hitChance(u, t, w, this.action.key === 'pierce' ? 2 : 0) : 0; }
     if (this.action.type === 'c' && this.action.key === 'charge') return this.chargeTile(u, t) ? this.hitChance({ ...u, x: this.chargeTile(u, t)!.x, y: this.chargeTile(u, t)!.y } as Unit, t, this.meleeWeapon(u)!, 2) : 0;
     return 0;
   },
+  /** Огнестрел, из которого боец может выстрелить n раз подряд (для приёмов куража). */
+  gunOf(u: Unit, n = 1) { return u.weapons.find((w) => WEAPONS[w].type === 'ranged' && !WEAPONS[w].magic && this.canFire(u, w, true) && (u.ammo[w] === undefined || u.ammo[w] >= n)); },
   advChance(p: number) { return Math.round(100 - (100 - p) * (100 - p) / 100); },
   meleeWeapon(u: Unit) { return u.weapons.find((w) => WEAPONS[w].type === 'melee'); },
   lastStandWeapon(u: Unit, t: Unit) {
@@ -666,6 +683,42 @@ export const Combat = {
         this.hooks.log(`${u.name} идёт в последний натиск!`);
         await this.attack(u, target, w, 0, { dmg: 2, adv: true });
         u.ap = 0; if (!tal(u, 's_stormer')) u.exposed = true;
+      });
+    } else if (key === 'grit') {
+      this.run(async () => {
+        spend();
+        const h = Math.min(3, u.maxHp - u.hp); u.hp += h; delete u.st.supp; delete u.st.weak;
+        if (h) this.float(u, `+${h}`, '#8fdc7a');
+        this.hooks.log(`${u.name} стискивает зубы и выпрямляется.`);
+        await sleep(300);
+      });
+    } else if (key === 'brace') {
+      this.run(async () => {
+        spend(); u.st.brace = 1; u.ap = 0;
+        this.float(u, '+3 Защита', '#c8d8a0');
+        this.hooks.log(`${u.name} упирается и встаёт насмерть.`);
+        await sleep(300);
+      });
+    } else if (key === 'inspire') {
+      this.run(async () => {
+        spend(); u.ap -= 1;
+        this.hooks.log(`${u.name}: «Держаться! Ещё немного!»`);
+        for (const p of this.alive('player').filter((x) => x !== u && !x.downed && dist(u, x) <= 5.5)) this.gainCourage(p, 'воодушевлён');
+        await sleep(400);
+      });
+    } else if (key === 'pierce' || key === 'volley') {
+      if (!target || target.team !== 'enemy' || target.dead) return T('Выберите врага');
+      const w = this.gunOf(u, key === 'volley' ? 2 : 1)!;
+      if (this.hitChance(u, target, w, key === 'pierce' ? 2 : 0) <= 0) return T('Цель вне досягаемости или не видна');
+      this.run(async () => {
+        spend();
+        if (key === 'pierce') { this.hooks.log(`${u.name} целит в щель брони.`); await this.attack(u, target, w, 2, { pierce: true }); }
+        else {
+          this.hooks.log(`${u.name} открывает шквальный огонь!`);
+          await this.attack(u, target, w, 0);
+          if (!target.dead && !u.dead && !u.jam.includes(w) && (u.ammo[w] === undefined || u.ammo[w] > 0)) await this.attack(u, target, w, 0);
+        }
+        u.ap = 0;
       });
     } else if (key === 'rescue') {
       if (!target || !target.downed) return T('Выберите тяжелораненого союзника');
@@ -962,7 +1015,7 @@ export const Combat = {
   },
 
   // ---------------------------------------------------------- действия
-  async attack(a: Unit, t: Unit, wkey: string, bonus = 0, opts: { dmg?: number; adv?: boolean } = {}) {
+  async attack(a: Unit, t: Unit, wkey: string, bonus = 0, opts: { dmg?: number; adv?: boolean; pierce?: boolean } = {}) {
     const w = WEAPONS[wkey];
     if (w.breath) return this.breathAttack(a, t, wkey, bonus);
     if (!a.fired.includes(wkey)) a.fired.push(wkey);
@@ -1006,7 +1059,7 @@ export const Combat = {
       if (w.shot) d = Math.max(1, d - Math.max(0, Math.floor(dist(a, t) - w.opt!)) - (t.splinter ? 1 : 0)); // дробь теряет силу
       const crit = roll.crit || (tal(a, 'h_deadeye') && w.type === 'ranged' && roll.roll >= 15); // 16+ на костях (у «Смертельного выстрела» — 15+): полуторный урон, броня не спасает
       if (crit) d = Math.ceil(d * 1.5);
-      const absorbed = crit || w.pierce ? 0 : Math.min(d - 1, t.armor);
+      const absorbed = crit || w.pierce || opts.pierce ? 0 : Math.min(d - 1, t.armor);
       d -= absorbed;
       this.hooks.log(`${a.name} → ${t.name}: ${w.name}, ${crit ? 'КРИТ! ' : ''}${d} урона${absorbed ? ` (броня −${absorbed})` : ''} [${rollTxt}]`);
       await this.damage(t, d, crit);

@@ -284,7 +284,7 @@ export function combatPanel() {
   const wnds = (u.base.wounds ?? []).length;
   $('cunit').innerHTML = `<canvas width="56" height="56"></canvas><div><b>${u.name}</b>
     <div class="hpbar"><span style="width:${(u.hp / u.maxHp) * 100}%"></span></div>
-    ОЗ ${u.hp}/${u.maxHp} · ОД <span style="color:#e0c070">${ap}</span><br>Кураж <span style="color:#f0a040" title="Копится: устоять под ударом, сразить врага, точный удар, клич командира. Гаснет от ужаса.">${cour}</span>${wnds ? ` · <span style="color:#e09080">ран: ${wnds}</span>` : ''}</div>`;
+    ОЗ ${u.hp}/${u.maxHp} · ОД <span style="color:#e0c070">${ap}</span><br>Кураж <span style="color:#f0a040" title="Копится: устоять под ударом, сразить врага, точный удар, клич командира. Гаснет от ужаса. Приёмы куража появляются в панели, когда его хватает.">${cour}</span>${wnds ? ` · <span style="color:#e09080">ран: ${wnds}</span>` : ''}</div>`;
   drawPortrait($('cunit').querySelector('canvas')!, u.kind, 1.7);
   const box = $('cactions');
   box.innerHTML = '';
