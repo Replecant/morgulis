@@ -45,7 +45,9 @@ function clashWon() {
   const ally = clashSide === 'a' ? c.a : c.b;
   World.endClash(c, clashSide);
   // наград нет — чтобы стычки нельзя было «фармить»; остаются только слова и память сторон
-  World.clashReward = { text: `Сержант вытирает лицо рукавом и долго смотрит на вас. — Подсобили. ${ally.name} такого не забывает. — Солдаты молча собирают оружие убитых и уходят по дороге.`, give: () => {} };
+  World.clashReward = ally.kind === 'loyal'
+    ? { text: 'Офицер старой гвардии опускает дымящуюся винтовку и снимает фуражку перед Артуром. — Спасибо, господин. — Лоялисты быстро обирают братьев и исчезают в ельнике. На тракте остаются красные повязки в грязи — теперь и за вами будут охотиться по спискам.', give: () => { G.flags.svobodaWanted = true; } }
+    : { text: `Сержант вытирает лицо рукавом и долго смотрит на вас. — Подсобили. ${ally.name} такого не забывает. — Солдаты молча собирают оружие убитых и уходят по дороге.`, give: () => {} };
   Dialog.start('after_clash');
 }
 
@@ -189,7 +191,7 @@ Debug.onTeleport = (id) => {
 };
 World.onRevo = () => Dialog.start('revo_arthur');
 World.onPatrol = (owner) => (owner === 'revo' && (arthurIn() || G.flags.svobodaWanted) ? (World.revoHit = World.patrolNear(World.party, 60), Dialog.start('revo_arthur')) : Dialog.start(owner === 'baroness' ? 'enc_bpatrol' : owner === 'revo' ? 'enc_revo' : owner === 'winford' ? 'enc_wfpatrol' : owner === 'wfcar' ? 'enc_wfcar' : 'enc_patrol'));
-World.onLoyal = () => Dialog.start('enc_loyal');
+World.onLoyal = () => Dialog.start(arthurIn() ? 'loyal_arthur' : 'enc_loyal');
 World.onDsq = () => Dialog.start(World.dsqHit?.hell ? 'enc_cult' : 'enc_dsq');
 World.onDiscover = (l) => toast(`Замечено: ${l.name}`);
 World.onDead = () => Dialog.start(World.deadHit?.hell ? 'enc_hdead' : 'enc_dead');
