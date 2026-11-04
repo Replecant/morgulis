@@ -267,8 +267,9 @@ Dialog.onAction = (act) => {
   else if (act === 'recruit_ivy') { if (!ivyIn()) { G.squad.push(makeIvy()); applyEquipLooks(G.squad); if (G.mode === 'explore') Explore.enter(Explore.scene, Explore.player); toast('Айви Гримшоу в отряде'); refreshHud(); } }
   else if (act.startsWith('undead:')) { // ритуал Ферглоу: спутник становится мертвецом — крепче и бесстрашен, но без души
     const id = act.slice(7), b = G.squad.find((x) => x.id === id);
-    if (b) { alexPending = 'undead_react'; G.flags['undead_' + id] = true; b.kind = id + '_dead'; b.maxHp += 4; b.hp = b.maxHp; b.horror = 99; b.def -= 1; b.move = Math.max(3, b.move - 1); if (id === 'ivy') b.med = 1; applyEquipLooks(G.squad); if (G.mode === 'explore') Explore.enter(Explore.scene, Explore.player); refreshHud(); }
+    if (b) { alexPending = 'undead_react'; G.flags.ritualDone = true; G.flags['undead_' + id] = true; b.kind = id + '_dead'; b.maxHp += 4; b.hp = b.maxHp; b.horror = 99; b.def -= 1; b.move = Math.max(3, b.move - 1); if (id === 'ivy') b.med = 1; applyEquipLooks(G.squad); if (G.mode === 'explore') Explore.enter(Explore.scene, Explore.player); refreshHud(); }
   }
+  else if (act === 'ivy_raise') { if (!ivyIn()) G.squad.push(makeIvy()); G.flags.ivyDead = false; Dialog.onAction('undead:ivy'); } // Ферглоу поднимает убитую Айви
   else if (act === 'battle_ivy') { G.squad = G.squad.filter((b) => b.id !== 'ivy'); applyEquipLooks(G.squad); refreshHud(); startBattle('ivy'); }
   else if (act === 'recruit_ferglow') { if (!ferglowIn()) { G.squad.push(makeFerglow()); applyEquipLooks(G.squad); if (G.mode === 'explore') Explore.enter(Explore.scene, Explore.player); toast('Уильям Ферглоу в отряде'); refreshHud(); } }
   else if (act === 'ivy_betray') { G.squad = G.squad.filter((b) => b.id !== 'ivy'); applyEquipLooks(G.squad); World.spareRevo(48); if (G.mode === 'explore') Explore.enter(Explore.scene, Explore.player); refreshHud(); }
