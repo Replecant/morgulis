@@ -36,10 +36,10 @@ interface Beetle { id: string; x: number; y: number; tx: number; ty: number; pen
 /** Фоновый житель: координаты дробные (в клетках), идёт по маршруту, бросает реплики. */
 interface Folk {
   def: FolkDef; id: string; name: string; kind: string; talk: string;
-  x: number; y: number; i: number; path: Pt[]; wait: number; flip: boolean; step: number;
+  x: number; y: number; i: number; path: Pt[]; wait: number; flip: boolean; step: number; back?: boolean;
   bark: { text: string; t: number } | null; barkI: number; nextBark: number; hold: number; seed: number; blockT: number;
 }
-interface Walker { kind: string; x: number; y: number; rx: number; ry: number; fx: number; fy: number; flip: boolean }
+interface Walker { kind: string; x: number; y: number; rx: number; ry: number; fx: number; fy: number; flip: boolean; back?: boolean } // back — повернулся спиной (идёт вверх)
 
 // ------------------------------------------------------------ области (для названий мест)
 const AREAS: { name: string; x0: number; y0: number; x1: number; y1: number }[] = [
@@ -1043,12 +1043,13 @@ export const Explore = {
   step(dx: number, dy: number) {
     const p = this.player;
     if (dx) p.flip = dx < 0;
+    if (dy) p.back = dy < 0; else if (dx) p.back = false;
     if (!this.inScene(p.x + dx, p.y + dy)) { this.path = []; this.pending = null; this.onExit(this.scene); return false; }
     if (this.blocked(p.x + dx, p.y + dy)) return false;
     this.trail.unshift({ x: p.x, y: p.y }); this.trail.length = this.followers.length;
     for (const w of [p, ...this.followers]) { w.fx = w.rx; w.fy = w.ry; }
     p.x += dx; p.y += dy;
-    this.followers.forEach((f, i) => { const t = this.trail[i]; if (t.x !== f.x) f.flip = t.x < f.x; f.x = t.x; f.y = t.y; });
+    this.followers.forEach((f, i) => { const t = this.trail[i]; if (t.x !== f.x) f.flip = t.x < f.x; if (t.y !== f.y) f.back = t.y < f.y; else if (t.x !== f.x) f.back = false; f.x = t.x; f.y = t.y; });
     this.moveK = 0;
     return true;
   },
@@ -1097,7 +1098,7 @@ export const Explore = {
   interact(t: Obj | Npc | Beetle | Folk) {
     if (!t.talk) return;
     this.lastInteract = performance.now();
-    if ('kind' in t && !('w' in t)) this.player.flip = t.x < this.player.x;
+    if ('kind' in t && !('w' in t)) { const p = this.player; p.flip = t.x < p.x; p.back = t.y < p.y && Math.abs(t.y - p.y) > Math.abs(t.x - p.x); }
     if ('def' in t) { this.say(t, true); return; } // житель отвечает репликой, без окна диалога
     this.onInteract(t.talk);
   },
@@ -1107,7 +1108,7 @@ export const Explore = {
     f.barkI = (f.barkI + 1) % f.def.barks.length;
     f.bark = { text: tr(f.def.barks[f.barkI]), t: 0 }; // перевод до разбивки на строки
     f.nextBark = 18 + Math.random() * 20;
-    if (talk) { f.hold = 3.5; f.flip = this.player.x < f.x; }
+    if (talk) { f.hold = 3.5; f.flip = this.player.x < f.x; f.back = false; }
   },
 
   updateFolk(dt: number) {
@@ -1131,6 +1132,7 @@ export const Explore = {
         f.blockT = 0;
         const dx = n.x - f.x, dy = n.y - f.y, d = Math.hypot(dx, dy), sp = (f.def.speed ?? 1.6) * dt;
         if (Math.abs(dx) > 0.01) f.flip = dx < 0;
+        f.back = dy < -0.01 && Math.abs(dy) > Math.abs(dx);
         if (d <= sp) { f.x = n.x; f.y = n.y; f.path.shift(); } else { f.x += (dx / d) * sp; f.y += (dy / d) * sp; }
         f.step += sp;
         if (!f.path.length) f.wait = f.def.route[f.i].wait * (0.7 + Math.random() * 0.6);
@@ -1230,10 +1232,10 @@ export const Explore = {
       const st = f.def.route[f.i], working = !moving && f.hold <= 0 && !!st.work;
       const frame = moving ? [1, 0, 3, 0][Math.floor(f.step * 3.2) % 4] : 0;
       const bob = working ? (Math.sin(t * 5 + f.seed) > 0 ? 1 : 0) : Math.sin(t * 1.4 + f.seed) > 0.8 ? 1 : 0;
-      ents.push({ y: f.y, d: () => drawSprite(c, f.kind, f.x * T + T / 2, f.y * T + T - 1, { flip: f.flip, frame, bob }) });
+      ents.push({ y: f.y, d: () => drawSprite(c, f.kind, f.x * T + T / 2, f.y * T + T - 1, { flip: f.flip, frame, bob, back: moving && f.back }) });
     }
-    this.followers.forEach((f, i) => ents.push({ y: f.ry - 0.01, d: () => drawSprite(c, G.squad[i + 1]?.look ?? f.kind, f.rx * T + T / 2, f.ry * T + T - 1, { flip: f.flip, frame: wf }) }));
-    ents.push({ y: p.ry, d: () => drawSprite(c, G.squad[0]?.look ?? 'pc', p.rx * T + T / 2, p.ry * T + T - 1, { flip: p.flip, frame: wf, bob: !walking && Math.sin(t * 1.6) > 0.75 ? 1 : 0 }) });
+    this.followers.forEach((f, i) => ents.push({ y: f.ry - 0.01, d: () => drawSprite(c, G.squad[i + 1]?.look ?? f.kind, f.rx * T + T / 2, f.ry * T + T - 1, { flip: f.flip, frame: wf, back: f.back }) }));
+    ents.push({ y: p.ry, d: () => drawSprite(c, G.squad[0]?.look ?? 'pc', p.rx * T + T / 2, p.ry * T + T - 1, { flip: p.flip, back: p.back, frame: wf, bob: !walking && Math.sin(t * 1.6) > 0.75 ? 1 : 0 }) });
     ents.sort((a, b) => a.y - b.y).forEach((e) => e.d());
 
     for (const o of steam) drawSteam(c, o.x * T + 10, o.y * T + 12, t + o.seed * 0.7);

@@ -54,7 +54,7 @@ export interface Unit {
   st: Record<string, number>; // оккультные состояния: ключ → раундов осталось
   summon?: number;    // призванный бес: раундов до исчезновения
   ai?: UnitBase['ai']; leader: boolean; demonic: boolean;
-  dead: boolean; fled: boolean; terror: boolean; flip: boolean; flash: number; seed: number;
+  dead: boolean; fled: boolean; terror: boolean; flip: boolean; back?: boolean; flash: number; seed: number;
   cd: { summon: number; whisper: number };
   ally?: boolean;     // союзник в стычке: на стороне отряда, но ходит сам (ИИ)
   goal?: number;      // ИИ стрелка: клетка-цель (укрытие), к которой он идёт — y * CW + x
@@ -1377,6 +1377,7 @@ export const Combat = {
     for (let i = 1; i < path.length; i++) {
       const p = path[i];
       if (p.x !== u.x) u.flip = p.x < u.x;
+      u.back = p.y < u.y && Math.abs(p.y - u.y) >= Math.abs(p.x - u.x); // шаг вверх — спиной к зрителю
       const sx = u.px, sy = u.py, tx = p.x * CT + CT / 2, ty = p.y * CT + CT / 2;
       await this.tween(stepMs, (k) => { u.px = lerp(sx, tx, k); u.py = lerp(sy, ty, k); });
       u.x = p.x; u.y = p.y;
@@ -1473,7 +1474,7 @@ export const Combat = {
     for (const u of vis) {
       const frame = u.walking ? 1 + (Math.floor(t * 8) % 2) * 2 : 0;
       const bob = !u.walking && !u.dead && Math.sin(t * 1.8 + u.seed) > 0.75 ? 1 : 0;
-      drawSprite(lc, combatKind(u.kind), u.px / PS, u.py / PS + 9, { flip: u.flip, dead: u.dead, flash: u.flash > 0, frame, bob }); // в бою — оружие на изготовку
+      drawSprite(lc, combatKind(u.kind), u.px / PS, u.py / PS + 9, { flip: u.flip, back: u.walking && u.back, dead: u.dead, flash: u.flash > 0, frame, bob }); // в бою — оружие на изготовку
     }
     for (const f of this.fx) {
       const a = Math.max(0, f.life / f.max);

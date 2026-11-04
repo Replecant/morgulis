@@ -158,13 +158,13 @@ const PATROL_OWNER: PatrolOwner[] = ['baron', 'baron', 'baroness', 'revo', 'revo
 const PATROL_SPEED = 36;   // пикселей карты в час
 interface Patrol { path: number[][]; len: number; s: number; dir: 1 | -1; wait: number; speed: number; owner: PatrolOwner; off?: Pt; beaten?: number; spare?: number } // spare — до этого часа братья не трогают отряд (отпустили, отстали) // off — сошёл с дороги в погоню; beaten — до этого часа потрёпан и в бой не лезет
 const polyLen = (pts: number[][]) => pts.reduce((a, pt, i) => (i ? a + Math.hypot(pt[0] - pts[i - 1][0], pt[1] - pts[i - 1][1]) : 0), 0);
-function polyAt(pts: number[][], s: number): Pt & { dx: number } {
+function polyAt(pts: number[][], s: number): Pt & { dx: number; dy: number } {
   for (let i = 1; i < pts.length; i++) {
     const [x0, y0] = pts[i - 1], [x1, y1] = pts[i], l = Math.hypot(x1 - x0, y1 - y0);
-    if (s <= l || i === pts.length - 1) { const k = clamp(s / l, 0, 1); return { x: x0 + (x1 - x0) * k, y: y0 + (y1 - y0) * k, dx: x1 - x0 }; }
+    if (s <= l || i === pts.length - 1) { const k = clamp(s / l, 0, 1); return { x: x0 + (x1 - x0) * k, y: y0 + (y1 - y0) * k, dx: x1 - x0, dy: y1 - y0 }; }
     s -= l;
   }
-  return { x: pts[0][0], y: pts[0][1], dx: 0 };
+  return { x: pts[0][0], y: pts[0][1], dx: 0, dy: 0 };
 }
 
 // группы траншейных мертвецов: бродят по старому фронту, медленнее отряда
@@ -338,7 +338,7 @@ function dryRoute(from: Pt, to: Pt): Pt[] {
 export const World = {
   bg: null as HTMLCanvasElement | null,
   view: null as PixelView | null,
-  party: { x: 430, y: 790, tx: 430, ty: 790, moving: false, flip: false },
+  party: { x: 430, y: 790, tx: 430, ty: 790, moving: false, flip: false, back: false },
   route: [] as Pt[], // путь в обход воды (точки после текущей цели)
   pending: null as Loc | null,
   hover: null as Loc | null,
@@ -502,13 +502,14 @@ export const World = {
       if (!tryAt(p.x + sx, p.y + sy) && !tryAt(p.x + sx, p.y)) tryAt(p.x, p.y + sy);
       this.route = [];
       if (vx) p.flip = vx < 0;
+      p.back = vy < 0;
       p.moving = false; this.pending = null; this.pendingPatrol = null; moved = speed * dt;
     } else if (p.moving) {
       const d = Math.hypot(p.tx - p.x, p.ty - p.y), stepLen = Math.min(d, speed * dt);
       if (d > 0.5) {
         const nx = p.x + ((p.tx - p.x) / d) * stepLen, ny = p.y + ((p.ty - p.y) / d) * stepLen;
         if (waterAt({ x: nx, y: ny }, -3) && !waterAt(p, -3) && !this.pendingPatrol) { p.moving = false; this.route = []; this.pending = null; } // упёрлись в воду
-        else { p.x = nx; p.y = ny; if (Math.abs(p.tx - p.x) > 1) p.flip = p.tx < p.x; moved = stepLen; }
+        else { p.x = nx; p.y = ny; if (Math.abs(p.tx - p.x) > 1) p.flip = p.tx < p.x; p.back = p.ty < p.y && Math.abs(p.ty - p.y) > Math.abs(p.tx - p.x) * 0.5; moved = stepLen; }
       }
       if (p.moving && d - stepLen < 1 && this.route.length) { const n = this.route.shift()!; p.tx = n.x; p.ty = n.y; }
       else if (p.moving && d - stepLen < 1) {
@@ -981,9 +982,10 @@ export const World = {
       const rr = 2 + (Math.floor(t * 4) % 2);
       prect(lc, x1 - rr, y1, 1, 1, '#e8d090'); prect(lc, x1 + rr, y1, 1, 1, '#e8d090'); prect(lc, x1, y1 - rr, 1, 1, '#e8d090'); prect(lc, x1, y1 + rr, 1, 1, '#e8d090');
     }
+    const up = (g: { x: number; y: number; tx: number; ty: number }) => g.ty < g.y - 1 && Math.abs(g.ty - g.y) > Math.abs(g.tx - g.x) * 0.5; // идёт вверх — спиной
     const fr = (moving: boolean, ph = 0) => moving ? [0, 1, 2, 3][Math.floor(t * 7 + ph) % 4] : 0;
-    const mini = (kind: string, x: number, y: number, flip: boolean, frame: number) => {
-      const sp = miniSprite(kind, frame), dx = Math.round(x - sp.width / 2), dy = Math.round(y - 16);
+    const mini = (kind: string, x: number, y: number, flip: boolean, frame: number, back = false) => {
+      const sp = miniSprite(kind, frame, back), dx = Math.round(x - sp.width / 2), dy = Math.round(y - 16);
       pshadow(lc, Math.round(x), Math.round(y), 4, 1);
       if (flip) { lc.save(); lc.translate(dx * 2 + sp.width, 0); lc.scale(-1, 1); lc.drawImage(sp, dx, dy); lc.restore(); }
       else lc.drawImage(sp, dx, dy);
@@ -998,7 +1000,7 @@ export const World = {
     for (const b of this.bands) {
       if (!b.alive || !b.seen) continue;
       const bm = dist(b, { x: b.tx, y: b.ty }) > 1;
-      b.kinds.forEach((k, i) => mini(k, X(b.x) + (i - (b.kinds.length - 1) / 2) * 7, Y(b.y) + (i % 2) * 3, b.tx < b.x, fr(bm, i * 1.3)));
+      b.kinds.forEach((k, i) => mini(k, X(b.x) + (i - (b.kinds.length - 1) / 2) * 7, Y(b.y) + (i % 2) * 3, b.tx < b.x, fr(bm, i * 1.3), bm && up(b)));
     }
     const pm0 = p.moving || ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'KeyA', 'KeyD', 'KeyW', 'KeyS'].some((kk) => G.keys.has(kk));
     // морские демоны — ползут вдоль берега
@@ -1012,30 +1014,30 @@ export const World = {
     for (const g of this.dsq) {
       if (!g.alive || !g.seen) continue;
       const fl = g.tx < g.x;
-      g.kinds.forEach((k, i) => mini(k, X(g.x) + (i - 1) * 8, Y(g.y) + (i % 2) * 3, fl, fr(pm0, i * 0.9)));
+      g.kinds.forEach((k, i) => mini(k, X(g.x) + (i - 1) * 8, Y(g.y) + (i % 2) * 3, fl, fr(pm0, i * 0.9), pm0 && up(g)));
     }
     // лоялисты — кучкой, в выцветших мундирах
     for (const g of this.loyal) {
       if (!g.alive || !g.seen) continue;
       const fl = g.tx < g.x;
-      g.kinds.forEach((k, i) => mini(k, X(g.x) + (i - 1) * 7, Y(g.y) + (i % 2) * 3, fl, fr(pm0, i * 1.1)));
+      g.kinds.forEach((k, i) => mini(k, X(g.x) + (i - 1) * 7, Y(g.y) + (i % 2) * 3, fl, fr(pm0, i * 1.1), pm0 && up(g)));
     }
     // голодные бандиты — плетутся кучкой
     for (const g of this.hungry) {
       if (!g.alive || !g.seen) continue;
       const fl = g.tx < g.x;
-      g.kinds.forEach((k, i) => mini(k, X(g.x) + (i - 1) * 7, Y(g.y) + (i % 2) * 3, fl, fr(pm0, i * 1.3)));
+      g.kinds.forEach((k, i) => mini(k, X(g.x) + (i - 1) * 7, Y(g.y) + (i % 2) * 3, fl, fr(pm0, i * 1.3), pm0 && up(g)));
     }
     // мертвецы — бредут вразвалку, кучкой
     for (const g of this.dead) {
       if (!g.alive || !g.seen) continue;
       const fl = g.tx < g.x, mv = pm0 || dist(g, { x: g.tx, y: g.ty }) > 1;
-      g.kinds.forEach((k, i) => mini(k, X(g.x) + (i - 1) * 7, Y(g.y) + (i % 2) * 3, fl, fr(mv && pm0, i * 1.7)));
+      g.kinds.forEach((k, i) => mini(k, X(g.x) + (i - 1) * 7, Y(g.y) + (i % 2) * 3, fl, fr(mv && pm0, i * 1.7), mv && pm0 && up(g)));
     }
     // патрули барона: трое стражников гуськом
     for (const pt of this.patrols) {
       const pos = this.patrolPos(pt), back = pt.dir === 1 ? -1 : 1, walk = pm0 && pt.wait <= 0;
-      const fl = (pt.dir === 1 ? pos.dx : -pos.dx) < 0;
+      const fl = (pt.dir === 1 ? pos.dx : -pos.dx) < 0, pdy = pt.dir === 1 ? pos.dy : -pos.dy, bk = walk && !pt.off && pdy < 0 && Math.abs(pdy) > Math.abs(pos.dx) * 0.5;
       if (pt.owner === 'wfcar') { // бронемашина Винферда
         pshadow(lc, X(pos.x), Y(pos.y) + 1, 11, 2);
         armoredCar(lc, X(pos.x) - 11, Y(pos.y) - 11, fl, true);
@@ -1044,12 +1046,12 @@ export const World = {
       const off = pt.off ?? { x: 0, y: 0 }; // в погоне патруль сошёл с дороги — рисуем там, где он есть
       for (let k = 2; k >= 0; k--) {
         const q0 = polyAt(pt.path, clamp(pt.s + back * k * 9, 0, pt.len)), q = { x: q0.x + off.x, y: q0.y + off.y };
-        mini(pt.owner === 'winford' ? (k === 0 ? 'wfofficer' : 'wfguard') : pt.owner === 'baroness' ? 'bguard' : pt.owner === 'revo' ? (k === 0 ? 'brother_off' : k === 1 ? 'brother' : 'brother2') : 'guard', X(q.x), Y(q.y), fl, fr(walk, k * 1.3));
+        mini(pt.owner === 'winford' ? (k === 0 ? 'wfofficer' : 'wfguard') : pt.owner === 'baroness' ? 'bguard' : pt.owner === 'revo' ? (k === 0 ? 'brother_off' : k === 1 ? 'brother' : 'brother2') : 'guard', X(q.x), Y(q.y), fl, fr(walk, k * 1.3), bk);
       }
     }
     // отряд
     const pm = p.moving || ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'KeyA', 'KeyD', 'KeyW', 'KeyS'].some((kk) => G.keys.has(kk));
-    mini(G.squad[0]?.look ?? 'pc', X(p.x), Y(p.y), p.flip, fr(pm));
+    mini(G.squad[0]?.look ?? 'pc', X(p.x), Y(p.y), p.flip, fr(pm), pm && p.back);
 
     // едкие облака — клубы растром, медленно клубятся
     for (const cl of this.clouds) {
