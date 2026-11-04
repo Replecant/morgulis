@@ -155,7 +155,7 @@ const PATROL_PATHS: number[][][] = [[...ROADS[2].slice().reverse(), ...ROADS[0].
 export type PatrolOwner = 'baron' | 'baroness' | 'revo' | 'winford' | 'wfcar';
 const PATROL_OWNER: PatrolOwner[] = ['baron', 'baron', 'baroness', 'revo', 'revo', 'revo', 'winford', 'wfcar', 'wfcar'];
 const PATROL_SPEED = 36;   // пикселей карты в час
-interface Patrol { path: number[][]; len: number; s: number; dir: 1 | -1; wait: number; speed: number; owner: PatrolOwner; off?: Pt } // off — сошёл с дороги в погоню
+interface Patrol { path: number[][]; len: number; s: number; dir: 1 | -1; wait: number; speed: number; owner: PatrolOwner; off?: Pt; beaten?: number } // off — сошёл с дороги в погоню; beaten — до этого часа потрёпан и в бой не лезет
 const polyLen = (pts: number[][]) => pts.reduce((a, pt, i) => (i ? a + Math.hypot(pt[0] - pts[i - 1][0], pt[1] - pts[i - 1][1]) : 0), 0);
 function polyAt(pts: number[][], s: number): Pt & { dx: number } {
   for (let i = 1; i < pts.length; i++) {
@@ -542,8 +542,8 @@ export const World = {
   endClash(c: Clash, winner: 'a' | 'b') {
     const lose = winner === 'a' ? c.b : c.a, win = winner === 'a' ? c.a : c.b;
     const r = lose.ref as { alive?: boolean; respawn?: number; wait?: number };
-    if (lose.kind === 'patrol') {
-      r.wait = 10;
+    if (lose.kind === 'patrol') { // патруль не гибнет и не стоит на месте: разворачивается и уходит по дороге, какое-то время в бой не лезет
+      const pt = lose.ref as Patrol; pt.wait = 0; pt.dir = pt.dir === 1 ? -1 : 1; pt.beaten = G.clock + 10;
       if (win.kind !== 'patrol') { // отбились от патруля — уходят от него, а не стоят рядом
         const w = win.ref as Pt & { tx: number; ty: number }, lp = this.sidePos(lose), a = Math.atan2(w.y - lp.y, w.x - lp.x);
         w.tx = w.x + Math.cos(a) * 220; w.ty = w.y + Math.sin(a) * 220;
@@ -558,7 +558,7 @@ export const World = {
     const p = this.party;
     for (const pt of this.patrols) {
       if (this.inClash(pt)) { pt.wait = Math.max(pt.wait, 0.5); continue; }
-      if (pt.wait > 3) continue; // потрёпанный патруль отходит
+      if ((pt.beaten ?? 0) > G.clock) continue; // потрёпанный патруль отходит и в бой не лезет
       const q = this.patrolPos(pt);
       const foes: (Band | Hungry | Loyal)[] = pt.owner === 'baron' ? [...this.bands.filter((b) => b.fac === 'bandit'), ...this.hungry]
         : pt.owner === 'revo' ? this.loyal : this.bands.filter((b) => b.fac === 'deserter');
@@ -597,7 +597,7 @@ export const World = {
           r.tx = r.x; r.ty = r.y;
         }
         const d = dist(this.sidePos(c.a), this.sidePos(c.b));
-        if (d <= 34) { c.met = true; c.until = G.clock + 1.5 + Math.random() * 1.5; }
+        if (d <= 34) { c.met = true; c.until = G.clock + 0.6 + Math.random() * 0.6; } // перестрелка короткая: ~полсекунды–секунда пути
         else if (d > 380) { this.clashes = this.clashes.filter((x) => x !== c); continue; } // ушли
       }
       const qa = this.sidePos(c.a), qb = this.sidePos(c.b);
