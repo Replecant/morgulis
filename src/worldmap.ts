@@ -3,7 +3,7 @@
 //  отряд свободно ходит по карте, время идёт, деревни — входы
 //  в локальные сцены, примечательности — события на карте.
 // ============================================================
-import { G, arthurIn, ivyIn, ratIn } from './state';
+import { G, arthurIn, ratIn } from './state';
 import { seeded, TAU, clamp, dist, Pt } from './util';
 import { PixelView, LW, LH, PS, PLight, applyLight, prect, ppx, pline, pellipse, pshadow, outline, pixelize, shade } from './px';
 import { miniSprite } from './sprites';
@@ -354,8 +354,8 @@ export const World = {
   /** Братья свободы узнали Артура (или отряд в списках разыскиваемых). */
   revoHit: null as Patrol | null,
   onRevo: (_owner: PatrolOwner) => {},
-  /** Кого из отряда ищет этот хозяин патрулей: братья — Артура, баронесса — Айви (и тех, кто дрался с их патрулями). */
-  hunts(owner: PatrolOwner) { return owner === 'revo' ? arthurIn() || !!G.flags.svobodaWanted : owner === 'baroness' ? ivyIn() || !!G.flags.harringtonWanted : false; },
+  /** Кого из отряда ищет этот хозяин патрулей: братья — Артура в лицо (и тех, кто дрался с их патрулями). Айви не ищет никто — она никто. */
+  hunts(owner: PatrolOwner) { return owner === 'revo' ? arthurIn() || !!G.flags.svobodaWanted : false; },
   /** Ручная крыса пищит: рядом мертвецы или газ. */
   onRat: (_msg: string) => {},
   ratNear: false, ratDeadAt: -99,

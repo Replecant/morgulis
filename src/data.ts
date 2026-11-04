@@ -291,10 +291,6 @@ export function battleDef(id: string, _flags: Record<string, boolean | undefined
       lights: [[12, 3, 220, '#6a9a8a'], [3, 10, 110, '#e8c070']],
     };
   }
-  if (id === 'bpat') { // патруль баронессы узнал дезертира (или отряд в её списках): бой в пустоши
-    const w = battleDef('waste', _flags);
-    return { ...w, id, title: 'Патруль Леди Харрингтон', enemies: [{ t: 'b_officer', x: 20, y: 7, ammo: { revolver: 6 } }, { t: 'bsoldier', x: 18, y: 4, ammo: { rifle: 5 } }, { t: 'bsoldier', x: 18, y: 10, ammo: { rifle: 5 } }, { t: 'bsoldier', x: 21, y: 11, ammo: { rifle: 5 } }] };
-  }
   if (id === 'revo') { // братья свободы узнали Артура (или вас — по спискам разыскиваемых): бой в северном лесу
     const f = battleDef('loyal2', _flags);
     return { ...f, id, title: 'Братья свободы', enemies: [{ t: 'brother_off', x: 20, y: 7, ammo: { revolver: 6 } }, { t: 'brother_fighter', x: 18, y: 4, ammo: { carbine: 4 } }, { t: 'brother_fighter', x: 18, y: 10, ammo: { carbine: 4 } }, { t: 'brother_fighter', x: 21, y: 11, ammo: { carbine: 4 } }] };

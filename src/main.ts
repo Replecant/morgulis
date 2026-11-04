@@ -139,7 +139,6 @@ Combat.hooks = {
     if (id.startsWith('dsq_')) { World.killDsq(); Dialog.start('after_dsq'); }
     if (id.startsWith('dsqh_')) { World.killDsq(); Dialog.start('after_cult'); }
     if (id === 'revo') { World.beatRevo(); Dialog.start('after_revo'); }
-    if (id === 'bpat') { World.beatRevo(); Dialog.start('after_bpat'); }
     if (id.startsWith('trench')) { World.killDead(); World.deadHit = null; Dialog.start('after_dead'); }
     if (Combat.wearNotes.length) toast(Combat.wearNotes.join(' '));
     refreshHud();
@@ -151,7 +150,6 @@ Combat.hooks = {
       : id.startsWith('trench') ? 'Мертвецы теперь будут лакомиться вашей плотью'
       : id.startsWith('dsqh_') ? 'Культ отдал вас демонам'
       : id === 'revo' ? 'Братья свободы повесили вас на площади — рядом с бароном'
-      : id === 'bpat' ? 'Вас расстреляли у стены форта — как пособника дезертира'
       : 'Ещё одна душа сгинула под взглядом Ока';
     const last = Save.latest();
     screen(
@@ -205,7 +203,7 @@ Debug.onTeleport = (id) => {
   World.updateLocation(); World.discover(); refreshHud();
   toast(`Телепорт: ${l.name}`);
 };
-World.onRevo = (owner) => Dialog.start(owner === 'baroness' ? 'bpatrol_ivy' : 'revo_arthur');
+World.onRevo = () => Dialog.start('revo_arthur');
 World.onRat = (msg) => toast(msg);
 World.onPatrol = (owner) => (World.hunts(owner) ? (World.revoHit = World.patrolNear(World.party, 60), World.onRevo(owner)) : Dialog.start(owner === 'baroness' ? 'enc_bpatrol' : owner === 'revo' ? 'enc_revo' : owner === 'winford' ? 'enc_wfpatrol' : owner === 'wfcar' ? 'enc_wfcar' : 'enc_patrol'));
 World.onLoyal = () => Dialog.start(arthurIn() ? 'loyal_arthur' : 'enc_loyal');
@@ -251,7 +249,6 @@ Dialog.onAction = (act) => {
   else if (act === 'recruit_ivy') { if (!ivyIn()) { G.squad.push(makeIvy()); applyEquipLooks(G.squad); if (G.mode === 'explore') Explore.enter(Explore.scene, Explore.player); toast('Айви Гримшоу в отряде'); refreshHud(); } }
   else if (act === 'ivy_betray') { G.squad = G.squad.filter((b) => b.id !== 'ivy'); applyEquipLooks(G.squad); World.spareRevo(48); if (G.mode === 'explore') Explore.enter(Explore.scene, Explore.player); refreshHud(); }
   else if (act === 'ivy_gone') { if (G.mode === 'explore') Explore.enter(Explore.scene, Explore.player); }
-  else if (act === 'battle_bpat') startBattle('bpat');
   else if (act === 'arthur_betray') { G.squad = G.squad.filter((b) => b.id !== 'arthur'); applyEquipLooks(G.squad); World.spareRevo(48); refreshHud(); }
   else if (act === 'revo_spare') World.spareRevo(24);
   else if (act === 'revo_spare_short') World.spareRevo(8);
