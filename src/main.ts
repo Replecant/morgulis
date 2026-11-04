@@ -26,7 +26,7 @@ import { frameReady, whenFrameReady, frameUrl } from './frames';
 import { Trade, resetShops } from './trade';
 import { drawMenuBg, showMainMenu, showAbout, openRules } from './menu';
 import { openCreation } from './creation';
-import { Character, newCharacter, quickCharacter, PROF_ORDER, ProfId, LEVEL_XP, MAX_LEVEL, XP, enemyXp, pendingTalent, classTalent } from './rules';
+import { Character, newCharacter, quickCharacter, PROF_ORDER, ProfId, LEVEL_XP, MAX_LEVEL, XP, enemyXp, pendingTalent, classTalent, pendingMove, knownMoves, COURAGE } from './rules';
 import { rest } from './wounds';
 import { $ } from './util';
 import { Save, type Slot } from './save';
@@ -243,7 +243,8 @@ Dialog.onAction = (act) => {
   else if (act === 'battle_scav') startBattle('ruins');
   else if (act === 'recruit_alex') { if (!G.squad.some((s) => s.id === 'alex')) { G.squad.push(makeAlex()); applyEquipLooks(G.squad); if (G.mode === 'explore') Explore.enter(Explore.scene, Explore.player); toast('Александр в отряде'); refreshHud(); } }
   else if (act === 'alex_to_coven' || act === 'alex_sold') alexRemove();
-  else if (act.startsWith('talent:')) { const c = G.pc, t = classTalent(act.slice(7)); if (c && t && pendingTalent(c)?.some((x) => x.id === t.id)) { (c.classTalents ??= []).push(t.id); refreshLeader(c, G.squad[0]); toast(`Талант: ${t.name}`); refreshHud(); if (pendingTalent(c)) levelPending = true; } }
+  else if (act.startsWith('talent:')) { const c = G.pc, t = classTalent(act.slice(7)); if (c && t && pendingTalent(c)?.some((x) => x.id === t.id)) { (c.classTalents ??= []).push(t.id); refreshLeader(c, G.squad[0]); toast(`Талант: ${t.name}`); refreshHud(); if (pendingTalent(c) || pendingMove(c)) levelPending = true; } }
+  else if (act.startsWith('move:')) { const c = G.pc, k = act.slice(5); if (c && COURAGE[k] && pendingMove(c)?.includes(k)) { c.courageMoves = [...knownMoves(c), k]; toast(`Приём куража: ${COURAGE[k].name}`); if (pendingTalent(c) || pendingMove(c)) levelPending = true; } }
   else if (act === 'recruit_arthur') { if (!arthurIn()) { G.squad.push(makeArthur()); applyEquipLooks(G.squad); if (G.mode === 'explore') Explore.enter(Explore.scene, Explore.player); toast('Артур Сильвер в отряде'); refreshHud(); } }
   else if (act === 'arthur_betray') { G.squad = G.squad.filter((b) => b.id !== 'arthur'); applyEquipLooks(G.squad); World.spareRevo(48); refreshHud(); }
   else if (act === 'revo_spare') World.spareRevo(24);

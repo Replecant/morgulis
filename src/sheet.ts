@@ -4,7 +4,7 @@
 //  талант и умение профессии. Окно — в пиксельной рамке со скелетом.
 // ============================================================
 import { G } from './state';
-import { ATTRS, ATTR_ORDER, SKILLS, SKILL_ORDER, PROFESSIONS, TALENTS, LEVEL_XP, MAX_LEVEL, mastery, trainedSkills, skillBonus, initiative, meleeDamage, fullName, CLASS_TALENTS, TALENT_LEVELS, talentsOf, pendingTalent } from './rules';
+import { ATTRS, ATTR_ORDER, SKILLS, SKILL_ORDER, PROFESSIONS, TALENTS, LEVEL_XP, MAX_LEVEL, mastery, trainedSkills, skillBonus, initiative, meleeDamage, fullName, CLASS_TALENTS, TALENT_LEVELS, talentsOf, pendingTalent, pendingMove, knownMoves, COURAGE, MOVE_LEVELS } from './rules';
 import { Dialog } from './ui';
 import { memberStats } from './inventory';
 import { woundsOf } from './wounds';
@@ -103,7 +103,11 @@ export const Sheet = {
       return tip(h('div', { class: 'sh-skill' }, h('i', {}, '◇'), h('span', {}, lvl >= lv ? 'Выбор ждёт' : `Откроется на уровне ${lv}`), h('em', {}, `ур. ${lv}`)),
         `На выбор: ${opts.map((o) => `${o.name} (${o.desc})`).join(' или ')}`);
     });
-    if (pend) ctal.push(h('button', { class: 'btn', onclick: () => { this.close(); Dialog.start('levelup'); } }, 'Выбрать талант'));
+    if (pend || pendingMove(c)) ctal.push(h('button', { class: 'btn', onclick: () => { this.close(); Dialog.start('levelup'); } }, pend ? 'Выбрать талант' : 'Выбрать приём куража'));
+    // приёмы куража: известные (2 в начале, +1 на уровнях 3 и 5)
+    const moves = knownMoves(c), nextMv = MOVE_LEVELS.find((l) => lvl < l);
+    const movesRow = tip(h('div', { class: 'sh-skill on' }, h('i', {}, '✦'), h('span', {}, moves.map((k) => COURAGE[k].short).join(', ')), h('em', {}, `${moves.length}/4`)),
+      `Приёмы куража: ${moves.map((k) => `${COURAGE[k].name} (${COURAGE[k].desc})`).join('; ')}.` + (nextMv ? ` Новый приём — на уровне ${nextMv}.` : ''));
     $('sheet').replaceChildren(h('div', { class: 'sh-box' },
       h('div', { class: 'sh-col a' },
         h('div', { class: 'sh-photo-wrap' }, ph),
@@ -122,7 +126,7 @@ export const Sheet = {
       h('div', { class: 'sh-col c' },
         h('div', { class: 'sh-h' }, 'Навыки ', h('span', {}, `обученные +${mb}`)),
         h('div', { class: 'sh-skills' }, ...skills),
-        h('div', { class: 'sh-h' }, 'Таланты'),
+        h('div', { class: 'sh-h' }, 'Таланты и кураж'), movesRow,
         tip(h('div', { class: 'sh-skill on' }, h('i', {}, '◆'), h('span', {}, talent.name), h('em', {}, 'врожд.')), `${talent.name} (врождённый): ${talent.desc}`), ...ctal,
         tip(h('div', { class: 'sh-skill on' }, h('i', {}, '✦'), h('span', {}, prof.ability.name), h('em', {}, 'умение')), `${prof.ability.name} — умение профессии: ${prof.ability.desc}`)),
       h('div', { class: 'sh-foot' }, info, h('button', { class: 'btn', onclick: () => this.close() }, 'Закрыть [C]')),

@@ -5,7 +5,7 @@
 // ============================================================
 import { G, hasRepairKit, alexSawAll, ALEX_SIGHTS, arthurIn } from './state';
 import type { SkillKey } from './rules';
-import { pendingTalent, mastery, MAX_LEVEL, PROFESSIONS } from './rules';
+import { pendingTalent, pendingMove, mastery, MAX_LEVEL, PROFESSIONS, COURAGE } from './rules';
 import { addWound, addWoundId, folkHeal } from './wounds';
 import { World, SOUTH_Y } from './worldmap';
 import { LANG, tr } from './i18n';
@@ -1549,14 +1549,17 @@ const TRENCH_DIALOGS: Record<string, DTree> = {
   // ---------------- новый уровень: прибавки и (на 2, 4, 6) выбор таланта профессии
   levelup: { start: 'a', nodes: {
     a: { s: 'nar', t: (g) => {
-      const c = g.pc!, b = g.squad[0], tal = pendingTalent(c);
+      const c = g.pc!, b = g.squad[0], tal = pendingTalent(c), mv = !tal && pendingMove(c);
       const odd = c.level % 2 === 1;
       return `Уровень ${c.level}${c.level >= MAX_LEVEL ? ' — последний' : ''}. Пережитое не прошло даром: максимум здоровья теперь ${b.maxHp} ОЗ.`
         + (odd ? ` Обученные навыки выросли: теперь +${mastery(c.level) + 1}.` : '')
-        + (tal ? ` ${PROFESSIONS[c.prof].name}: выберите талант.` : '');
+        + (tal ? ` ${PROFESSIONS[c.prof].name}: выберите талант.` : mv ? ' Выберите новый приём куража — его можно будет применять в бою, когда накопится кураж.' : '');
     }, c: (g) => {
       const tal = pendingTalent(g.pc);
-      return tal ? tal.map((t) => ({ t: `${t.name} — ${t.desc}`, act: 'talent:' + t.id })) : [{ t: 'Дальше', go: 'bye' }];
+      if (tal) return tal.map((t) => ({ t: `${t.name} — ${t.desc}`, act: 'talent:' + t.id }));
+      const mv = pendingMove(g.pc);
+      if (mv) return mv.map((k) => ({ t: `${COURAGE[k].name} ${'✦'.repeat(COURAGE[k].cost)} — ${COURAGE[k].desc}`, act: 'move:' + k }));
+      return [{ t: 'Дальше', go: 'bye' }];
     } },
     bye: { s: 'nar', t: 'Вы идёте дальше.' },
   } },

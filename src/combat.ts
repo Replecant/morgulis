@@ -19,6 +19,7 @@ import { paintTile, objSprite } from './pxworld';
 import { hasProsth } from './prosthetics';
 import { Weather } from './weather';
 import { SPELLS, SCHOOLS, STRAIN_MAX, knows, occultBonus, addStrain, strainCheck } from './occult';
+import { COURAGE, COURAGE_ORDER, COMPANION_MOVES, knownMoves } from './rules';
 
 export const CT = 40, CW = 24, CH = 14;
 /** Прибавка к атакам в ближнем бою (под 3d6 Защита поднята на 3 ради стрельбы; врукопашную укрытий нет — возвращаем часть). */
@@ -67,18 +68,7 @@ interface Float { x: number; y: number; text: string; color: string; t: number }
 
 // ------------------------------------------------------------ кураж (экспериментально)
 export const COURAGE_MAX = 3;
-export const COURAGE: Record<string, { name: string; short: string; cost: number; desc: string }> = {
-  charge: { name: 'Штыковая атака', short: 'Штыковая', cost: 1, desc: 'Нужны 2 ОД и холодное оружие. Бросок до 6 клеток к врагу и удар: +2 к атаке, +2 к урону. После — раскрыт: −2 к Защите до своего хода.' },
-  rush:   { name: 'Отчаянный рывок', short: 'Рывок', cost: 1, desc: '1 ОД. Перебежка на двойное расстояние. Каждый вражеский стрелок, который видит бойца, стреляет вслед с −3.' },
-  last:   { name: 'Последний натиск', short: 'Натиск', cost: 2, desc: 'Только при ОЗ не выше трети. Атака: кость бросается дважды, берётся лучшая, +2 к урону. После — раскрыт.' },
-  rescue: { name: 'Спасение товарища', short: 'Спасение', cost: 1, desc: 'Нужны 2 ОД. Бросок до 6 клеток к тяжелораненому союзнику — тот встаёт с четвертью ОЗ. По пути — огонь вслед.' },
-  grit:   { name: 'Стиснуть зубы', short: 'Зубы', cost: 1, desc: 'Без ОД. +3 ОЗ, снимает подавление и слабость.' },
-  brace:  { name: 'Стоять насмерть', short: 'Насмерть', cost: 1, desc: '1 ОД, завершает ход. До своего следующего хода +3 к Защите.' },
-  pierce: { name: 'Выстрел в щель', short: 'В щель', cost: 1, desc: 'Нужны 2 ОД и огнестрел. Выстрел с +2 к атаке — броня цели не спасает.' },
-  volley: { name: 'Шквал огня', short: 'Шквал', cost: 2, desc: 'Нужны 2 ОД и огнестрел с двумя зарядами. Два выстрела подряд по одной цели.' },
-  inspire: { name: 'Воодушевить', short: 'Воодушевить', cost: 2, desc: '1 ОД. Свои бойцы в радиусе 5: +1 кураж каждому.' },
-};
-const COURAGE_ORDER = ['charge', 'rush', 'last', 'rescue', 'grit', 'brace', 'pierce', 'volley', 'inspire'];
+export { COURAGE } from './rules'; // таблица приёмов куража — в rules.ts (их учат с уровнями)
 /** Приёмы куража, которые применяются сразу, без выбора цели. */
 const COURAGE_SELF = ['grit', 'brace', 'inspire'];
 
@@ -348,6 +338,7 @@ export const Combat = {
     }
     if (u.leader && G.known.length) out.push({ kind: 'm', key: 'magic', label: `✶ Оккультизм (напр. ${u.base.strain ?? 0}/${STRAIN_MAX})`, desc: 'Заклинания изученных школ. Каждое тратит основное действие и повышает оккультное напряжение.', disabled: u.ap < 1, active: false });
     if (this.isSquad(u)) for (const k of COURAGE_ORDER) {
+      if (!this.movesOf(u).includes(k)) continue; // приём не изучен
       if (u.courage < COURAGE[k].cost) continue; // нет куража — кнопки нет, панель не забита
       const block = this.courageBlock(u, k);
       if (block && !/ОД/.test(block)) continue; // невозможно по условиям (нет раненых, здоровья много…) — тоже не показываем
@@ -428,6 +419,8 @@ export const Combat = {
     if (this.action.type === 'c' && this.action.key === 'charge') return this.chargeTile(u, t) ? this.hitChance({ ...u, x: this.chargeTile(u, t)!.x, y: this.chargeTile(u, t)!.y } as Unit, t, this.meleeWeapon(u)!, 2) : 0;
     return 0;
   },
+  /** Какие приёмы куража знает боец: герой — изученные с уровнями, спутники — свои. */
+  movesOf(u: Unit) { return u.base.id === 'pc' && G.pc ? knownMoves(G.pc) : COMPANION_MOVES[u.base.id] ?? []; },
   /** Огнестрел, из которого боец может выстрелить n раз подряд (для приёмов куража). */
   gunOf(u: Unit, n = 1) { return u.weapons.find((w) => WEAPONS[w].type === 'ranged' && !WEAPONS[w].magic && this.canFire(u, w, true) && (u.ammo[w] === undefined || u.ammo[w] >= n)); },
   advChance(p: number) { return Math.round(100 - (100 - p) * (100 - p) / 100); },

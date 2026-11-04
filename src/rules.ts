@@ -219,6 +219,7 @@ export interface Character {
   level: number;
   xp: number;
   classTalents?: string[];   // таланты профессии, взятые на уровнях 2, 4, 6
+  courageMoves?: string[];   // известные приёмы куража (нет — стартовые профессии)
 }
 
 export const HAIR = ['#1c1a18', '#4a2e1c', '#8a6a42', '#8a3e1c', '#9a968c'];
@@ -265,6 +266,34 @@ export const meleeAttack = (c: Character) => skillBonus(c, 'melee') + talentMod(
 export const rangedAttack = (c: Character) => skillBonus(c, 'shooting') + (c.talent === 'steady' ? 1 : 0) + talentMod(c, 'atkR');
 export const meleeDamage = (c: Character) => Math.max(0, c.attrs.str) + (c.talent === 'grip' ? 1 : 0) + talentMod(c, 'dmgM');
 export const horrorSave = (c: Character) => c.attrs.wil + (c.talent === 'cold' ? 3 : 0) + talentMod(c, 'horror');
+
+// ------------------------------------------------------------ приёмы куража: 2 в начале, ещё по одному на 3 и 5 уровнях (не больше 4)
+export const COURAGE: Record<string, { name: string; short: string; cost: number; desc: string }> = {
+  charge: { name: 'Штыковая атака', short: 'Штыковая', cost: 1, desc: 'Нужны 2 ОД и холодное оружие. Бросок до 6 клеток к врагу и удар: +2 к атаке, +2 к урону. После — раскрыт: −2 к Защите до своего хода.' },
+  rush:   { name: 'Отчаянный рывок', short: 'Рывок', cost: 1, desc: '1 ОД. Перебежка на двойное расстояние. Каждый вражеский стрелок, который видит бойца, стреляет вслед с −3.' },
+  last:   { name: 'Последний натиск', short: 'Натиск', cost: 2, desc: 'Только при ОЗ не выше трети. Атака: кость бросается дважды, берётся лучшая, +2 к урону. После — раскрыт.' },
+  rescue: { name: 'Спасение товарища', short: 'Спасение', cost: 1, desc: 'Нужны 2 ОД. Бросок до 6 клеток к тяжелораненому союзнику — тот встаёт с четвертью ОЗ. По пути — огонь вслед.' },
+  grit:   { name: 'Стиснуть зубы', short: 'Зубы', cost: 1, desc: 'Без ОД. +3 ОЗ, снимает подавление и слабость.' },
+  brace:  { name: 'Стоять насмерть', short: 'Насмерть', cost: 1, desc: '1 ОД, завершает ход. До своего следующего хода +3 к Защите.' },
+  pierce: { name: 'Выстрел в щель', short: 'В щель', cost: 1, desc: 'Нужны 2 ОД и огнестрел. Выстрел с +2 к атаке — броня цели не спасает.' },
+  volley: { name: 'Шквал огня', short: 'Шквал', cost: 2, desc: 'Нужны 2 ОД и огнестрел с двумя зарядами. Два выстрела подряд по одной цели.' },
+  inspire: { name: 'Воодушевить', short: 'Воодушевить', cost: 2, desc: '1 ОД. Свои бойцы в радиусе 5: +1 кураж каждому.' },
+};
+export const COURAGE_ORDER = ['charge', 'rush', 'last', 'rescue', 'grit', 'brace', 'pierce', 'volley', 'inspire'];
+/** С чего начинает каждая профессия (а спутники — по своим ролям). */
+export const COURAGE_START: Record<ProfId, string[]> = {
+  soldier: ['charge', 'rush'], shooter: ['pierce', 'rush'], saboteur: ['rush', 'grit'],
+  occultist: ['grit', 'brace'], technician: ['brace', 'volley'], medic: ['rescue', 'grit'],
+};
+export const COMPANION_MOVES: Record<string, string[]> = { alex: ['rush', 'rescue'], arthur: ['pierce', 'brace'] };
+export const MOVE_LEVELS = [3, 5];
+export const knownMoves = (c: Character) => c.courageMoves ?? COURAGE_START[c.prof];
+/** Выбор нового приёма куража ждёт героя: уровень 3 / 5 достигнут, а приёмов меньше положенного. */
+export function pendingMove(c: Character | null | undefined): string[] | null {
+  if (!c) return null;
+  const due = 2 + MOVE_LEVELS.filter((l) => c.level >= l).length, known = knownMoves(c);
+  return known.length < due ? COURAGE_ORDER.filter((k) => !known.includes(k)) : null;
+}
 
 // ------------------------------------------------------------ опыт
 /** Опыт за поверженного врага: тем больше, чем он крепче и опаснее. */
