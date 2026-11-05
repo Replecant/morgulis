@@ -185,6 +185,8 @@ export const STYLES: Record<string, Style> = {
   nb_m: { coat: '#46443c', legs: '#2c2a24', hat: 'flatcap', hatC: '#2a2824', skin: '#c0a488', beard: '#5a4a3a' },
   nb_w: { coat: '#44404a', dress: true, apron: '#5a564c', hat: 'bonnet', hatC: '#2e2a30', skin: '#ccb098', hair: '#5a4a3a', longHair: true, weapon: 'bag' },
   nb_red: { coat: '#4a463e', legs: '#2e2c26', hat: 'flatcap', hatC: '#2a2824', skin: '#c4a888', armband: '#b8281e', weapon: 'book' },
+  // Мортимер — солдат без знамён: выцветшая шинель без петлиц, обмотки, ремни, щетина
+  mortimer: { coat: '#4e4a3a', legs: '#2e2c24', belt: '#3a2a1a', hat: 'helmet', hatC: '#3e3e32', hair: '#5a4a3a', skin: '#c0a080', beard: '#7a6a58', puttees: '#5a5444', webbing: '#3a3426', weapon: 'rifle' },
   lumber: { coat: '#5a3e2c', legs: '#2e2a22', belt: '#2a1d12', hat: 'flatcap', hatC: '#3a2a1e', skin: '#bf9c7c', beard: '#6a4a2a', weapon: 'hammer', scale: 1.08 },
   lumber2: { coat: '#4e4a32', legs: '#2c2a20', belt: '#2a1d12', hair: '#3a2a1a', skin: '#c4a080', weapon: 'shovel' },
   // фоновые жители деревень

@@ -851,6 +851,7 @@ export const Explore = {
     NPC('einb_old', 'Старуха на пепелище', 'oldwoman', 425, 24, 'einb_old');
     NPC('hawley_elder', 'Староста Хоули', 'herder', 461, 27, 'hawley_elder');
     NPC('wood_boss', 'Бригадир лесорубов', 'lumber', 513, 27, 'wood_boss');
+    NPC('mortimer', 'Солдат у поленницы', 'mortimer', 522, 36, 'mortimer', () => !G.flags.mortimerJoined);
     NPC('tar_boss', 'Старший нефтяник', 'oilworker', 557, 39, 'tar_boss');
     NPC('tar_guard1', 'Брат при вышках', 'brother', 551, 25, 'tar_guard'); NPC('tar_guard2', 'Брат при вышках', 'brother2', 568, 21, 'tar_guard');
     NPC('svob_gate1', 'Брат у ворот', 'brother', 608, 65, 'svob_gate'); NPC('svob_gate2', 'Брат у ворот', 'brother2', 612, 65, 'svob_gate');

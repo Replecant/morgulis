@@ -65,6 +65,10 @@ export const alexIn = () => G.squad.some((b) => b.id === 'alex');
 export const arthurIn = () => G.squad.some((b) => b.id === 'arthur');
 export const ivyIn = () => G.squad.some((b) => b.id === 'ivy');
 export const ferglowIn = () => G.squad.some((b) => b.id === 'ferglow');
+export const mortimerIn = () => G.squad.some((b) => b.id === 'mortimer');
+/** В отряде не больше пяти человек — герой и четверо спутников. */
+export const SQUAD_MAX = 5;
+export const squadFull = () => G.squad.length >= SQUAD_MAX;
 /** Спутник, которого Ферглоу «улучшил» ритуалом в пещере — теперь мертвец. */
 export const undeadCompanion = (id: string) => !!G.flags['undead_' + id];
 /** Спутник в отряде и живой (не «улучшен» Ферглоу) — только живому люди отвечают, узнают, боятся за него. */

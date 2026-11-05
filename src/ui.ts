@@ -2,9 +2,9 @@
 //  Интерфейс: диалоговое окно, HUD, боевая панель, экраны
 // ============================================================
 import { Weather } from './weather';
-import { G, journal, gearBonus, hasTool } from './state';
+import { G, journal, gearBonus, hasTool, squadFull, SQUAD_MAX } from './state';
 import { overload, LOAD_NAME } from './load';
-import { DIALOGS, SPEAKERS, DNode, Choice, fmt } from './dialogs';
+import { DIALOGS, SPEAKERS, DNode, Choice, fmt, DISMISS } from './dialogs';
 import { drawFigure, applyEquipLooks } from './gfx';
 import { Combat } from './combat';
 import { $ } from './util';
@@ -38,8 +38,13 @@ export const Dialog = {
 
   goto(id: string | undefined, prefix = '') {
     if (!id) return this.close();
-    const n = DIALOGS[this.tree].nodes[id];
-    if (!n) return this.close();
+    const nodes = DIALOGS[this.tree].nodes, n0 = nodes[id];
+    if (!n0) return this.close();
+    // отряд полон: вербовка (узел с recruit_ — или ведущий прямо к нему) не случается, спутник остаётся на месте
+    const recruits = (x?: DNode) => !!x?.act?.startsWith('recruit_');
+    const n: DNode = squadFull() && (recruits(n0) || (typeof n0.go === 'string' && recruits(nodes[n0.go])))
+      ? { s: 'nar', t: `В отряде уже ${SQUAD_MAX} человек — больше не прокормить и не увести. Чтобы взять нового спутника, кого-то придётся отпустить: окно «Отряд» (клавиша Q) → «Отпустить».` }
+      : n0;
     this.node = n;
     const sp = SPEAKERS[n.s];
     $('dname').textContent = sp.name;
@@ -193,11 +198,17 @@ export function openSquad(onClose: () => void) {
       mb.disabled = G.supplies.medkit <= 0 || (s.hp >= max && !woundsOf(s).some((w) => !w.heavy));
       mb.onclick = () => { log = useMedkit(s) ?? ''; render(); };
       acts.append(bb, ' ', mb);
-      if (['alex', 'arthur', 'ivy', 'ferglow'].includes(s.id)) { // со спутниками можно поговорить
+      if (['alex', 'arthur', 'ivy', 'ferglow', 'mortimer'].includes(s.id)) { // со спутниками можно поговорить — и отпустить
         const tb = document.createElement('button');
         tb.className = 'btn'; tb.textContent = 'Поговорить';
         tb.onclick = () => { closeSquad(onClose); Dialog.start(G.flags['undead_' + s.id] ? 'undead_talk' : s.id + '_talk'); };
         acts.append(' ', tb);
+        if (!G.flags['undead_' + s.id]) { // мертвец Ферглоу не уходит
+          const db = document.createElement('button');
+          db.className = 'btn'; db.textContent = 'Отпустить';
+          db.onclick = () => { closeSquad(onClose); DISMISS.id = s.id; Dialog.start('dismiss'); };
+          acts.append(' ', db);
+        }
       }
       row.append(acts);
       const wl = document.createElement('div'); wl.className = 'wlist';

@@ -4,13 +4,15 @@
 // ============================================================
 import './style.css';
 import { installI18n, tr } from './i18n';
-import { G, resetGame, alexIn, arthurIn, arthurAlive, ivyIn, ferglowIn, undeadCompanion } from './state';
+import { G, resetGame, alexIn, arthurIn, arthurAlive, ivyIn, ferglowIn, mortimerIn, undeadCompanion, aliveCompanion, squadFull, SQUAD_MAX } from './state';
 import { Explore } from './explore';
 import { World, clockText, LOCS } from './worldmap';
 import { Combat, CT } from './combat';
 import { Dialog, refreshHud, exploreHint, toast, combatShow, combatLog, combatPanel, screen, hideScreen, openSquad, closeSquad, squadOpen } from './ui';
+import { DISMISS } from './dialogs';
 import { setPcStyle, applyEquipLooks } from './gfx';
-import { makeAlex, makeArthur, makeIvy, makeFerglow, CLASH, refreshLeader } from './data';
+import { makeAlex, makeArthur, makeIvy, makeFerglow, makeMortimer, CLASH, refreshLeader } from './data';
+import type { UnitBase } from './data';
 import { Inventory } from './inventory';
 import { Sheet } from './sheet';
 import { Music } from './music';
@@ -212,13 +214,26 @@ Debug.onTeleport = (id) => {
 World.onRevo = () => Dialog.start('revo_arthur');
 World.onRat = (msg) => toast(msg);
 // отладка: взять спутника в отряд или убрать (флаги вербовки — как при обычной вербовке)
-Debug.companions = [{ id: 'alex', name: 'Александр' }, { id: 'arthur', name: 'Артур Сильвер' }, { id: 'ivy', name: 'Айви Гримшоу' }, { id: 'ferglow', name: 'Уильям Ферглоу' }];
-const JOINED: Record<string, string> = { alex: 'alexJoined', arthur: 'arthurJoined', ivy: 'ivyJoined', ferglow: 'ferglowJoined' };
+Debug.companions = [{ id: 'alex', name: 'Александр' }, { id: 'arthur', name: 'Артур Сильвер' }, { id: 'ivy', name: 'Айви Гримшоу' }, { id: 'ferglow', name: 'Уильям Ферглоу' }, { id: 'mortimer', name: 'Мортимер' }];
+const JOINED: Record<string, string> = { alex: 'alexJoined', arthur: 'arthurJoined', ivy: 'ivyJoined', ferglow: 'ferglowJoined', mortimer: 'mortimerJoined' };
+const MAKE: Record<string, () => UnitBase> = { alex: makeAlex, arthur: makeArthur, ivy: makeIvy, ferglow: makeFerglow, mortimer: makeMortimer };
+/** Спутник уходит из отряда туда, где его встретили (можно позвать снова). Выданное ему сверх своего — остаётся в обозе. */
+function leaveSquad(id: string) {
+  const b = G.squad.find((s) => s.id === id); if (!b) return;
+  const own = MAKE[id]?.().equip ?? {};
+  for (const [slot, it] of Object.entries(b.equip ?? {})) if (it && it !== (own as Record<string, string>)[slot]) G.stash.push(it);
+  G.squad = G.squad.filter((s) => s.id !== id); G.flags[JOINED[id]] = false;
+  applyEquipLooks(G.squad); if (G.mode === 'explore') Explore.enter(Explore.scene, Explore.player); refreshHud();
+}
+/** Взять спутника в отряд — если есть место (не больше пяти человек). */
+function joinSquad(id: string, name: string) {
+  if (G.squad.some((s) => s.id === id)) return;
+  if (squadFull()) { G.flags[JOINED[id]] = false; toast(`Отряд полон: не больше ${SQUAD_MAX} человек`); return; }
+  G.squad.push(MAKE[id]()); applyEquipLooks(G.squad); if (G.mode === 'explore') Explore.enter(Explore.scene, Explore.player);
+  toast(`${name} в отряде`); refreshHud();
+}
 Debug.onCompanion = (id) => {
-  if (G.squad.some((b) => b.id === id)) { // убрать — и вернуть на его место в мире (можно снова позвать обычным путём)
-    G.squad = G.squad.filter((b) => b.id !== id); G.flags[JOINED[id]] = false;
-    applyEquipLooks(G.squad); if (G.mode === 'explore') Explore.enter(Explore.scene, Explore.player); refreshHud(); return;
-  }
+  if (G.squad.some((b) => b.id === id)) { leaveSquad(id); return; } // убрать — и вернуть на его место в мире
   G.flags[JOINED[id]] = true;
   Dialog.onAction('recruit_' + id);
 };
@@ -249,6 +264,8 @@ World.onDay = () => { // раз в сутки отряд ест
   fleshCare();
   // Ферглоу на вторые сутки в отряде (если есть кого «улучшать») заводит разговор о ритуале
   if (ferglowIn() && !G.flags.ferglowOffered && G.squad.some((b) => ['alex', 'arthur', 'ivy'].includes(b.id) && !undeadCompanion(b.id))) { if (G.flags.ferglowDay) alexPending = 'ferglow_offer'; else G.flags.ferglowDay = true; }
+  // Мортимер раз в неделю просит жалованье
+  if (aliveCompanion('mortimer') && G.clock >= (G.checkLock.mortPay ?? Infinity) && !alexPending) alexPending = 'mortimer_pay';
   if (Debug.noHunger) { refreshHud(); return; } // отладка: голода нет
   if (G.supplies.ration > 0) { G.supplies.ration--; toast(`${clockText()}: отряд съел паёк (осталось ${G.supplies.ration})`); }
   else { G.squad.forEach((s) => (s.hp = Math.max(1, s.hp - 2))); Dialog.start('hunger'); }
@@ -262,12 +279,17 @@ Dialog.onAction = (act) => {
   else if (act === 'rest') { toast(rest()); refreshHud(); }
   else if (act.startsWith('trade:')) { G.keys.clear(); Trade.show(act.slice(6), () => { refreshHud(); hint(); }); }
   else if (act === 'battle_scav') startBattle('ruins');
-  else if (act === 'recruit_alex') { if (!G.squad.some((s) => s.id === 'alex')) { G.squad.push(makeAlex()); applyEquipLooks(G.squad); if (G.mode === 'explore') Explore.enter(Explore.scene, Explore.player); toast('Александр в отряде'); refreshHud(); } }
+  else if (act === 'recruit_alex') joinSquad('alex', 'Александр');
+  else if (act === 'recruit_mortimer') { joinSquad('mortimer', 'Мортимер'); if (mortimerIn()) G.checkLock.mortPay = G.clock + 7 * 24; }
+  else if (act === 'mortimer_paid') G.checkLock.mortPay = G.clock + 7 * 24;
+  else if (act === 'mortimer_wait') G.checkLock.mortPay = G.clock + 48;
+  else if (act === 'mortimer_leave') { leaveSquad('mortimer'); toast('Мортимер ушёл из отряда'); }
+  else if (act === 'dismiss') { const n = G.squad.find((s) => s.id === DISMISS.id)?.name; leaveSquad(DISMISS.id); if (n) toast(`${n} ушёл из отряда`); }
   else if (act === 'alex_to_coven' || act === 'alex_sold') alexRemove();
   else if (act.startsWith('talent:')) { const c = G.pc, t = classTalent(act.slice(7)); if (c && t && pendingTalent(c)?.some((x) => x.id === t.id)) { (c.classTalents ??= []).push(t.id); refreshLeader(c, G.squad[0]); toast(`Талант: ${t.name}`); refreshHud(); if (pendingTalent(c) || pendingMove(c)) levelPending = true; } }
   else if (act.startsWith('move:')) { const c = G.pc, k = act.slice(5); if (c && COURAGE[k] && pendingMove(c)?.includes(k)) { c.courageMoves = [...knownMoves(c), k]; toast(`Приём куража: ${COURAGE[k].name}`); if (pendingTalent(c) || pendingMove(c)) levelPending = true; } }
-  else if (act === 'recruit_arthur') { if (!arthurIn()) { G.squad.push(makeArthur()); applyEquipLooks(G.squad); if (G.mode === 'explore') Explore.enter(Explore.scene, Explore.player); toast('Артур Сильвер в отряде'); refreshHud(); } }
-  else if (act === 'recruit_ivy') { if (!ivyIn()) { G.squad.push(makeIvy()); applyEquipLooks(G.squad); if (G.mode === 'explore') Explore.enter(Explore.scene, Explore.player); toast('Айви Гримшоу в отряде'); refreshHud(); } }
+  else if (act === 'recruit_arthur') joinSquad('arthur', 'Артур Сильвер');
+  else if (act === 'recruit_ivy') joinSquad('ivy', 'Айви Гримшоу');
   else if (act.startsWith('undead:')) { // ритуал Ферглоу: спутник становится мертвецом — крепче и бесстрашен, но без души
     const id = act.slice(7), b = G.squad.find((x) => x.id === id);
     if (b) { alexPending = 'undead_react'; G.flags.ritualDone = true; G.flags['undead_' + id] = true; b.kind = id + '_dead'; b.maxHp += 4; b.hp = b.maxHp; b.horror = 99; b.def -= 1; b.move = Math.max(3, b.move - 1); if (id === 'ivy') b.med = 1; applyEquipLooks(G.squad); if (G.mode === 'explore') Explore.enter(Explore.scene, Explore.player); refreshHud(); }
@@ -275,7 +297,7 @@ Dialog.onAction = (act) => {
   else if (act === 'ivy_leave') { G.squad = G.squad.filter((b) => b.id !== 'ivy'); G.flags.ivyJoined = false; applyEquipLooks(G.squad); if (G.mode === 'explore') Explore.enter(Explore.scene, Explore.player); refreshHud(); toast('Айви ушла из отряда'); } // вернулась в Лимбридж — с мертвецом не вступит
   else if (act === 'ivy_raise') { if (!ivyIn()) G.squad.push(makeIvy()); G.flags.ivyDead = false; Dialog.onAction('undead:ivy'); } // Ферглоу поднимает убитую Айви
   else if (act === 'battle_ivy') { G.squad = G.squad.filter((b) => b.id !== 'ivy'); applyEquipLooks(G.squad); refreshHud(); startBattle('ivy'); }
-  else if (act === 'recruit_ferglow') { if (!ferglowIn()) { G.squad.push(makeFerglow()); applyEquipLooks(G.squad); if (G.mode === 'explore') Explore.enter(Explore.scene, Explore.player); toast('Уильям Ферглоу в отряде'); refreshHud(); } }
+  else if (act === 'recruit_ferglow') joinSquad('ferglow', 'Уильям Ферглоу');
   else if (act === 'ivy_betray') { G.squad = G.squad.filter((b) => b.id !== 'ivy'); applyEquipLooks(G.squad); World.spareRevo(48); if (G.mode === 'explore') Explore.enter(Explore.scene, Explore.player); refreshHud(); }
   else if (act === 'ivy_gone') { if (G.mode === 'explore') Explore.enter(Explore.scene, Explore.player); }
   else if (act === 'arthur_betray') { G.squad = G.squad.filter((b) => b.id !== 'arthur'); applyEquipLooks(G.squad); World.spareRevo(48); refreshHud(); }

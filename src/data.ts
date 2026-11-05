@@ -188,6 +188,15 @@ export function makeFerglow(): UnitBase {
   };
 }
 
+/** Мортимер — солдат из Вудхэма: флегматичный, вне политики, служит за деньги. Винтовка и штык, крепкий и невозмутимый. */
+export function makeMortimer(): UnitBase {
+  return {
+    id: 'mortimer', name: 'Мортимер', kind: 'mortimer', hp: 14, maxHp: 14, move: 4,
+    weapons: ['rifle', 'bayonet'], atkM: 2, atkR: 2, def: 13, armor: 0, dmgM: 1, horror: 3, med: 0, str: 1, wounds: [],
+    equip: { main: 'rifle', side: 'bayonet', head: 'helmet', body: 'greatcoat' }, abil: {},
+  };
+}
+
 /** Игрок начинает один — отряд пока состоит только из героя. */
 export function makeSquad(c: Character): UnitBase[] {
   return [makeLeader(c)];
