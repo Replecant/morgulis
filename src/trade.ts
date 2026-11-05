@@ -130,6 +130,19 @@ export function resetShops() { for (const k in SHOPS) stock[k] = { ...SHOPS[k].i
 export const getStock = () => stock;
 export function setStock(s: Record<string, Record<string, number>>) { for (const k in SHOPS) stock[k] = { ...(s[k] ?? SHOPS[k].items) }; }
 resetShops();
+/** Товарная торговля между фортами: n вещей из каталога одного торговца довозят другому (не больше трёх штук каждой).
+ *  Возвращает названия привезённого. */
+export function importGoods(from: string, to: string, n: number): string[] {
+  const src = Object.keys(SHOPS[from]?.items ?? {}).filter((id) => !SHOPS[to]?.items[id] || (stock[to]?.[id] ?? 0) < 3);
+  const st = (stock[to] ??= {}), out: string[] = [];
+  for (let k = 0; k < n && src.length; k++) {
+    const foreign = src.filter((id) => !SHOPS[to]?.items[id]), pool = foreign.length ? foreign : src; // сперва — то, чего здесь своего нет
+    const id = pool[Math.floor(Math.random() * pool.length)]; src.splice(src.indexOf(id), 1);
+    if ((st[id] ?? 0) >= 3) continue;
+    st[id] = (st[id] ?? 0) + 1; out.push(itemName(id));
+  }
+  return out;
+}
 /** Привоз: поезд или конвой пополняет торговцев до их обычного запаса (сверх — не убирает). */
 export function restockShops(ids: string[]) {
   for (const k of ids) { const base = SHOPS[k]?.items; if (!base) continue; const st = (stock[k] ??= {}); for (const [id, n] of Object.entries(base)) st[id] = Math.max(st[id] ?? 0, n); }

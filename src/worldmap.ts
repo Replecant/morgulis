@@ -5,7 +5,7 @@
 // ============================================================
 import { G, arthurAlive, ratIn } from './state';
 import { seeded, TAU, clamp, dist, Pt } from './util';
-import { restockShops } from './trade';
+import { restockShops, importGoods } from './trade';
 import { PixelView, LW, LH, PS, PLight, applyLight, prect, ppx, pline, pellipse, pshadow, outline, pixelize, shade } from './px';
 import { miniSprite } from './sprites';
 import { lampLevel } from './state';
@@ -170,6 +170,8 @@ function railSeg(xa: number, xb: number): number[][] {
 }
 export interface Route {
   kind: 'train' | 'convoy'; name: string; path: number[][]; len: number;
+  cars?: ('tank' | 'box')[];  // состав поезда за паровозом: цистерны с нефтью и товарные вагоны
+  goods?: number;             // сколько вещей из каталога одного форта довозит в другой за рейс (товарная торговля)
   speed: number; waitA: number; waitB: number; phase: number; // пикселей карты в час; стоянка в начале (депо) и в конце (разгрузка), часов; сдвиг расписания
   a: string; b: string;       // концы — id мест
   shop?: string;              // лавка конвоя (можно поторговать на дороге)
@@ -177,12 +179,14 @@ export interface Route {
 const mkRoute = (r: Omit<Route, 'len'>): Route => ({ ...r, len: polyLen(r.path) });
 export const ROUTES: Route[] = [
   // очень редкие поезда: нефть с промыслов — в форты
-  mkRoute({ kind: 'train', name: 'Нефтяной поезд Эшфорд — форт Олдриджа', path: railSeg(430, 1730), speed: 150, waitA: 70, waitB: 5, phase: 40, a: 'ashford', b: 'fort' }),
-  mkRoute({ kind: 'train', name: 'Нефтяной поезд форт Олдриджа — форт Винферда', path: [...railSeg(1730, 255), ...WF_RAIL.slice(1)], speed: 150, waitA: 80, waitB: 6, phase: 10, a: 'fort', b: 'wfort' }),
-  mkRoute({ kind: 'train', name: 'Поезд Особый лагерь — форт Леди Харрингтон', path: railSeg(-1300, -2080), speed: 130, waitA: 64, waitB: 5, phase: 58, a: 'bcamp', b: 'bfort' }),
+  mkRoute({ kind: 'train', name: 'Нефтяной поезд Эшфорд — форт Олдриджа', path: railSeg(430, 1730), speed: 150, waitA: 70, waitB: 5, phase: 40, a: 'ashford', b: 'fort', cars: ['tank', 'tank', 'tank', 'tank'] }),
+  // между фортами — смешанные: нефть и товарные вагоны; довозят товар одного форта в другой
+  mkRoute({ kind: 'train', name: 'Поезд форт Олдриджа — форт Винферда', path: [...railSeg(1730, 255), ...WF_RAIL.slice(1)], speed: 150, waitA: 80, waitB: 6, phase: 10, a: 'fort', b: 'wfort', cars: ['tank', 'tank', 'box', 'box', 'box'], goods: 2 }),
+  mkRoute({ kind: 'train', name: 'Поезд форт Леди Харрингтон — форт Винферда', path: [...railSeg(-2080, 255), ...WF_RAIL.slice(1)], speed: 150, waitA: 90, waitB: 6, phase: 70, a: 'bfort', b: 'wfort', cars: ['box', 'box', 'tank', 'box', 'box'], goods: 2 }),
+  mkRoute({ kind: 'train', name: 'Товарный поезд Особый лагерь — форт Леди Харрингтон', path: railSeg(-1300, -2080), speed: 130, waitA: 64, waitB: 5, phase: 58, a: 'bcamp', b: 'bfort', cars: ['box', 'box', 'tank', 'box'] }),
   // торговые конвои — грузовики по трактам
-  mkRoute({ kind: 'convoy', name: 'Торговый конвой Винферд — Леди Харрингтон', path: [...ROADS[16].slice().reverse(), ...ROADS[6].slice().reverse().slice(1), [-1950, 680], [-2150, 640]], speed: 60, waitA: 14, waitB: 12, phase: 6, a: 'wfort', b: 'bfort', shop: 'convoy_wh' }),
-  mkRoute({ kind: 'convoy', name: 'Торговый конвой Олдридж — Винферд', path: [[1730, 840], ...ROADS[14], ...ROADS[15].slice(1)], speed: 60, waitA: 12, waitB: 14, phase: 30, a: 'fort', b: 'wfort', shop: 'convoy_aw' }),
+  mkRoute({ kind: 'convoy', name: 'Торговый конвой Винферд — Леди Харрингтон', path: [...ROADS[16].slice().reverse(), ...ROADS[6].slice().reverse().slice(1), [-1950, 680], [-2150, 640]], speed: 60, waitA: 14, waitB: 12, phase: 6, a: 'wfort', b: 'bfort', shop: 'convoy_wh', goods: 1 }),
+  mkRoute({ kind: 'convoy', name: 'Торговый конвой Олдридж — Винферд', path: [[1730, 840], ...ROADS[14], ...ROADS[15].slice(1)], speed: 60, waitA: 12, waitB: 14, phase: 30, a: 'fort', b: 'wfort', shop: 'convoy_aw', goods: 1 }),
 ];
 /** Где маршрут в момент t: s — пройдено по пути, dir — куда едет, moving — в пути (иначе стоит на конце). */
 export function routeAt(r: Route, t: number) {
@@ -202,6 +206,8 @@ function arrivals(r: Route, t0: number, t1: number): string[] {
 }
 /** Кому что привозят: поезд и конвой пополняют торговцев на месте прибытия. */
 const DELIVER: Record<string, string[]> = { fort: ['market', 'clinic'], wfort: ['wf_market'], bfort: ['bquarter'], ashford: ['oldos'] };
+/** Главный торговец форта — его каталог возят в другие форты, к нему же привозят чужой товар. */
+const MAIN_SHOP: Record<string, string> = { fort: 'market', wfort: 'wf_market', bfort: 'bquarter' };
 
 function polyAt(pts: number[][], s: number): Pt & { dx: number; dy: number } {
   for (let i = 1; i < pts.length; i++) {
@@ -817,12 +823,14 @@ export const World = {
     ROUTES.forEach((r, i) => {
       for (const end of arrivals(r, t0, Math.min(t1, t0 + 400))) {
         restockShops([...(DELIVER[end] ?? []), ...(r.shop ? [r.shop] : [])]);
-        const l = LOCS.find((q) => q.id === end);
-        if (l && dist(l, p) < 450 && DELIVER[end]) this.onTraffic(r.kind === 'train' ? `${l.name}: пришёл поезд — у торговцев свежий товар.` : `${l.name}: пришёл торговый конвой — у торговцев свежий товар.`);
+        const from = end === r.a ? r.b : r.a; // товарная торговля: вещи из каталога форта, откуда шли
+        const got = r.goods && MAIN_SHOP[from] && MAIN_SHOP[end] ? importGoods(MAIN_SHOP[from], MAIN_SHOP[end], r.goods) : [];
+        const l = LOCS.find((q) => q.id === end), lf = LOCS.find((q) => q.id === from);
+        if (l && dist(l, p) < 450 && DELIVER[end]) this.onTraffic(`${l.name}: пришёл ${r.kind === 'train' ? 'поезд' : 'торговый конвой'} — у торговцев свежий товар${got.length && lf ? `; привезли из «${lf.name}»: ${got.join(', ')}` : ''}.`);
       }
       if (r.kind === 'train') { // гудок и стук колёс — слышно издалека
         const st = routeAt(r, t1), q = polyAt(r.path, st.s), near = st.moving && dist(q, p) < 380;
-        if (near && this.heardTrain !== i) { this.heardTrain = i; this.onTraffic('Гудок, стук колёс — по линии идёт поезд с цистернами.'); }
+        if (near && this.heardTrain !== i) { this.heardTrain = i; this.onTraffic(r.cars?.includes('box') ? 'Гудок, стук колёс — по линии идёт товарный поезд.' : 'Гудок, стук колёс — по линии идёт поезд с цистернами.'); }
         if (!near && this.heardTrain === i) this.heardTrain = -1;
       }
     });
@@ -1204,7 +1212,7 @@ export const World = {
       const st = routeAt(ro, G.clock);
       if (ro.kind === 'train') {
         if (!st.moving && st.at === ro.a) return;            // в депо — не видно
-        const n = 5;                                         // паровоз и четыре цистерны
+        const cars = ro.cars ?? ['tank', 'tank', 'tank', 'tank'], n = cars.length + 1; // паровоз и вагоны
         for (let k = n - 1; k >= 0; k--) {
           const q = polyAt(ro.path, clamp(st.s - st.dir * k * 30, 0, ro.len)), l = Math.hypot(q.dx, q.dy) || 1;
           const ux = (q.dx / l) * st.dir, uy = (q.dy / l) * st.dir, side = TRACK_GAP * st.dir; // свой путь — справа по ходу
@@ -1217,12 +1225,15 @@ export const World = {
             prect(lc, Math.round(b[0] - ux * 3), Math.round(b[1] - uy * 3) - 6, 2, 4, '#1a1816');
             if (st.moving) for (let i = 0; i < 5; i++) { const kk = (t * 0.9 + i * 0.2) % 1; ditherDisc(lc, b[0] - ux * 3 - ux * kk * 18, b[1] - 8 - kk * 14, 2 + kk * 6, '#8a887e', 0.75 * (1 - kk)); }
             prect(lc, Math.round(b[0] + ux), Math.round(b[1]) - 2, 2, 2, '#f0e0a0');              // фонарь
+          } else if (cars[k - 1] === 'box') {                                               // товарный вагон: бурый короб, светлая крыша, дверь
+            pline(lc, a[0], a[1] - 1, b[0], b[1] - 1, '#5a3220', 7); pline(lc, a[0], a[1] - 4, b[0], b[1] - 4, '#9a7a5a'); pline(lc, a[0], a[1] + 2, b[0], b[1] + 2, '#2a1810');
+            prect(lc, Math.round(cx) - 1, Math.round(cy) - 5, 3, 5, '#3a2014'); ppx(lc, Math.round(cx), Math.round(cy) - 3, '#c8a050');
           } else {                                                                          // цистерна с нефтью: чёрная бочка, светлый блик, люк
             pline(lc, a[0], a[1], b[0], b[1], '#3a3a32', 6); pline(lc, a[0], a[1] - 2, b[0], b[1] - 2, '#a09e8a'); pline(lc, a[0], a[1] + 2, b[0], b[1] + 2, '#1e1e1a');
             prect(lc, Math.round(cx) - 1, Math.round(cy) - 7, 2, 2, '#4a4a42');
           }
         }
-        if (dist(polyAt(ro.path, st.s), p) < 330) { c0Labels.push([st.moving ? 'Поезд с цистернами' : 'Поезд — разгрузка', polyAt(ro.path, st.s), '#c8c0a8']); }
+        if (dist(polyAt(ro.path, st.s), p) < 330) { c0Labels.push([!st.moving ? 'Поезд — разгрузка' : cars.includes('box') ? 'Товарный поезд' : 'Поезд с цистернами', polyAt(ro.path, st.s), '#c8c0a8']); }
       } else {
         if (!st.moving) return;                              // стоит в форте
         const n = 3;                                         // два грузовика и охрана
