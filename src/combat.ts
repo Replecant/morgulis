@@ -190,7 +190,10 @@ export const Combat = {
   alive(team: Unit['team']) { return this.units.filter((u) => !u.dead && u.team === team); },
   blocksLos(x: number, y: number) { const t = this.tile(x, y); return !t || !!TILE[t]?.los || this.inSmoke(x, y); },
   inSmoke(x: number, y: number) { return this.smoke.some((s) => Math.abs(s.x - x) <= 1 && Math.abs(s.y - y) <= 1); },
-  los(a: Pt, b: Pt) {
+  /** Видят ли друг друга: линия по клеткам в одну сторону может задеть угол препятствия, а обратная — пройти мимо,
+   *  поэтому смотрим в обе стороны. Видимость взаимна: кто стреляет, в того можно выстрелить в ответ. */
+  los(a: Pt, b: Pt) { return this.losLine(a, b) || this.losLine(b, a); },
+  losLine(a: Pt, b: Pt) {
     const pts = lineTiles(a.x, a.y, b.x, b.y);
     for (let i = 1; i < pts.length - 1; i++) if (this.blocksLos(pts[i].x, pts[i].y)) return false;
     return true;
@@ -843,6 +846,7 @@ export const Combat = {
       } else {
         // стрелок: цель — лучшее укрытие поближе к отряду, на рабочей дистанции своего оружия (а не просто ближайшее);
         // до него идёт за один-два хода, по пути стреляет, если уже стоит в укрытии с хорошим выстрелом
+        if (here && u.st.supp) { await this.attack(u, here.t, here.w); break; } // прижат пулемётом — отстреливается с места, а не бежит
         const goal = this.coverGoal(u), hereScore = this.goalScore(u, u, 0);
         if (!goal || goal.path.length <= 1 || goal.score <= hereScore + 4) { if (here) await this.attack(u, here.t, here.w); break; }
         const mv = this.mv(u), reachNow = goal.path.length - 1 <= mv;
@@ -926,7 +930,7 @@ export const Combat = {
     return score;
   },
   /** Оценка клетки как цели для стрелка: укрытие важнее всего, затем рабочая дистанция до отряда, выстрел оттуда и путь. */
-  goalScore(u: Unit, n: Pt, turns: number) {
+  goalScore(u: Unit, n: Pt, turns: number, ndNow = -1) {
     const foes = this.foes(); if (!foes.length) return -1e9;
     const at = this.bestAttack(u, n), np = this.nearestPlayer(n)!, nd = dist(n, np);
     const wk = at?.w ?? u.weapons.find((k) => WEAPONS[k].type === 'ranged' && !this.outOf(u, k)) ?? u.weapons[0], w = WEAPONS[wk];
@@ -938,6 +942,8 @@ export const Combat = {
     const cp = w.type === 'ranged' ? (w.closePen ?? 3) : 0;
     if (foes.some((p) => cheb(p, n) === 1)) s -= cp > 0 ? 15 + cp * 8 : 6; // длинным стволом в упор — плохо, тем хуже, чем длиннее ствол
     for (const o of this.units) if (o !== u && !o.dead && o.team === u.team && cheb(o, n) === 1) s -= 3; // не кучковаться под гранату
+    // не пятиться к краю поля: дальше от отряда — только раненому или тому, к кому подошли вплотную
+    if (ndNow >= 0 && nd > ndNow + 0.5 && !lowHp && !foes.some((p) => cheb(p, u) <= 1)) s -= (nd - ndNow) * 6;
     return s;
   },
   /** Перебежка к далёкой цели: из клеток в пределах хода — та, что ближе к цели и лучше укрыта (от укрытия к укрытию, а не по открытому). */
@@ -960,14 +966,15 @@ export const Combat = {
     const reach = bfs(CW, CH, u.x, u.y, (x, y) => this.free(x, y), null), mv = Math.max(1, this.mv(u));
     const claimed = new Set(this.units.filter((o) => o !== u && !o.dead && o.team === u.team && o.goal !== undefined).map((o) => o.goal!));
     let best: { n: Pt & { d: number }; score: number } | null = null;
+    const ndNow = dist(u, this.nearestPlayer(u) ?? u);
     for (const n of reach.values()) {
       if (n.d && claimed.has(n.y * CW + n.x)) continue;
-      const sc = this.goalScore(u, n, Math.ceil(n.d / mv));
+      const sc = this.goalScore(u, n, Math.ceil(n.d / mv), ndNow);
       if (!best || sc > best.score) best = { n, score: sc };
     }
     if (u.goal !== undefined && best) { // прежняя цель, если она почти так же хороша — чтобы не метаться
       const g = reach.get(u.goal);
-      if (g && !claimed.has(u.goal)) { const sc = this.goalScore(u, g, Math.ceil(g.d / mv)); if (sc >= best.score - 5) best = { n: g, score: sc }; }
+      if (g && !claimed.has(u.goal)) { const sc = this.goalScore(u, g, Math.ceil(g.d / mv), ndNow); if (sc >= best.score - 5) best = { n: g, score: sc }; }
     }
     if (!best) return null;
     u.goal = best.n.y * CW + best.n.x;
