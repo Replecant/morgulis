@@ -110,7 +110,7 @@ function toScene(id: string, at?: { x: number; y: number }) {
   Save.auto(); // и при входе в сцену
 }
 function hint() {
-  if (G.mode === 'world') $('hint').textContent = 'Клик — идти · клик по месту — войти · WASD — идти · E — войти рядом · Q — лечение и лагерь · I — снаряжение · C — персонаж · O — оккультизм · M — карта · Esc — меню';
+  if (G.mode === 'world') $('hint').textContent = 'Клик — идти · клик по месту — войти · WASD — идти · E — войти рядом · Пробел (держать) — ждать · Q — лечение и лагерь · I — снаряжение · C — персонаж · O — оккультизм · M — карта · Esc — меню';
   else exploreHint();
 }
 
@@ -435,6 +435,7 @@ window.addEventListener('keydown', (e) => {
   }
   if (squadOpen()) { if (e.code === 'Escape') closeSquad(hint); return; }
   if (roaming()) {
+    if (G.mode === 'world' && e.code === 'Space') { e.preventDefault(); G.keys.add('Space'); return; } // на карте: держать пробел — ждать, время идёт быстрее
     if (['Space', 'KeyE', 'Enter'].includes(e.code)) {
       e.preventDefault();
       if (performance.now() - Dialog.closedAt > 200) (G.mode === 'world' ? World : Explore).interactKey();

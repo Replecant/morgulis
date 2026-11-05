@@ -334,6 +334,7 @@ const FIND_R = 170;         // с какого расстояния отряд �
 const SPEED = 55;          // пикселей карты в час по бездорожью
 const ROAD_BONUS = 1.7;    // по дороге быстрее
 const HOURS_PER_SEC = 1.2; // сколько игровых часов проходит за секунду пути
+const WAIT_K = 4;          // ожидание на пробеле: время течёт вчетверо быстрее, чем в пути
 
 function segDist(p: Pt, a: number[], b: number[]) {
   const dx = b[0] - a[0], dy = b[1] - a[1];
@@ -448,6 +449,7 @@ export const World = {
   onDemon: () => {},
   hungryHit: null as Hungry | null,
   onHungry: () => {},
+  waiting: false,                      // отряд ждёт на месте (держат пробел)
   trafficClock: 0,                     // до какого часа уже учтены прибытия поездов и конвоев
   heardTrain: -1,                      // какой поезд отряд уже слышал вблизи (чтобы не повторять)
   pendingConvoy: null as Route | null,
@@ -602,7 +604,11 @@ export const World = {
         if (this.pending) { const l = this.pending; this.pending = null; this.onArrive(l); }
       }
     }
-    if (moved) {
+    // держим пробел и стоим на месте — ждём: время и весь мир идут быстрее, отряд не двигается
+    const waiting = !moved && !p.moving && k.has('Space');
+    this.waiting = waiting;
+    if (waiting) dt *= WAIT_K;
+    if (moved || waiting) {
       G.clock += dt * HOURS_PER_SEC;
       this.discover();
       this.updateLocation();
@@ -1339,6 +1345,7 @@ export const World = {
       c.textAlign = 'left';
     }
     for (const [lbl, q, col] of c0Labels) { tag(lbl, q.x - cx, q.y - cy - 34, col); c.textAlign = 'left'; }
+    if (this.waiting && G.keys.has('Space')) { tag('Ожидание…', this.party.x - cx, this.party.y - cy - 36, '#e8d090'); c.textAlign = 'left'; }
     for (const g of this.morlocks) {
       if (!g.alive || !g.seen) continue;
       const lbl = G.clock < g.calm ? 'Морлоки (ушли в темноту)' : g.chasing ? 'Морлоки — бегут к вам' : 'Морлоки';
