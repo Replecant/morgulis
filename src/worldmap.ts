@@ -451,7 +451,6 @@ export const World = {
   onHungry: () => {},
   waiting: false,                      // отряд ждёт на месте (держат пробел)
   trafficClock: 0,                     // до какого часа уже учтены прибытия поездов и конвоев
-  heardTrain: -1,                      // какой поезд отряд уже слышал вблизи (чтобы не повторять)
   pendingConvoy: null as Route | null,
   onTraffic: (_msg: string) => {},
   onConvoy: (_r: Route) => {},
@@ -475,7 +474,7 @@ export const World = {
       x, y, r: 70 + ((i * 37) % 50), vx: 9 + (i % 3) * 3, vy: ((i % 2) * 2 - 1) * 2, seed: i * 1.9 }));
     this.inGas = false; this.gasDose = 0; this.filterUse = 0; this.clashes = []; this.clashHit = null;
     this.demons = [0.6, 3.6].map((a, i) => { const q = lakeRing(a, 1.1); return { id: i, x: q.x, y: q.y, tx: q.x, ty: q.y, alive: true, respawn: 0, calm: 0, seen: false, a }; });
-    this.trafficClock = G.clock; this.heardTrain = -1; this.pendingConvoy = null;
+    this.trafficClock = G.clock; this.pendingConvoy = null;
     this.morlocks = MORL_START.map(([x, y, kinds], i) => ({ id: i, kinds, x, y, tx: x, ty: y, alive: true, respawn: 0, calm: 0, seen: false }));
     this.hungry = HUNGRY_START.map(([x, y], i) => ({ id: i, kinds: i % 2 ? ['hungry2', 'hungry', 'hungry'] : ['hungry', 'hungry2'], x, y, tx: x, ty: y, alive: true, respawn: 0, calm: 0, seen: false }));
     this.dead = [...DEAD_START.map(([id, kinds, x, y]) => ({ id, kinds, x, y, tx: x, ty: y, alive: true, respawn: 0, calm: 0, seen: false })),
@@ -821,23 +820,19 @@ export const World = {
       if (chase && d < 20) { p.moving = false; this.pending = null; G.keys.clear(); this.morlHit = g; this.onMorlock(); return; }
     }
   },
-  /** Поезда и конвои: прибытия с прошлого раза пополняют торговцев; рядом с отрядом — весть. */
+  /** Поезда и конвои: прибытия с прошлого раза пополняют торговцев; о конвое рядом с отрядом — весть. */
   updateTraffic() {
     const p = this.party, t0 = this.trafficClock, t1 = G.clock;
     if (t1 <= t0) return;
     this.trafficClock = t1;
-    ROUTES.forEach((r, i) => {
+    ROUTES.forEach((r) => {
       for (const end of arrivals(r, t0, Math.min(t1, t0 + 400))) {
         restockShops([...(DELIVER[end] ?? []), ...(r.shop ? [r.shop] : [])]);
         const from = end === r.a ? r.b : r.a; // товарная торговля: вещи из каталога форта, откуда шли
         const got = r.goods && MAIN_SHOP[from] && MAIN_SHOP[end] ? importGoods(MAIN_SHOP[from], MAIN_SHOP[end], r.goods) : [];
         const l = LOCS.find((q) => q.id === end), lf = LOCS.find((q) => q.id === from);
-        if (l && dist(l, p) < 450 && DELIVER[end]) this.onTraffic(`${l.name}: пришёл ${r.kind === 'train' ? 'поезд' : 'торговый конвой'} — у торговцев свежий товар${got.length && lf ? `; привезли из «${lf.name}»: ${got.join(', ')}` : ''}.`);
-      }
-      if (r.kind === 'train') { // гудок и стук колёс — слышно издалека
-        const st = routeAt(r, t1), q = polyAt(r.path, st.s), near = st.moving && dist(q, p) < 380;
-        if (near && this.heardTrain !== i) { this.heardTrain = i; this.onTraffic(r.cars?.includes('box') ? 'Гудок, стук колёс — по линии идёт товарный поезд.' : 'Гудок, стук колёс — по линии идёт поезд с цистернами.'); }
-        if (!near && this.heardTrain === i) this.heardTrain = -1;
+        // о поездах вестей нет (их слишком много) — только о конвое, пришедшем в форт рядом с отрядом
+        if (r.kind === 'convoy' && l && dist(l, p) < 450 && DELIVER[end]) this.onTraffic(`${l.name}: пришёл торговый конвой — у торговцев свежий товар${got.length && lf ? `; привезли из «${lf.name}»: ${got.join(', ')}` : ''}.`);
       }
     });
   },
