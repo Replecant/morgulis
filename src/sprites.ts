@@ -83,6 +83,23 @@ function buildChar(kind0: string, frame: number): HTMLCanvasElement {
   // Фигурка смотрит на зрителя (анфас): голова, плечи и ноги симметричны, свет слева.
   // «Правая» рука/глаз (armR, eyeR) — справа на картинке, в ней оружие; при отражении меняются местами.
 
+  // --- длинное оружие вне боя — на ремне за спиной, наискось: спереди видны ствол над плечом и приклад у бедра,
+  //     со спины — всё ружьё; ремень через грудь. В боевой стойке («#aim») его берут на изготовку.
+  const SLUNG = ['rifle', 'musket', 'shotgun', 'mg'];
+  const slungW = st.weapon && SLUNG.includes(st.weapon) && !(aim && AIM.has(st.weapon) && LB.armR !== 'lost') ? st.weapon : null;
+  const drawSlung = () => {
+    const x0 = tx0 - 1, y0 = sy(tBot + 1), x1 = tx1 + 3, y1 = sy(tTop - 8);
+    const at = (k: number) => [Math.round(x0 + (x1 - x0) * k), Math.round(y0 + (y1 - y0) * k)];
+    const seg = (k0: number, k1: number, col: string, w = 1) => { const [a, b] = at(k0), [e, f] = at(k1); pline(c, a, b, e, f, col, w); };
+    switch (slungW) {
+      case 'rifle': seg(0, 0.42, WOOD, 2); seg(0.02, 0.4, WOOD_D); seg(0.42, 0.9, STEEL); seg(0.9, 1, STEEL_L); break;   // приклад, ствол, штык
+      case 'musket': seg(0, 0.88, '#6a4626', 2); seg(0.02, 0.86, '#4a3018'); seg(0.88, 0.96, STEEL); break;
+      case 'shotgun': seg(0.05, 0.42, '#4a2e1a', 2); seg(0.42, 0.86, '#2e2e2a', 2); seg(0.42, 0.86, '#6a6a64'); break;
+      case 'mg': seg(0, 0.32, '#5a3a1e', 2); seg(0.32, 0.6, '#2e302e', 3); seg(0.6, 1, '#4a4e4a', 2); seg(0.6, 1, '#6a6e68'); break;
+    }
+  };
+  if (slungW && !back) drawSlung();
+
   // --- газовые баллоны за спиной: из-за плеч торчат вентили, через грудь — лямки
   if (st.tanks) {
     for (const x of [tx0, tx1 - 1]) { R(x, sy(tTop - 3), 2, 3, '#5a5e4a'); R(x, sy(tTop - 3), 1, 3, '#7a7e66'); R(x, sy(tTop - 4), 2, 1, BRASS); }
@@ -189,6 +206,8 @@ function buildChar(kind0: string, frame: number): HTMLCanvasElement {
     if (!back && !armored) for (const yy of [2, 4, 6]) { P(11, sy(tTop + yy), st.trim); P(13, sy(tTop + yy), st.trim); }
     R(tx0 - 1, sy(tTop), 2, 1, st.trim); R(tx1, sy(tTop), 2, 1, st.trim);
   }
+  if (slungW && back) drawSlung();
+  else if (slungW) pline(c, tx1 - 1, sy(tTop), tx0 + 1, sy(tTop + 9), '#3a2a1a');   // ружейный ремень через грудь
   if (st.belt) { R(tx0, sy(tTop + 7), tx1 - tx0 + 1, 1, st.belt); if (!back) R(11, sy(tTop + 7), 2, 1, BRASS); }
   if (st.webbing) { // накладные нагрудные карманы, перекрещенные ремни и подсумки
     if (!back) { R(tx0 + 1, sy(tTop + 2), 3, 2, shade(coat, -0.18)); R(tx1 - 3, sy(tTop + 2), 3, 2, shade(coat, -0.18)); P(tx0 + 2, sy(tTop + 2), BRASS); P(tx1 - 2, sy(tTop + 2), BRASS); }
@@ -442,28 +461,15 @@ function buildChar(kind0: string, frame: number): HTMLCanvasElement {
       P(hx + 2, hy2 + 8, STEEL_L); R(hx - 1, hy2 - 1, 2, 2, '#5a3a22');
       hand();
       break;
-    case 'rifle': case 'musket': case 'shotgun': { // ружьё у ноги «к ноге»: приклад на земле, ствол выше плеча
-      const gx = ax + 2, top0 = sy(tTop - (st.weapon === 'shotgun' ? 3 : 7));
-      const wood = st.weapon === 'musket' ? '#6a4626' : st.weapon === 'shotgun' ? '#4a2e1a' : WOOD;
-      const stockTop = st.weapon === 'musket' ? top0 + 3 : sy(tTop + 8);
-      R(gx - 1, stockTop, 2, SH - 1 - stockTop, wood); R(gx, stockTop, 1, SH - 1 - stockTop, WOOD_D); R(gx - 1, SH - 1, 2, 1, '#1a1410');
-      R(gx, top0, 1, stockTop - top0, st.weapon === 'shotgun' ? '#2e2e2a' : STEEL);
-      if (st.weapon === 'shotgun') R(gx - 1, top0, 1, stockTop - top0, '#5a5a56');
-      if (st.weapon === 'rifle') R(gx, top0 - 4, 1, 4, STEEL_L);                                   // штык
+    case 'rifle': case 'musket': case 'shotgun': case 'mg': hand(); break; // на ремне за спиной (см. drawSlung)
+    case 'fork': { // вилы на плече: черенок от кисти через плечо, зубья над головой
+      const tx = hx - 3, ty = sy(top - 4);
+      pline(c, hx + 1, hy2 + 3, tx + 1, ty + 2, WOOD);
+      R(tx - 1, ty + 2, 4, 1, STEEL); R(tx - 1, ty, 1, 2, STEEL); R(tx + 1, ty - 1, 1, 3, STEEL); R(tx + 2, ty, 1, 2, STEEL_L);
       hand();
       break;
     }
-    case 'mg': { // пулемёт на ремне через грудь, ствол над правым плечом
-      pline(c, tx0 + 1, sy(tBot - 2), tx1 + 3, sy(tTop - 6), '#2e302e', 2); pline(c, tx0 + 2, sy(tBot - 2), tx1 + 3, sy(tTop - 5), '#6a6e68');
-      R(11, sy(tTop + 5), 4, 3, '#5a5c48'); R(11, sy(tTop + 5), 4, 1, '#7a7c64');
-      hand();
-      break;
-    }
-    case 'fork':
-      R(hx + 1, 2, 1, SH - 2, WOOD); R(hx, 2, 3, 1, STEEL); R(hx, 0, 1, 2, STEEL); R(hx + 1, 0, 1, 2, STEEL); R(hx + 2, 0, 1, 2, STEEL);
-      hand();
-      break;
-    case 'goad': R(hx + 1, 1, 1, SH - 1, WOOD); P(hx + 1, 0, STEEL_L); hand(); break;
+    case 'goad': pline(c, hx + 1, hy2 + 3, hx - 2, sy(top - 3), WOOD); P(hx - 2, sy(top - 4), STEEL_L); hand(); break;   // стрекало на плече
     case 'pole': pline(c, hx + 1, SH - 1, hx + 3, 1, WOOD); P(hx + 3, 0, '#f0a040'); hand(); break;
     case 'staff':
       R(hx + 1, 4, 1, SH - 4, '#2a2018'); R(hx, 1, 3, 3, '#7ad050'); P(hx + 1, 2, '#e8ffc0'); hand();
@@ -702,6 +708,10 @@ export function miniSprite(kind: string, frame = 0, back = false): HTMLCanvasEle
   const coat = st.bare ? (st.skin ?? '#6e2a22') : GR.body === 'none' ? '#a89e86' : st.coat ?? '#4a4232', legs = st.bare ? shade(coat, -0.15) : st.legs ?? shade(coat, -0.4), skin = st.skin ?? '#c4ac90';
   const hand = GR.hands === 'gloves' ? '#3e2a1a' : GR.hands === 'shootgloves' ? '#6a4a2e' : skin;
   const step = frame === 1 ? -1 : frame === 3 ? 1 : 0;   // в шаге поднята одна нога
+  const SLC: Record<string, string> = { rifle: WOOD, musket: '#6a4626', shotgun: '#4a2e1a', mg: '#2e302e' };
+  const slung = st.weapon ? SLC[st.weapon] : undefined;
+  const sling = () => { pline(c, 1, 11, 9, 0, slung!); ppx(c, 9, 0, st.weapon === 'mg' ? STEEL_L : STEEL); ppx(c, 8, 1, st.weapon === 'mg' ? '#2e302e' : STEEL); }; // ружьё на ремне за спиной
+  if (slung && !back) sling();
   // ноги
   if (st.dress) { R(2, 10, 7, 4, shade(coat, -0.15)); if (step >= 0) R(3, 14, 2, 1, INK); if (step <= 0) R(6, 14, 2, 1, INK); }
   else { R(3, 11, 2, step < 0 ? 2 : 3, legs); R(6, 11, 2, step > 0 ? 2 : 3, legs); R(4, 11, 1, 3, shade(legs, -0.25)); R(7, 11, 1, 3, shade(legs, -0.25)); }
@@ -729,6 +739,7 @@ export function miniSprite(kind: string, frame = 0, back = false): HTMLCanvasEle
   if (st.number && !back) R(3, 7, 2, 1, '#d8d4c0');
   if (st.armband) R(1, 7, 1, 2, st.armband);
   if (st.tanks) { R(2, 4, 1, 2, '#5a5e4a'); R(8, 4, 1, 2, '#5a5e4a'); if (back) { R(3, 6, 2, 4, '#5a5e4a'); R(6, 6, 2, 4, '#5a5e4a'); } }
+  if (slung && back) sling(); else if (slung) pline(c, 7, 6, 3, 10, '#3a2a1a');
   // голова
   R(3, 2, 5, 4, skin); R(7, 2, 1, 4, shade(skin, -0.2));
   if (back) { // затылок
@@ -762,7 +773,6 @@ export function miniSprite(kind: string, frame = 0, back = false): HTMLCanvasEle
   }
   // оружие — в правой руке
   switch (st.weapon) {
-    case 'rifle': case 'musket': R(10, 3, 1, 11, WOOD); R(10, 1, 1, 3, STEEL); break;
     case 'fork': case 'staff': case 'pole': case 'goad': R(10, 1, 1, 13, WOOD); if (st.weapon === 'fork') { R(9, 0, 1, 2, STEEL); R(10, 0, 1, 1, STEEL); R(11, 0, 1, 2, STEEL); } if (st.weapon === 'staff') R(10, 0, 1, 2, '#7ad050'); break;
     case 'saber': R(10, 10, 1, 4, STEEL_L); R(9, 10, 1, 1, BRASS); break;
     case 'hammer': case 'wrench': case 'shovel': R(10, 6, 1, 5, WOOD); R(10, 5, 2, 2, STEEL); break;
@@ -771,8 +781,6 @@ export function miniSprite(kind: string, frame = 0, back = false): HTMLCanvasEle
     case 'knife': R(10, 11, 1, 2, STEEL_L); R(10, 10, 1, 1, BRASS); break;
     case 'pistol': R(10, 10, 1, 2, '#3a3a36'); break;
     case 'sawnoff': R(10, 10, 1, 3, '#3a3a36'); ppx(c, 10, 13, STEEL_L); break;
-    case 'shotgun': R(10, 3, 1, 11, '#4a2e1a'); R(10, 1, 1, 3, '#3a3a36'); break;
-    case 'mg': R(10, 2, 1, 10, '#2e302e'); R(9, 6, 2, 2, '#5a5c48'); R(10, 0, 1, 2, STEEL_L); break;
   }
   c.setTransform(1, 0, 0, 1, 0, 0);
   outline(cv, INK);
