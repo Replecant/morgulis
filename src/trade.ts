@@ -106,6 +106,17 @@ export const SHOPS: Record<string, Shop> = {
     items: { gasmask: 1, surgerykit: 1 },
     cons: ['bandage', 'medkit', 'antiseptic', 'painkiller', 'filter'],
   },
+  // торговые конвои — лавка прямо на тракте: что везут, тем и торгуют
+  convoy_wh: {
+    name: 'Торговый конвой Винферд — Леди Харрингтон', greet: 'Груз по накладной, охрана по договору. Мелочь в дорогу продам — с наценкой за пыль.',
+    items: { greatcoat: 1, boots: 1, gloves: 1, oillamp: 1 },
+    cons: ['ration', 'bandage', 'filter', 'ammo_rifle', 'ammo_pistol'],
+  },
+  convoy_aw: {
+    name: 'Торговый конвой Олдридж — Винферд', greet: 'Барону — нефть, нам — комиссия. Тебе — что осталось в кузове.',
+    items: { 'rifle~w': 1, leather: 1, tools: 1, oillamp: 1 },
+    cons: ['ration', 'ammo_rifle', 'ammo_shell', 'parts', 'dynamite'],
+  },
   market: {
     name: 'Торговец — рынок Среднего города', greet: 'Лучший товар в округе. Цены — тоже лучшие. Для меня.',
     items: { rat: 2, revolver: 1, autopistol: 1, carbine: 1, rifle: 1, huntrifle: 1, shotgun2: 1, pumpshot: 1, mg: 1, saber: 1, hammer: 1, trenchclub: 1, spade: 1, greatcoat: 1, gloves: 1, boots: 1, apron: 1, tools: 1, lockpicks: 1, grimoire: 1, helmet: 2, steelhelm: 1, smask: 1, goggles: 1, quilted: 1, cuirass: 1, sapper: 1, greaves: 1, shootgloves: 1, oillamp: 1, elamp: 1, flamer: 1, exprifle: 1, 'shotgun2~w': 1 },
@@ -119,6 +130,10 @@ export function resetShops() { for (const k in SHOPS) stock[k] = { ...SHOPS[k].i
 export const getStock = () => stock;
 export function setStock(s: Record<string, Record<string, number>>) { for (const k in SHOPS) stock[k] = { ...(s[k] ?? SHOPS[k].items) }; }
 resetShops();
+/** Привоз: поезд или конвой пополняет торговцев до их обычного запаса (сверх — не убирает). */
+export function restockShops(ids: string[]) {
+  for (const k of ids) { const base = SHOPS[k]?.items; if (!base) continue; const st = (stock[k] ??= {}); for (const [id, n] of Object.entries(base)) st[id] = Math.max(st[id] ?? 0, n); }
+}
 
 export const Trade = {
   open: false,

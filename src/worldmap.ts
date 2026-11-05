@@ -5,6 +5,7 @@
 // ============================================================
 import { G, arthurAlive, ratIn } from './state';
 import { seeded, TAU, clamp, dist, Pt } from './util';
+import { restockShops } from './trade';
 import { PixelView, LW, LH, PS, PLight, applyLight, prect, ppx, pline, pellipse, pshadow, outline, pixelize, shade } from './px';
 import { miniSprite } from './sprites';
 import { lampLevel } from './state';
@@ -158,6 +159,50 @@ const PATROL_OWNER: PatrolOwner[] = ['baron', 'baron', 'baroness', 'revo', 'revo
 const PATROL_SPEED = 36;   // пикселей карты в час
 interface Patrol { path: number[][]; len: number; s: number; dir: 1 | -1; wait: number; speed: number; owner: PatrolOwner; off?: Pt; beaten?: number; spare?: number } // spare — до этого часа братья не трогают отряд (отпустили, отстали) // off — сошёл с дороги в погоню; beaten — до этого часа потрёпан и в бой не лезет
 const polyLen = (pts: number[][]) => pts.reduce((a, pt, i) => (i ? a + Math.hypot(pt[0] - pts[i - 1][0], pt[1] - pts[i - 1][1]) : 0), 0);
+// ------------------------------------------------------------ торговля мира: поезда и конвои
+// Ходят по расписанию от игрового времени (а не от кадров): поезд или конвой находится там, где ему положено быть
+// в этот час, — хоть отряд стоял в сцене, хоть отдыхал. Прибыв в форт, пополняют запас торговцев.
+/** Участок главной линии между долготами xa и xb (в порядке движения). */
+function railSeg(xa: number, xb: number): number[][] {
+  const lo = Math.min(xa, xb), hi = Math.max(xa, xb);
+  const pts = [[lo, railY(lo)], ...RAIL.filter(([x]) => x > lo && x < hi), [hi, railY(hi)]];
+  return xa <= xb ? pts : pts.reverse();
+}
+export interface Route {
+  kind: 'train' | 'convoy'; name: string; path: number[][]; len: number;
+  speed: number; waitA: number; waitB: number; phase: number; // пикселей карты в час; стоянка в начале (депо) и в конце (разгрузка), часов; сдвиг расписания
+  a: string; b: string;       // концы — id мест
+  shop?: string;              // лавка конвоя (можно поторговать на дороге)
+}
+const mkRoute = (r: Omit<Route, 'len'>): Route => ({ ...r, len: polyLen(r.path) });
+export const ROUTES: Route[] = [
+  // очень редкие поезда: нефть с промыслов — в форты
+  mkRoute({ kind: 'train', name: 'Нефтяной поезд Эшфорд — форт Олдриджа', path: railSeg(430, 1730), speed: 150, waitA: 70, waitB: 5, phase: 40, a: 'ashford', b: 'fort' }),
+  mkRoute({ kind: 'train', name: 'Нефтяной поезд форт Олдриджа — форт Винферда', path: [...railSeg(1730, 255), ...WF_RAIL.slice(1)], speed: 150, waitA: 80, waitB: 6, phase: 10, a: 'fort', b: 'wfort' }),
+  mkRoute({ kind: 'train', name: 'Поезд Особый лагерь — форт Леди Харрингтон', path: railSeg(-1300, -2080), speed: 130, waitA: 64, waitB: 5, phase: 58, a: 'bcamp', b: 'bfort' }),
+  // торговые конвои — грузовики по трактам
+  mkRoute({ kind: 'convoy', name: 'Торговый конвой Винферд — Леди Харрингтон', path: [...ROADS[16].slice().reverse(), ...ROADS[6].slice().reverse().slice(1), [-1950, 680], [-2150, 640]], speed: 60, waitA: 14, waitB: 12, phase: 6, a: 'wfort', b: 'bfort', shop: 'convoy_wh' }),
+  mkRoute({ kind: 'convoy', name: 'Торговый конвой Олдридж — Винферд', path: [[1730, 840], ...ROADS[14], ...ROADS[15].slice(1)], speed: 60, waitA: 12, waitB: 14, phase: 30, a: 'fort', b: 'wfort', shop: 'convoy_aw' }),
+];
+/** Где маршрут в момент t: s — пройдено по пути, dir — куда едет, moving — в пути (иначе стоит на конце). */
+export function routeAt(r: Route, t: number) {
+  const T = r.len / r.speed, C = r.waitA + T + r.waitB + T, u = (((t + r.phase) % C) + C) % C;
+  if (u < r.waitA) return { s: 0, dir: 1 as const, moving: false, at: r.a };
+  if (u < r.waitA + T) return { s: ((u - r.waitA) / T) * r.len, dir: 1 as const, moving: true, at: '' };
+  if (u < r.waitA + T + r.waitB) return { s: r.len, dir: -1 as const, moving: false, at: r.b };
+  return { s: r.len - ((u - r.waitA - T - r.waitB) / T) * r.len, dir: -1 as const, moving: true, at: '' };
+}
+/** Прибытия маршрута на концы в промежутке (t0, t1]. */
+function arrivals(r: Route, t0: number, t1: number): string[] {
+  const T = r.len / r.speed, C = r.waitA + T + r.waitB + T, out: string[] = [];
+  for (const [end, off] of [[r.b, r.waitA + T], [r.a, C]] as [string, number][]) {
+    for (let tt = Math.ceil((t0 + r.phase - off) / C) * C + off - r.phase; tt <= t1; tt += C) if (tt > t0) out.push(end);
+  }
+  return out;
+}
+/** Кому что привозят: поезд и конвой пополняют торговцев на месте прибытия. */
+const DELIVER: Record<string, string[]> = { fort: ['market', 'clinic'], wfort: ['wf_market'], bfort: ['bquarter'], ashford: ['oldos'] };
+
 function polyAt(pts: number[][], s: number): Pt & { dx: number; dy: number } {
   for (let i = 1; i < pts.length; i++) {
     const [x0, y0] = pts[i - 1], [x1, y1] = pts[i], l = Math.hypot(x1 - x0, y1 - y0);
@@ -397,6 +442,11 @@ export const World = {
   onDemon: () => {},
   hungryHit: null as Hungry | null,
   onHungry: () => {},
+  trafficClock: 0,                     // до какого часа уже учтены прибытия поездов и конвоев
+  heardTrain: -1,                      // какой поезд отряд уже слышал вблизи (чтобы не повторять)
+  pendingConvoy: null as Route | null,
+  onTraffic: (_msg: string) => {},
+  onConvoy: (_r: Route) => {},
   morlocks: [] as Morl[],
   morlHit: null as Morl | null,
   onMorlock: () => {},
@@ -417,6 +467,7 @@ export const World = {
       x, y, r: 70 + ((i * 37) % 50), vx: 9 + (i % 3) * 3, vy: ((i % 2) * 2 - 1) * 2, seed: i * 1.9 }));
     this.inGas = false; this.gasDose = 0; this.filterUse = 0; this.clashes = []; this.clashHit = null;
     this.demons = [0.6, 3.6].map((a, i) => { const q = lakeRing(a, 1.1); return { id: i, x: q.x, y: q.y, tx: q.x, ty: q.y, alive: true, respawn: 0, calm: 0, seen: false, a }; });
+    this.trafficClock = G.clock; this.heardTrain = -1; this.pendingConvoy = null;
     this.morlocks = MORL_START.map(([x, y, kinds], i) => ({ id: i, kinds, x, y, tx: x, ty: y, alive: true, respawn: 0, calm: 0, seen: false }));
     this.hungry = HUNGRY_START.map(([x, y], i) => ({ id: i, kinds: i % 2 ? ['hungry2', 'hungry', 'hungry'] : ['hungry', 'hungry2'], x, y, tx: x, ty: y, alive: true, respawn: 0, calm: 0, seen: false }));
     this.dead = [...DEAD_START.map(([id, kinds, x, y]) => ({ id, kinds, x, y, tx: x, ty: y, alive: true, respawn: 0, calm: 0, seen: false })),
@@ -475,6 +526,10 @@ export const World = {
       this.updateLocation(); this.discover();
       return;
     }
+    // клик по торговому конвою — подойти и заговорить
+    const cv = this.convoyNear({ x, y: y + 8 }, 26);
+    if (cv) { this.route = []; this.pending = null; this.pendingPatrol = null; this.pendingConvoy = cv; const q = this.convoyPos(cv); this.party.tx = q.x; this.party.ty = q.y; this.party.moving = true; return; }
+    this.pendingConvoy = null;
     // клик по патрулю — подойти и заговорить
     const pt = this.patrolNear({ x, y: y + 8 }, 22);
     if (pt) { this.route = []; this.pending = null; this.pendingPatrol = pt; const q = this.patrolPos(pt); this.party.tx = q.x; this.party.ty = q.y; this.party.moving = true; return; }
@@ -491,7 +546,9 @@ export const World = {
     const l = this.nearLoc();
     if (l) { this.onArrive(l); return; }
     const pn = this.patrolNear(this.party, 45);
-    if (pn) { this.party.moving = false; this.onPatrol(pn.owner); }
+    if (pn) { this.party.moving = false; this.onPatrol(pn.owner); return; }
+    const cv = this.convoyNear(this.party, 50);
+    if (cv) { this.party.moving = false; this.onConvoy(cv); }
   },
 
   update(dt: number) {
@@ -501,6 +558,14 @@ export const World = {
       const q = this.patrolPos(this.pendingPatrol);
       p.tx = q.x; p.ty = q.y;
       if (dist(q, p) < 26) { const ow = this.pendingPatrol.owner; this.pendingPatrol = null; p.moving = false; G.keys.clear(); this.onPatrol(ow); return; }
+    }
+    if (this.pendingConvoy) { // догоняем конвой
+      const ro = this.pendingConvoy;
+      if (!routeAt(ro, G.clock).moving) this.pendingConvoy = null;
+      else {
+        const q = this.convoyPos(ro); p.tx = q.x; p.ty = q.y; p.moving = true;
+        if (dist(q, p) < 30) { this.pendingConvoy = null; p.moving = false; G.keys.clear(); this.onConvoy(ro); return; }
+      }
     }
     let vx = 0, vy = 0;
     if (k.has('ArrowLeft') || k.has('KeyA')) vx -= 1;
@@ -548,6 +613,7 @@ export const World = {
       this.updateBand(dt);
       this.updateHungry(dt);
       this.updateMorlocks(dt);
+      this.updateTraffic();
       this.updateDemons(dt);
       this.updateLoyal(dt);
       this.updateDsq(dt);
@@ -743,6 +809,29 @@ export const World = {
       if (chase && d < 20) { p.moving = false; this.pending = null; G.keys.clear(); this.morlHit = g; this.onMorlock(); return; }
     }
   },
+  /** Поезда и конвои: прибытия с прошлого раза пополняют торговцев; рядом с отрядом — весть. */
+  updateTraffic() {
+    const p = this.party, t0 = this.trafficClock, t1 = G.clock;
+    if (t1 <= t0) return;
+    this.trafficClock = t1;
+    ROUTES.forEach((r, i) => {
+      for (const end of arrivals(r, t0, Math.min(t1, t0 + 400))) {
+        restockShops([...(DELIVER[end] ?? []), ...(r.shop ? [r.shop] : [])]);
+        const l = LOCS.find((q) => q.id === end);
+        if (l && dist(l, p) < 450 && DELIVER[end]) this.onTraffic(r.kind === 'train' ? `${l.name}: пришёл поезд — у торговцев свежий товар.` : `${l.name}: пришёл торговый конвой — у торговцев свежий товар.`);
+      }
+      if (r.kind === 'train') { // гудок и стук колёс — слышно издалека
+        const st = routeAt(r, t1), q = polyAt(r.path, st.s), near = st.moving && dist(q, p) < 380;
+        if (near && this.heardTrain !== i) { this.heardTrain = i; this.onTraffic('Гудок, стук колёс — по линии идёт поезд с цистернами.'); }
+        if (!near && this.heardTrain === i) this.heardTrain = -1;
+      }
+    });
+  },
+  /** Конвой на дороге рядом с точкой (стоящий на конце — в форте, с ним не поговоришь на тракте). */
+  convoyNear(q: Pt, r: number) {
+    return ROUTES.find((ro) => { if (ro.kind !== 'convoy') return false; const st = routeAt(ro, G.clock); if (!st.moving) return false; return dist(polyAt(ro.path, st.s), q) < r; }) ?? null;
+  },
+  convoyPos(ro: Route) { return polyAt(ro.path, routeAt(ro, G.clock).s); },
   killMorlocks() { const g = this.morlHit; if (g) { g.alive = false; g.respawn = G.clock + 60; } this.morlHit = null; },
   /** Стая отступила в темноту: на время не преследует, уходит к пещере. */
   calmMorlocks(hours: number) {
@@ -998,6 +1087,7 @@ export const World = {
     this.cam.x = Math.round(clamp(p.x - VW / 2, WX0, WW - VW) / 2) * 2;
     this.cam.y = Math.round(clamp(p.y - VH / 2, WY0, WH - VH) / 2) * 2;
     const cx = this.cam.x, cy = this.cam.y, lx = cx / 2, ly = cy / 2;
+    const c0Labels: [string, Pt, string][] = []; // подписи поездов и конвоев — выводятся вместе с подписями отрядов
     const v = (this.view ??= new PixelView(LW, LH)), lc = v.c;
     lc.drawImage(this.bg!, lx + OX, ly + OY, LW, LH, 0, 0, LW, LH);
     for (const l of LOCS) { // найденные примечательности
@@ -1109,6 +1199,43 @@ export const World = {
         mini(pt.owner === 'winford' ? (k === 0 ? 'wfofficer' : 'wfguard') : pt.owner === 'baroness' ? 'bguard' : pt.owner === 'revo' ? (k === 0 ? 'brother_off' : k === 1 ? 'brother' : 'brother2') : 'guard', X(q.x), Y(q.y), fl, fr(walk, k * 1.3), bk);
       }
     }
+    // поезда и торговые конвои
+    ROUTES.forEach((ro) => {
+      const st = routeAt(ro, G.clock);
+      if (ro.kind === 'train') {
+        if (!st.moving && st.at === ro.a) return;            // в депо — не видно
+        const n = 5;                                         // паровоз и четыре цистерны
+        for (let k = n - 1; k >= 0; k--) {
+          const q = polyAt(ro.path, clamp(st.s - st.dir * k * 30, 0, ro.len)), l = Math.hypot(q.dx, q.dy) || 1;
+          const ux = (q.dx / l) * st.dir, uy = (q.dy / l) * st.dir, side = TRACK_GAP * st.dir; // свой путь — справа по ходу
+          const cx = X(q.x - uy * side), cy = Y(q.y + ux * side);
+          const a = [cx - ux * 6, cy - uy * 6 - 3], b = [cx + ux * 6, cy + uy * 6 - 3];
+          pline(lc, a[0], a[1] + 1, b[0], b[1] + 1, '#050504', 8);                             // контур и тень
+          if (k === 0) {                                                                    // паровоз: котёл, будка, труба
+            pline(lc, a[0], a[1], b[0], b[1], '#4a423a', 6); pline(lc, a[0], a[1] - 2, b[0], b[1] - 2, '#b0a490');
+            prect(lc, Math.round(a[0] + ux) - 2, Math.round(a[1] + uy) - 6, 4, 4, '#8a3a22'); prect(lc, Math.round(a[0] + ux) - 2, Math.round(a[1] + uy) - 6, 4, 1, '#b85a3a');
+            prect(lc, Math.round(b[0] - ux * 3), Math.round(b[1] - uy * 3) - 6, 2, 4, '#1a1816');
+            if (st.moving) for (let i = 0; i < 5; i++) { const kk = (t * 0.9 + i * 0.2) % 1; ditherDisc(lc, b[0] - ux * 3 - ux * kk * 18, b[1] - 8 - kk * 14, 2 + kk * 6, '#8a887e', 0.75 * (1 - kk)); }
+            prect(lc, Math.round(b[0] + ux), Math.round(b[1]) - 2, 2, 2, '#f0e0a0');              // фонарь
+          } else {                                                                          // цистерна с нефтью: чёрная бочка, светлый блик, люк
+            pline(lc, a[0], a[1], b[0], b[1], '#3a3a32', 6); pline(lc, a[0], a[1] - 2, b[0], b[1] - 2, '#a09e8a'); pline(lc, a[0], a[1] + 2, b[0], b[1] + 2, '#1e1e1a');
+            prect(lc, Math.round(cx) - 1, Math.round(cy) - 7, 2, 2, '#4a4a42');
+          }
+        }
+        if (dist(polyAt(ro.path, st.s), p) < 330) { c0Labels.push([st.moving ? 'Поезд с цистернами' : 'Поезд — разгрузка', polyAt(ro.path, st.s), '#c8c0a8']); }
+      } else {
+        if (!st.moving) return;                              // стоит в форте
+        const n = 3;                                         // два грузовика и охрана
+        for (let k = n - 1; k >= 0; k--) {
+          const q = polyAt(ro.path, clamp(st.s - st.dir * k * 26, 0, ro.len)), fl = q.dx * st.dir < 0;
+          pshadow(lc, X(q.x), Y(q.y) + 1, 10, 2);
+          if (k === 0) armoredCar(lc, X(q.x) - 11, Y(q.y) - 11, fl, true);
+          else truck(lc, X(q.x) - 10, Y(q.y) - 11, fl, ro.a === 'wfort' ? '#3a4458' : '#4a4232');
+        }
+        const q0 = polyAt(ro.path, st.s);
+        if (dist(q0, p) < 300) c0Labels.push(['Торговый конвой', q0, '#d8c890']);
+      }
+    });
     // отряд
     const pm = p.moving || ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'KeyA', 'KeyD', 'KeyW', 'KeyS'].some((kk) => G.keys.has(kk));
     mini(G.squad[0]?.look ?? 'pc', X(p.x), Y(p.y), p.flip, fr(pm), pm && p.back);
@@ -1200,6 +1327,7 @@ export const World = {
       tag(lbl, g.x - cx, g.y - cy - 40, '#a8b0d0');
       c.textAlign = 'left';
     }
+    for (const [lbl, q, col] of c0Labels) { tag(lbl, q.x - cx, q.y - cy - 34, col); c.textAlign = 'left'; }
     for (const g of this.morlocks) {
       if (!g.alive || !g.seen) continue;
       const lbl = G.clock < g.calm ? 'Морлоки (ушли в темноту)' : g.chasing ? 'Морлоки — бегут к вам' : 'Морлоки';
@@ -1621,6 +1749,16 @@ function drawRuins(c: CanvasRenderingContext2D, r: () => number) {
 type Thick = (poly: number[][], col: string, w: number, dash?: [number, number]) => void;
 
 /** Ржавая бронемашина: клёпаный короб на колёсах со спицами, маленькая башенка с пулемётом. */
+/** Грузовик торгового конвоя: кабина, кузов под брезентом. 22×12, смотрит вправо (flip — влево). */
+function truck(s: CanvasRenderingContext2D, x: number, y: number, flip = false, cab = '#4a4232') {
+  const X = (v: number) => (flip ? x + 21 - v : x + v);
+  const R = (a: number, b: number, w: number, h: number, col: string) => prect(s, flip ? x + 21 - a - w + 1 : x + a, y + b, w, h, col);
+  R(1, 2, 13, 7, '#6a6248'); R(1, 2, 13, 1, '#8a8060'); for (const k of [4, 8, 12]) R(k, 2, 1, 7, '#5a5238'); // брезент на дугах
+  R(1, 9, 19, 1, '#2a2620');                                                                        // рама
+  R(14, 4, 6, 5, cab); R(14, 4, 6, 1, shade(cab, 0.2)); R(18, 5, 2, 2, '#9ab0b8'); R(20, 6, 1, 3, shade(cab, -0.3)); // кабина, стекло
+  ppx(s, X(21), y + 7, '#f0e0a0');                                                                  // фара
+  for (const wx of [4, 16]) { pellipse(s, X(wx), y + 10, 2, 2, '#141210'); ppx(s, X(wx), y + 10, '#6a6a60'); }
+}
 function armoredCar(s: CanvasRenderingContext2D, x: number, y: number, flip = false, fresh = false) {
   const X = (v: number) => (flip ? x + 22 - v : x + v);
   const R = (a: number, b: number, w: number, h: number, col: string) => prect(s, flip ? x + 22 - a - w + 1 : x + a, y + b, w, h, col);
