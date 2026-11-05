@@ -9,7 +9,7 @@ import { Explore } from './explore';
 import { World, clockText, LOCS } from './worldmap';
 import { Combat, CT } from './combat';
 import { Dialog, refreshHud, exploreHint, toast, combatShow, combatLog, combatPanel, screen, hideScreen, openSquad, closeSquad, squadOpen } from './ui';
-import { DISMISS } from './dialogs';
+import { DISMISS, STARVED } from './dialogs';
 import { setPcStyle, applyEquipLooks } from './gfx';
 import { makeAlex, makeArthur, makeIvy, makeFerglow, makeMortimer, CLASH, refreshLeader } from './data';
 import type { UnitBase } from './data';
@@ -268,9 +268,34 @@ World.onDay = () => { // раз в сутки отряд ест
   if (aliveCompanion('mortimer') && G.clock >= (G.checkLock.mortPay ?? Infinity) && !alexPending) alexPending = 'mortimer_pay';
   if (Debug.noHunger) { refreshHud(); return; } // отладка: голода нет
   if (G.supplies.ration > 0) { G.supplies.ration--; toast(`${clockText()}: отряд съел паёк (осталось ${G.supplies.ration})`); }
-  else { G.squad.forEach((s) => (s.hp = Math.max(1, s.hp - 2))); Dialog.start('hunger'); }
+  else starve();
   refreshHud();
 };
+/** Пайков нет: голод отнимает по 2 ОЗ; у кого сил уже не осталось (2 ОЗ и меньше) — умирает. Мертвецам Ферглоу еда не нужна. */
+function starve() {
+  const dying = G.squad.filter((s) => !undeadCompanion(s.id) && s.hp <= 2);
+  if (dying.some((s) => s.id === 'pc')) { starvationDeath(); return; }
+  for (const s of dying) { // спутник умирает; его вещи остаются в обозе, сам он больше нигде не появится
+    for (const it of Object.values(s.equip ?? {})) if (it) G.stash.push(it);
+    G.squad = G.squad.filter((x) => x !== s); G.flags['starved_' + s.id] = true;
+  }
+  G.squad.forEach((s) => { if (!undeadCompanion(s.id)) s.hp = Math.max(1, s.hp - 2); });
+  if (dying.length) { applyEquipLooks(G.squad); if (G.mode === 'explore') Explore.enter(Explore.scene, Explore.player); }
+  STARVED.names = dying.map((s) => s.name);
+  Dialog.start(dying.length ? 'hunger_death' : 'hunger');
+}
+/** Голодная смерть героя: тот же экран смерти, что и после поражения, — загрузка или главное меню. */
+function starvationDeath() {
+  const last = Save.latest();
+  screen(
+    `<img class="death-img" src="${frameUrl('death')}" alt=""><div class="death-cap">${tr('Голод добил вас в пустоши. Даже вороны не прилетели — им здесь тоже нечего есть')}</div>`,
+    [
+      ...(last ? [{ label: 'Загрузить сохранение', fn: () => { hideScreen(); loadGame(last); } }] : []),
+      { label: 'В главное меню', fn: () => { hideScreen(); showTitle(); } },
+    ],
+    'death',
+  );
+}
 Dialog.onClose = () => { refreshHud(); if (G.mode === 'explore' || G.mode === 'world') hint(); };
 Dialog.onAction = (act) => {
   if (act.startsWith('enter:')) toScene(act.slice(6));
@@ -509,7 +534,7 @@ function frame(now: number) {
   last = now;
   G.time += dt;
   Dialog.update(dt);
-  const free = !Dialog.active && !squadOpen() && !Inventory.open && !Trade.open && !Sheet.open && !Pause.open && !ProsthShop.open && !OccultMenu.open;
+  const free = !Dialog.active && !squadOpen() && !Inventory.open && !Trade.open && !Sheet.open && !Pause.open && !ProsthShop.open && !OccultMenu.open && !$('screen').innerHTML; // экран (смерть) — мир стоит
   if (alexPending && free && (G.mode === 'explore' || G.mode === 'world')) { const d = alexPending; alexPending = ''; Dialog.start(d); }
   else if (levelPending && free && (G.mode === 'explore' || G.mode === 'world')) { levelPending = false; Dialog.start('levelup'); }
   if (G.mode === 'explore' && free) Explore.update(dt);

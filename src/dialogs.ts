@@ -185,6 +185,8 @@ function desLoot(n: number) {
   };
 }
 
+/** Кого забрал голод — для сообщения. */
+export const STARVED = { names: [] as string[] };
 /** Кого отпускают из отряда (окно «Отряд» → «Отпустить»). */
 export const DISMISS = { id: '' };
 
@@ -1618,7 +1620,11 @@ const WORLD_DIALOGS: Record<string, DTree> = {
       do: (g) => { const n = World.bandLoot; if (World.bandFac === 'deserter') { desLoot(n).give(g); if (World.bandTrophy) g.stash.push(World.bandTrophy); World.bandTrophy = ''; return; } g.money += 6 * n; g.supplies.ammo_rifle += 3 * n; g.supplies.ammo_pistol += 2 * n; g.supplies.bandage += Math.ceil(n / 2); g.supplies.ration += 1; if (World.bandTrophy) g.stash.push(World.bandTrophy); World.bandTrophy = ''; } },
   } },
   hunger: { start: 'a', nodes: {
-    a: { s: 'nar', t: 'Пайки кончились. Голод забирает силы. (−2 ОЗ. Найдите еду: пайки дают в деревнях, их находят в руинах и у мародёров.)' },
+    a: { s: 'nar', t: (g) => 'Пайки кончились. Голод забирает силы. (−2 ОЗ. Найдите еду: пайки дают в деревнях, их находят в руинах и у мародёров.)'
+      + (g.squad.some((s) => s.hp <= 2 && !g.flags['undead_' + s.id]) ? ' Кто-то в отряде еле держится на ногах: ещё один голодный день — и он не встанет.' : '') },
+  } },
+  hunger_death: { start: 'a', nodes: {
+    a: { s: 'nar', t: () => `Есть нечего. Утром ${STARVED.names.length > 1 ? 'не встают' : 'не встаёт'}: ${STARVED.names.join(' и ')} — голод взял своё. Вы забираете снаряжение и оставляете ${STARVED.names.length > 1 ? 'тела' : 'тело'} под камнями. Остальные держатся из последних сил (−2 ОЗ).` },
   } },
 
   // ======================================================= Фенмор
