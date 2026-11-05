@@ -452,7 +452,6 @@ export const World = {
   waiting: false,                      // отряд ждёт на месте (держат пробел)
   trafficClock: 0,                     // до какого часа уже учтены прибытия поездов и конвоев
   pendingConvoy: null as Route | null,
-  onTraffic: (_msg: string) => {},
   onConvoy: (_r: Route) => {},
   morlocks: [] as Morl[],
   morlHit: null as Morl | null,
@@ -820,19 +819,16 @@ export const World = {
       if (chase && d < 20) { p.moving = false; this.pending = null; G.keys.clear(); this.morlHit = g; this.onMorlock(); return; }
     }
   },
-  /** Поезда и конвои: прибытия с прошлого раза пополняют торговцев; о конвое рядом с отрядом — весть. */
+  /** Поезда и конвои: прибытия с прошлого раза пополняют торговцев (молча). */
   updateTraffic() {
-    const p = this.party, t0 = this.trafficClock, t1 = G.clock;
+    const t0 = this.trafficClock, t1 = G.clock;
     if (t1 <= t0) return;
     this.trafficClock = t1;
     ROUTES.forEach((r) => {
       for (const end of arrivals(r, t0, Math.min(t1, t0 + 400))) {
         restockShops([...(DELIVER[end] ?? []), ...(r.shop ? [r.shop] : [])]);
         const from = end === r.a ? r.b : r.a; // товарная торговля: вещи из каталога форта, откуда шли
-        const got = r.goods && MAIN_SHOP[from] && MAIN_SHOP[end] ? importGoods(MAIN_SHOP[from], MAIN_SHOP[end], r.goods) : [];
-        const l = LOCS.find((q) => q.id === end), lf = LOCS.find((q) => q.id === from);
-        // о поездах вестей нет (их слишком много) — только о конвое, пришедшем в форт рядом с отрядом
-        if (r.kind === 'convoy' && l && dist(l, p) < 450 && DELIVER[end]) this.onTraffic(`${l.name}: пришёл торговый конвой — у торговцев свежий товар${got.length && lf ? `; привезли из «${lf.name}»: ${got.join(', ')}` : ''}.`);
+        if (r.goods && MAIN_SHOP[from] && MAIN_SHOP[end]) importGoods(MAIN_SHOP[from], MAIN_SHOP[end], r.goods); // вестей о привозе нет — слишком часто
       }
     });
   },

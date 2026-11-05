@@ -70,7 +70,7 @@ export const WEAPONS: Record<string, Weapon> = {
   houndbite: { name: 'Клыки', type: 'melee', atk: 1, dmg: [3, 6] },
   demonclaw: { name: 'Когти демона', type: 'melee', atk: 1, dmg: [4, 7] },
   // морлоки: камни из пращи, кость и дурной глаз
-  sling:     { name: 'Праща', type: 'ranged', closePen: 1, range: 7, opt: 4, atk: 0, dmg: [2, 4] },
+  sling:     { name: 'Праща', type: 'ranged', closePen: 3, range: 8, opt: 6, atk: 0, dmg: [2, 4] }, // вплотную не раскрутишь — пращник держится поодаль
   boneclub:  { name: 'Костяная дубина', type: 'melee', atk: 1, dmg: [3, 6] },
   boneknife: { name: 'Костяной нож', type: 'melee', atk: 0, dmg: [2, 3] },
   bonecurse: { name: 'Порча', type: 'ranged', closePen: 0, range: 6, opt: 6, atk: 1, dmg: [2, 3], ignoreCover: true, magic: true, color: '#f0d040' },
@@ -387,7 +387,7 @@ export function battleDef(id: string, _flags: Record<string, boolean | undefined
   if (id.startsWith('band_')) { // шайка бандитов: состав в id (band_bandit_gun_bandit_axe…)
     const kinds = id.slice(5).split('+'), w = battleDef('waste', _flags);
     const pos = [{ x: 19, y: 5 }, { x: 17, y: 9 }, { x: 21, y: 7 }, { x: 20, y: 11 }];
-    const ammo: Record<string, Record<string, number>> = { bandit_gun: { rifle: 4 }, bandit_shot: { sawnoff: 2 }, bandit_boss: { revolver: 6 }, deserter: { rifle: 5 }, deserter_mg: { mg: 9 }, deserter_sgt: { revolver: 6 } };
+    const ammo: Record<string, Record<string, number>> = { bandit_gun: { rifle: 5 }, bandit_shot: { sawnoff: 3 }, bandit_boss: { revolver: 6 }, deserter: { rifle: 5 }, deserter_mg: { mg: 9 }, deserter_sgt: { revolver: 6 } };
     const des = kinds.some((k) => k.startsWith('deserter'));
     return { ...w, id, title: des ? 'Дезертиры' : 'Бандиты в пустоши', enemies: kinds.map((t, i) => ({ t, ...pos[i], ammo: ammo[t] })) };
   }

@@ -229,7 +229,6 @@ World.onDiscover = (l) => { const n = l.kind === 'poi' ? XP.poi : XP.place; toas
 World.onDead = () => Dialog.start(World.deadHit?.hell ? 'enc_hdead' : 'enc_dead');
 World.onHungry = () => Dialog.start('enc_hungry');
 World.onMorlock = () => Dialog.start('enc_morlock');
-World.onTraffic = (msg) => toast(msg);
 World.onConvoy = (r) => { if (r.shop) Dialog.start(r.shop); };
 World.onDemon = () => Dialog.start('enc_demon');
 World.onGas = (msg) => { toast(msg); refreshHud(); };

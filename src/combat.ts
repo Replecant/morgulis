@@ -162,13 +162,13 @@ export const Combat = {
       if (!spot) continue;
       const u = mkUnit(ENEMIES[a.t], 'player', spot.x, spot.y);
       u.ally = true;
-      if (a.ammo) Object.assign(u.ammo, a.ammo);
+      this.rollAmmo(u, a.ammo);
       this.units.push(u);
     }
     for (const e of def.enemies) {
       const base = ENEMIES[e.t];
       const u = mkUnit(e.extra ? { ...base, weapons: [...base.weapons, ...e.extra] } : base, 'enemy', e.x, e.y);
-      if (e.ammo) Object.assign(u.ammo, e.ammo);
+      this.rollAmmo(u, e.ammo);
       if (e.move) u.move = Math.max(1, u.move + e.move);
       if (e.name) u.name = e.name;
       u.emptyNote = e.note;
@@ -1028,6 +1028,16 @@ export const Combat = {
     u.ap = 0;
   },
 
+  /** Запас патронов у противника (и у союзников стычки) — случайный на каждый бой: перезаряжаться ИИ не умеет,
+   *  так что это всё, что у него есть. Без указания — от одного до трёх магазинов; указанный запас — с прибавкой до +60 %
+   *  (один заряд — как есть: это сцена, например пустое ружьё оборванца). */
+  rollAmmo(u: Unit, set?: Record<string, number>) {
+    for (const w of u.weapons) {
+      const m = WEAPONS[w].ammo, n = set?.[w];
+      if (n !== undefined) u.ammo[w] = n <= 1 ? n : randInt(n, Math.round(n * 1.6));
+      else if (m && WEAPONS[w].ammoType) u.ammo[w] = randInt(m, m * 3); // только огнестрел: дыхание, гранаты мертвецов — как задано
+    }
+  },
   /** Ближайшая к точке свободная клетка (а не случайная) — чтобы лишние бойцы отряда встали плечом к плечу. */
   closestFree(u: Pt, r: number): Pt | null {
     let best: Pt | null = null, bd = 1e9;
