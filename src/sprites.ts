@@ -27,7 +27,7 @@ export function charSprite(kind: string, frame = 0, dead = false, flash = false)
 /** Сбросить кэш (после смены внешности героя или снаряжения). */
 export function clearSpriteCache(prefix?: string) {
   if (!prefix) { cache.clear(); return; }
-  for (const k of [...cache.keys()]) if (k.startsWith(prefix + '|')) cache.delete(k);
+  for (const k of [...cache.keys()]) if (k.split('|')[0].split('#')[0] === prefix) cache.delete(k); // и виды «#aim», «#back»
 }
 
 export interface SpriteOpts { flip?: boolean; frame?: number; dead?: boolean; flash?: boolean; scale?: number; bob?: number; shadow?: boolean; back?: boolean }
@@ -67,9 +67,12 @@ function buildChar(kind0: string, frame: number): HTMLCanvasElement {
   const top = size === 's' ? 11 : size === 'b' ? 4 : 6;            // верх головы
   const neck = top + 7;
   const tTop = neck + 1;                                            // плечи
-  const tBot = st.bare ? 21 : st.puttees ? 22 : size === 's' ? 26 : 25;           // низ шинели (у солдат — короткий мундир)
+  const GR = st.gear ?? {}, shirt = GR.body === 'none';               // снаряжение бойца отряда; без одежды — одна рубаха
+  const tBot = st.bare ? 21 : st.puttees || shirt ? 22 : GR.body === 'greatcoat' ? (size === 's' ? 27 : 26) : size === 's' ? 26 : 25;  // низ шинели (у солдат — короткий мундир, шинель — длиннее)
   const [tx0, tx1] = size === 'b' ? [6, 17] : [7, 16];
-  const coat = st.bare ? (st.skin ?? '#6e2a22') : st.coat ?? '#4a4a3e', coatD = shade(coat, -0.38), coatL = shade(coat, 0.16);
+  const coat = st.bare ? (st.skin ?? '#6e2a22') : shirt ? '#a89e86' : st.coat ?? '#4a4a3e', coatD = shade(coat, -0.38), coatL = shade(coat, 0.16);
+  const LEATHER = '#5a3a22', slv = GR.body === 'leather' ? LEATHER : coat, slvD = shade(slv, -0.38);   // рукава: у кожанки — кожаные
+  const glove = GR.hands === 'gloves' ? '#3e2a1a' : GR.hands === 'shootgloves' ? '#6a4a2e' : '';
   const skin = st.skin ?? '#c8a684', skinD = shade(skin, -0.3);
   const legs = st.bare ? shade(skin, -0.12) : st.legs ?? '#24221c', legsD = shade(legs, -0.3), boot = st.bare ? shade(skin, -0.6) : '#141210'; // у демонов — копыта
   const LB = st.limbs ?? {};
@@ -104,7 +107,9 @@ function buildChar(kind0: string, frame: number): HTMLCanvasElement {
       if (kind === 'hydraleg') { R(x, lTop - 1, 2, 3, legs); R(x, lTop + 2, 2, len - 4, '#6e726c'); R(inner, lTop + 3, 1, len - 6, BRASS); R(x - (side < 0 ? 1 : 0), bot - 2, 3, 2, '#4a4e4a'); return; }
       R(x, lTop - 1, 2, len, legs); R(x + 1, lTop - 1, 1, len, legsD);
       if (st.puttees) for (let y = bot - 10; y < bot - 3; y++) { R(x, y, 2, 1, (y & 1) ? st.puttees : shade(st.puttees, -0.25)); P(x + ((y >> 1) & 1), y, shade(st.puttees, 0.15)); } // обмотки по спирали
-      R(x, bot - 3, 2, 3, boot); R(x - (side < 0 ? 1 : 0), bot - 1, 3, 1, boot);          // сапог, носок чуть наружу
+      if (GR.legs === 'boots') { R(x, bot - 6, 2, 6, '#5a3a22'); R(x + 1, bot - 6, 1, 6, '#3e2616'); R(x, bot - 6, 2, 1, '#7a5434'); P(x, bot - 4, '#6e4a2c'); R(x - (side < 0 ? 1 : 0), bot - 1, 3, 1, '#1a120c'); } // высокие подкованные сапоги рыжей кожи
+      else { R(x, bot - 3, 2, 3, boot); R(x - (side < 0 ? 1 : 0), bot - 1, 3, 1, boot); }   // сапог, носок чуть наружу
+      if (GR.legs === 'greaves') { R(x, bot - 9, 2, 5, '#8e928c'); R(x, bot - 9, 1, 5, '#b4b8b0'); R(x, bot - 10, 2, 1, '#c0c4c8'); P(x + 1, bot - 7, '#5a5e5a'); } // стальные поножи и наколенник
     };
     leg(lx, -1, LB.legL); leg(rx, 1, LB.legR);
   } else {
@@ -114,7 +119,7 @@ function buildChar(kind0: string, frame: number): HTMLCanvasElement {
       R(x0, sy(y), x1 - x0 + 1, 1, coat);
       R(x0, sy(y), 1, 1, coatL); R(x1 - 1, sy(y), 2, 1, coatD);
     }
-    const foot = (x: number, side: -1 | 1, kind: string | undefined) => { if (kind === 'lost' || lift === side) return; R(x, SH - 1, 2, 1, kind === 'pegleg' ? WOOD : kind ? '#5a5e5a' : boot); };
+    const foot = (x: number, side: -1 | 1, kind: string | undefined) => { if (kind === 'lost' || lift === side) return; R(x, SH - 1, 2, 1, kind === 'pegleg' ? WOOD : kind ? '#5a5e5a' : GR.legs === 'boots' ? '#5a3a22' : GR.legs === 'greaves' ? '#8e928c' : boot); };
     foot(lx, -1, LB.legL); foot(rx, 1, LB.legR);
   }
   if (LB.legL === 'lost' || LB.legR === 'lost') { pline(c, tx0 - 3, sy(tTop + 1), tx0 - 4, SH - 1, WOOD); R(tx0 - 5, sy(tTop + 1), 3, 1, WOOD_D); } // костыль под мышкой
@@ -129,7 +134,7 @@ function buildChar(kind0: string, frame: number): HTMLCanvasElement {
     if (back && !st.bare) { R(12, sy(tTop + 9), 1, tBot - tTop - 8, coatD); R(tx0 + 2, sy(tTop + 7), tx1 - tx0 - 3, 1, coatD); } // шлица и хлястик на спине
     else if (!st.bare) {
       R(12, sy(tTop + 2), 1, tBot - tTop - 1, coatD);               // борт шинели
-      for (const yy of [3, 6]) P(11, sy(tTop + yy), coatL);          // пуговицы
+      if (GR.body !== 'greatcoat') for (const yy of [3, 6]) P(11, sy(tTop + yy), coatL);          // пуговицы
     }
   }
   if (st.bare && back) { // голая спина: лопатки и хребет
@@ -146,12 +151,42 @@ function buildChar(kind0: string, frame: number): HTMLCanvasElement {
   }
   if (st.apron && back) { pline(c, tx0 + 1, sy(tTop), tx1 - 1, sy(tTop + 6), st.apron); pline(c, tx1 - 1, sy(tTop), tx0 + 1, sy(tTop + 6), st.apron); R(tx0, sy(tTop + 7), tx1 - tx0 + 1, 1, st.apron); } // завязки фартука
   else if (st.apron) { R(tx0 + 2, sy(tTop + 2), tx1 - tx0 - 3, (st.dress ? SH - 2 : tBot) - tTop - 1, st.apron); P(tx0 + 2, sy(tTop + 1), st.apron); P(tx1 - 2, sy(tTop + 1), st.apron); }
+  if (GR.body === 'greatcoat' && !st.bare) { // плотная шинель: широкий отложной воротник, двубортная — два ряда пуговиц
+    R(tx0, sy(tTop), tx1 - tx0 + 1, 1, coatD); P(10, sy(tTop + 1), coatD); P(13, sy(tTop + 1), coatD);
+    if (!back && !st.trim) for (const yy of [2, 4, 6]) { P(10, sy(tTop + yy), BRASS); P(13, sy(tTop + yy), BRASS); }
+  }
+  if (GR.body === 'leather') { // кожаная куртка до бёдер с нашитыми пластинами
+    const lD = shade(LEATHER, -0.3);
+    R(tx0 - 1, sy(tTop), tx1 - tx0 + 3, 2, LEATHER); R(tx0, sy(tTop + 2), tx1 - tx0 + 1, 8, LEATHER);
+    R(tx0, sy(tTop + 1), 1, 9, shade(LEATHER, 0.15)); R(tx1 - 1, sy(tTop + 1), 2, 9, lD); R(tx0, sy(tTop + 9), tx1 - tx0 + 1, 1, lD);
+    if (!back) { R(12, sy(tTop + 1), 1, 8, '#2a1a0e'); for (const x of [tx0 + 1, tx1 - 3]) { R(x, sy(tTop + 2), 3, 3, '#3e2614'); P(x + 1, sy(tTop + 3), BRASS); } }
+    else for (const x of [tx0 + 2, tx1 - 4]) R(x, sy(tTop + 2), 3, 5, '#3e2614');
+  }
+  if (GR.body === 'quilted') { // стёганый бронежилет без рукавов: строчки рядами
+    const q = '#6e6650', qD = shade(q, -0.28);
+    R(tx0 + 1, sy(tTop), tx1 - tx0 - 1, 10, q); R(tx0 + 1, sy(tTop), 1, 10, shade(q, 0.15)); R(tx1 - 1, sy(tTop), 1, 10, qD);
+    for (let yy = 2; yy < 10; yy += 2) R(tx0 + 1, sy(tTop + yy), tx1 - tx0 - 1, 1, qD);
+    if (!back) R(12, sy(tTop + 1), 1, 9, shade(q, -0.45));
+  }
+  if (GR.body === 'chitin') { // нагрудник из пластин жучьего панциря, с глянцем
+    const ch = '#6a4a26', chL = '#a8804a';
+    for (const [yy, h] of [[1, 3], [4, 2], [6, 2]] as [number, number][]) { R(tx0 + 1, sy(tTop + yy), tx1 - tx0 - 1, h, ch); R(tx0 + 1, sy(tTop + yy + h - 1), tx1 - tx0 - 1, 1, shade(ch, -0.35)); }
+    P(tx0 + 2, sy(tTop + 1), chL); P(tx0 + 3, sy(tTop + 2), chL); P(tx0 + 2, sy(tTop + 4), chL); P(tx0 + 2, sy(tTop + 6), chL);
+  }
+  if (GR.body === 'sapper') { // тяжёлый сапёрный доспех: панцирь, наплечники, кольчужный подол
+    const s0 = '#5e625e', sL = '#8a8e88', sD = '#3a3e3a';
+    R(tx0, sy(tTop), tx1 - tx0 + 1, 9, s0); R(tx0, sy(tTop), 2, 9, sL); R(tx1 - 1, sy(tTop), 2, 9, sD);
+    for (const yy of [3, 6]) R(tx0, sy(tTop + yy), tx1 - tx0 + 1, 1, sD);
+    for (let yy = tTop + 9; yy <= tBot; yy++) for (let x = tx0; x <= tx1; x++) P(x, sy(yy), (x + yy) % 2 ? '#7a7e78' : '#4a4e4a');
+    for (const x of [tx0 - 2, tx1 - 1]) { R(x, sy(tTop - 1), 4, 3, '#6e726e'); R(x, sy(tTop - 1), 4, 1, sL); }
+  }
   if (st.cuirass) {
     R(tx0 + 1, sy(tTop + 1), tx1 - tx0 - 1, 7, '#8e9296'); R(tx0 + 1, sy(tTop + 1), 2, 7, '#c0c4c8');
     R(tx0 + 1, sy(tTop + 8), tx1 - tx0 - 1, 1, '#4a4c4e'); R(11, sy(tTop + 2), 2, 5, '#a4a8ac');
   }
   if (st.trim) {
-    if (!back) for (const yy of [2, 4, 6]) { P(11, sy(tTop + yy), st.trim); P(13, sy(tTop + yy), st.trim); }
+    const armored = st.cuirass || ['leather', 'quilted', 'sapper', 'chitin'].includes(GR.body ?? ''); // под бронёй пуговиц не видно
+    if (!back && !armored) for (const yy of [2, 4, 6]) { P(11, sy(tTop + yy), st.trim); P(13, sy(tTop + yy), st.trim); }
     R(tx0 - 1, sy(tTop), 2, 1, st.trim); R(tx1, sy(tTop), 2, 1, st.trim);
   }
   if (st.belt) { R(tx0, sy(tTop + 7), tx1 - tx0 + 1, 1, st.belt); if (!back) R(11, sy(tTop + 7), 2, 1, BRASS); }
@@ -178,7 +213,10 @@ function buildChar(kind0: string, frame: number): HTMLCanvasElement {
 
   // --- руки по бокам: x — левый столбец рукава, кисть — под рукавом
   const handAt = (x: number, y: number, kind: string | undefined) => {
-    if (!kind) { R(x, y, 2, 2, skin); P(x + 1, y + 1, skinD); return; }
+    if (!kind) {
+      if (glove) { R(x, y, 2, 2, glove); P(x + 1, y + 1, shade(glove, -0.3)); R(x, y - 1, 2, 1, shade(glove, 0.12)); if (GR.hands === 'shootgloves') P(x, y + 1, skin); return; } // перчатка с крагой; у стрелковой — открытый палец
+      R(x, y, 2, 2, skin); P(x + 1, y + 1, skinD); return;
+    }
     if (kind === 'lost') return;
     if (kind === 'hook') { P(x, y, STEEL); P(x + 1, y + 1, STEEL_L); P(x + 1, y + 2, STEEL); P(x, y + 2, STEEL); return; }
     if (kind === 'hinged') { R(x, y, 2, 2, BRASS); P(x + 1, y + 1, '#7a5a28'); return; }
@@ -187,10 +225,10 @@ function buildChar(kind0: string, frame: number): HTMLCanvasElement {
   };
   const arm = (x: number, kind: string | undefined, hand = true, s = 0) => {
     const y = sy(tTop + 1);
-    if (kind === 'lost') { R(x, y, 2, 3, coat); R(x + 1, y, 1, 3, coatD); P(x, y + 3, coatD); return; } // подколотый рукав
-    if (kind === 'piston') { R(x, y, 2, 3, coat); R(x, y + 3, 2, 5 - s, '#6e726c'); P(x + 1, y + 4, BRASS); P(x + 1, y + 6 - s, '#4a4e4a'); }
-    else if (kind === 'galvanic') { R(x, y, 2, 3, coat); R(x, y + 3, 2, 5 - s, COPPER); for (const k of [3, 5, 7 - s]) P(x, y + k, '#7a4220'); P(x + 1, y + 4, SPARK); }
-    else { R(x, y, 2, 8 - s, coat); R(x + 1, y, 1, 8 - s, coatD); if (kind === 'flesh') P(x, y + 7 - s, '#5a2a2a'); }
+    if (kind === 'lost') { R(x, y, 2, 3, slv); R(x + 1, y, 1, 3, slvD); P(x, y + 3, slvD); return; } // подколотый рукав
+    if (kind === 'piston') { R(x, y, 2, 3, slv); R(x, y + 3, 2, 5 - s, '#6e726c'); P(x + 1, y + 4, BRASS); P(x + 1, y + 6 - s, '#4a4e4a'); }
+    else if (kind === 'galvanic') { R(x, y, 2, 3, slv); R(x, y + 3, 2, 5 - s, COPPER); for (const k of [3, 5, 7 - s]) P(x, y + k, '#7a4220'); P(x + 1, y + 4, SPARK); }
+    else { R(x, y, 2, 8 - s, slv); R(x + 1, y, 1, 8 - s, slvD); if (kind === 'flesh') P(x, y + 7 - s, '#5a2a2a'); }
     if (hand) handAt(x, y + 8 - s, kind);
   };
   const metalL = LB.armL === 'piston' || LB.armL === 'galvanic' || LB.armL === 'lost';
@@ -198,8 +236,8 @@ function buildChar(kind0: string, frame: number): HTMLCanvasElement {
   const aimed = aim && !!st.weapon && AIM.has(st.weapon) && LB.armR !== 'lost';
   const twoHand = aimed && ['rifle', 'musket', 'shotgun', 'mg'].includes(st.weapon!);
   if (twoHand && LB.armL !== 'lost') { // левая рука поддерживает оружие: плечо вниз, предплечье через грудь
-    const y = sy(tTop + 1), lc = LB.armL === 'galvanic' ? COPPER : LB.armL === 'piston' ? '#6e726c' : coat;
-    R(tx0 - 2, y, 2, 4, coat); R(tx0 - 1, y, 1, 4, coatD);
+    const y = sy(tTop + 1), lc = LB.armL === 'galvanic' ? COPPER : LB.armL === 'piston' ? '#6e726c' : slv;
+    R(tx0 - 2, y, 2, 4, slv); R(tx0 - 1, y, 1, 4, slvD);
     pline(c, tx0 - 2, y + 4, tx1 - 6, y + 4, lc, 2);
   } else arm(tx0 - 2, LB.armL, true, ls);
   if (!metalL && LB.armL !== 'lost') {
@@ -283,6 +321,11 @@ function buildChar(kind0: string, frame: number): HTMLCanvasElement {
     if (st.goggles) { R(hx0, hy + 1, 6, 1, '#2a2018'); P(eyeL, hy + 1, BRASS); P(eyeR, hy + 1, BRASS); }
     if (st.eyes) { P(eyeL, ey, st.eyes); P(eyeR, ey, st.eyes); }      // горящие глаза
     }
+    if (GR.face === 'smask') { // стальная полумаска на нос и рот, под ней — кольчужная бармица до плеч
+      if (back) R(hx0, hy + 4, 6, 1, '#3a3a30');
+      else { R(hx0, hy + 4, 6, 3, '#8e928c'); R(hx0, hy + 4, 6, 1, STEEL_L); R(hx0 + 5, hy + 4, 1, 3, '#5e625e'); P(hx0 + 1, hy + 5, '#4a4e4a'); P(hx0 + 4, hy + 5, '#4a4e4a'); R(hx0 + 2, hy + 6, 2, 1, '#2a2c2a'); }
+      for (let yy = hy + 7; yy <= hy + 8; yy++) for (let x = hx0 - 1; x <= hx0 + 6; x++) P(x, yy, (x + yy) % 2 ? '#9a9e98' : '#5e625e');
+    }
     if (st.horns) { // рога в стороны и вверх
       const hd = shade(st.horns, -0.3);
       R(hx0 + 1, hy - 2, 1, 2, st.horns); P(hx0, hy - 3, st.horns); P(hx0 - 1, hy - 4, hd); P(hx0 - 1, hy - 5, hd);
@@ -325,8 +368,8 @@ function buildChar(kind0: string, frame: number): HTMLCanvasElement {
   const hx = ax, hy2 = ay + 9 - rs; // кисть
   if (aimed) { // боевая стойка: оружие на изготовку к цели — длина и силуэт видны издалека
     const bx = tx1; // ружьё у правого плеча
-    const hand2 = (x: number, y: number) => R(x, y, 2, 2, armR ? STEEL : skin);
-    const sleeve = (x: number, y: number, w: number) => { R(x, y, w, 2, coat); R(x, y + 1, w, 1, coatD); };
+    const hand2 = (x: number, y: number) => R(x, y, 2, 2, armR ? STEEL : glove || skin);
+    const sleeve = (x: number, y: number, w: number) => { R(x, y, w, 2, slv); R(x, y + 1, w, 1, slvD); };
     // светлые, контрастные к тёмным шинелям цвета: ствол — светлая сталь с тёмной нижней кромкой, дерево — рыжее
     const EDGE = SW + 7, steelD = '#4a4e4a', dark = '#2e302e', wood = '#8a5e32', woodD = '#5a3a1e';
     switch (st.weapon) {
@@ -368,7 +411,7 @@ function buildChar(kind0: string, frame: number): HTMLCanvasElement {
         R(ax + 5, ay, 4, 2, dark); R(ax + 5, ay, 4, 1, STEEL_L); P(ax + 9, ay, '#f0f4ea'); R(ax + 4, ay + 3, 2, 2, wood);
         break;
       case 'knife': // рука в сторону-вниз, широкий светлый клинок вперёд-вверх
-        pline(c, ax, ay + 1, ax + 3, ay + 5, coat, 2); hand2(ax + 3, ay + 5);
+        pline(c, ax, ay + 1, ax + 3, ay + 5, slv, 2); hand2(ax + 3, ay + 5);
         R(ax + 4, ay + 4, 1, 3, BRASS);
         pline(c, ax + 5, ay + 5, ax + 9, ay + 2, STEEL_L, 2); pline(c, ax + 5, ay + 4, ax + 9, ay + 1, '#f0f4ea'); P(ax + 10, ay + 1, '#f0f4ea');
         break;
@@ -655,17 +698,33 @@ export function miniSprite(kind: string, frame = 0, back = false): HTMLCanvasEle
   if (back) { c.translate(13, 0); c.scale(-1, 1); }   // со спины — зеркально, оружие в другой руке
   c.translate(1, 1);
   const R = (x: number, y: number, w: number, h: number, col: string) => prect(c, x, y, w, h, col);
-  const coat = st.bare ? (st.skin ?? '#6e2a22') : st.coat ?? '#4a4232', legs = st.bare ? shade(coat, -0.15) : st.legs ?? shade(coat, -0.4), skin = st.skin ?? '#c4ac90';
+  const GR = st.gear ?? {};
+  const coat = st.bare ? (st.skin ?? '#6e2a22') : GR.body === 'none' ? '#a89e86' : st.coat ?? '#4a4232', legs = st.bare ? shade(coat, -0.15) : st.legs ?? shade(coat, -0.4), skin = st.skin ?? '#c4ac90';
+  const hand = GR.hands === 'gloves' ? '#3e2a1a' : GR.hands === 'shootgloves' ? '#6a4a2e' : skin;
   const step = frame === 1 ? -1 : frame === 3 ? 1 : 0;   // в шаге поднята одна нога
   // ноги
   if (st.dress) { R(2, 10, 7, 4, shade(coat, -0.15)); if (step >= 0) R(3, 14, 2, 1, INK); if (step <= 0) R(6, 14, 2, 1, INK); }
   else { R(3, 11, 2, step < 0 ? 2 : 3, legs); R(6, 11, 2, step > 0 ? 2 : 3, legs); R(4, 11, 1, 3, shade(legs, -0.25)); R(7, 11, 1, 3, shade(legs, -0.25)); }
   // корпус и руки
   R(2, 6, 7, 5, coat); R(2, 6, 1, 5, shade(coat, 0.18)); R(8, 6, 1, 5, shade(coat, -0.25));
-  R(1, 7, 1, 3, shade(coat, -0.1)); R(9, 7, 1, 3, shade(coat, -0.3)); R(1, 10, 1, 1, skin); R(9, 10, 1, 1, skin);
+  const sl = GR.body === 'leather' ? '#5a3a22' : coat;
+  R(1, 7, 1, 3, shade(sl, -0.1)); R(9, 7, 1, 3, shade(sl, -0.3)); R(1, 10, 1, 1, hand); R(9, 10, 1, 1, hand);
+  // броня и одежда поверх
+  switch (GR.body) {
+    case 'greatcoat': R(2, 6, 7, 1, shade(coat, -0.35)); break;
+    case 'leather': R(2, 6, 7, 4, '#5a3a22'); R(2, 6, 1, 4, '#6e4a2e'); break;
+    case 'quilted': R(3, 6, 5, 4, '#6e6650'); R(3, 7, 5, 1, '#524a3a'); R(3, 9, 5, 1, '#524a3a'); break;
+    case 'chitin': R(3, 6, 5, 3, '#6a4a26'); R(3, 6, 1, 1, '#a8804a'); R(3, 7, 5, 1, '#4a3218'); break;
+    case 'cuirass': R(3, 6, 5, 3, '#8e9296'); R(3, 6, 1, 3, '#c0c4c8'); break;
+    case 'sapper': R(2, 6, 7, 4, '#5e625e'); R(2, 6, 1, 4, '#8a8e88'); R(1, 6, 1, 1, '#6e726e'); R(9, 6, 1, 1, '#6e726e'); R(2, 10, 7, 1, '#7a7e78'); break;
+  }
+  if (!st.dress) {
+    if (GR.legs === 'boots') { R(3, 12, 2, 2, '#5a3a22'); R(6, 12, 2, 2, '#5a3a22'); }
+    if (GR.legs === 'greaves') { R(3, 11, 2, 2, '#8e928c'); R(6, 11, 2, 2, '#8e928c'); }
+  }
   if (st.apron && !back) R(3, 8, 5, 4, st.apron);
   if (st.belt) R(2, 9, 7, 1, st.apron && back ? st.apron : st.belt);
-  if (st.trim && !back) { R(4, 6, 1, 3, st.trim); R(6, 6, 1, 3, st.trim); }
+  if (st.trim && !back && !['leather', 'quilted', 'sapper', 'chitin', 'cuirass'].includes(GR.body ?? '')) { R(4, 6, 1, 3, st.trim); R(6, 6, 1, 3, st.trim); }
   if (st.sash) R(9, 7, 1, 1, '#7a2020');
   if (st.number && !back) R(3, 7, 2, 1, '#d8d4c0');
   if (st.armband) R(1, 7, 1, 2, st.armband);
@@ -684,7 +743,9 @@ export function miniSprite(kind: string, frame = 0, back = false): HTMLCanvasEle
   else if (st.mask) { R(3, 3, 5, 3, '#3a3c30'); R(4, 3, 1, 1, '#9aa080'); R(6, 3, 1, 1, '#9aa080'); }
   else { const e = st.undead ? '#c8ff60' : INK; R(4, 3, 1, 1, e); R(6, 3, 1, 1, e); }
   if (st.beard) R(3, 5, 5, 1, st.beard);
+  if (GR.face === 'smask') { R(3, 4, 5, 2, '#8e928c'); R(3, 4, 5, 1, '#b4b8b0'); }
   if (st.hair && !st.hat) R(3, 1, 5, 2, st.hair);
+  if (st.goggles) { R(3, 3, 5, 1, '#2a2018'); R(4, 3, 1, 1, BRASS); R(6, 3, 1, 1, BRASS); }   // очки на глазах
   if (st.horns) { R(4, 0, 1, 1, st.horns); R(6, 0, 1, 1, st.horns); ppx(c, 3, -1, st.horns); ppx(c, 7, -1, st.horns); }
   if (st.eyes && !st.hood) { R(4, 3, 1, 1, st.eyes); R(6, 3, 1, 1, st.eyes); }
   if (st.longHair && st.hair) { R(2, 2, 1, 5, st.hair); R(8, 2, 1, 5, shade(st.hair, -0.15)); R(3, 1, 5, 1, st.hair); }

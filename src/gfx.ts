@@ -4,7 +4,7 @@
 import { TAU } from './util';
 import { drawSprite, clearSpriteCache } from './sprites';
 import { Character, PROFESSIONS } from './rules';
-import { itemOf } from './items';
+import { itemOf, baseId } from './items';
 import type { UnitBase } from './data';
 
 type Ctx = CanvasRenderingContext2D;
@@ -23,6 +23,8 @@ interface Style {
   limbs?: Partial<Record<string, string>>; // утраченные части тела и протезы (prosthetics.ts) — видны на фигурке // траншейные мертвецы: гнилая кожа, светящиеся глаза; газовые баллоны за спиной
   weapon?: 'saber' | 'rifle' | 'fork' | 'musket' | 'hammer' | 'staff' | 'pole' | 'bottle' | 'book' | 'wrench' | 'bag' | 'knife' | 'pistol' | 'goad' | 'shovel' | 'sawnoff' | 'shotgun' | 'mg' | 'grenade';
   scale?: number;
+  // надетое снаряжение (слоты лица, тела, рук и ног) — у бойцов отряда; body: 'none' — без одежды поверх рубахи
+  gear?: { face?: string; body?: string; hands?: string; legs?: string };
 }
 
 export const STYLES: Record<string, Style> = {
@@ -227,8 +229,11 @@ export function applyEquipLooks(squad: UnitBase[]) {
       ...base,
       hat: head?.hat, hatC: head?.hat === 'helmet' ? '#3d4030' : head?.hat === 'tophat' ? '#141214' : head?.hat === 'cap' ? (base.hat === 'cap' ? base.hatC : '#211a16') : undefined,
       hair: base.hair ?? (head ? undefined : '#3a2a1a'),
-      cuirass: b.equip.body === 'cuirass',
-      mask: b.equip.face === 'gasmask' ? true : base.mask,
+      cuirass: b.equip.body ? baseId(b.equip.body) === 'cuirass' : false,
+      respirator: b.equip.face && baseId(b.equip.face) === 'gasmask' ? true : base.respirator,
+      goggles: b.equip.face && baseId(b.equip.face) === 'goggles' ? true : base.goggles,
+      apron: b.equip.body && baseId(b.equip.body) === 'apron' ? base.apron ?? '#5a3a22' : base.apron,
+      gear: { face: b.equip.face && baseId(b.equip.face), body: b.equip.body ? baseId(b.equip.body) : 'none', hands: b.equip.hands && baseId(b.equip.hands), legs: b.equip.legs && baseId(b.equip.legs) },
       limbs: b.limbs && Object.keys(b.limbs).length ? { ...b.limbs } : undefined,
       weapon: main?.weapon === 'revolver' && tool ? base.weapon : main?.weapon ? WEAPON_LOOK[main.weapon] : undefined,
     };
