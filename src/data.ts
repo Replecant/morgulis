@@ -27,6 +27,7 @@ export interface Weapon {
   burst?: number;      // очередь: столько выстрелов за атаку, каждый с −3; цель и её соседи подавлены
   antiDemon?: number;  // прибавка к урону по демоническим существам
   heavy?: boolean;     // тяжёлое: −1 к перемещению
+  color?: string;      // цвет снаряда у колдовского оружия (по умолчанию — зелёный)
 }
 
 export const WEAPONS: Record<string, Weapon> = {
@@ -68,6 +69,11 @@ export const WEAPONS: Record<string, Weapon> = {
   hexfire:   { name: 'Ведьмин огонь', type: 'ranged', range: 7, opt: 7, atk: 1, dmg: [2, 4], ignoreCover: true, magic: true },
   houndbite: { name: 'Клыки', type: 'melee', atk: 1, dmg: [3, 6] },
   demonclaw: { name: 'Когти демона', type: 'melee', atk: 1, dmg: [4, 7] },
+  // морлоки: камни из пращи, кость и дурной глаз
+  sling:     { name: 'Праща', type: 'ranged', closePen: 1, range: 7, opt: 4, atk: 0, dmg: [2, 4] },
+  boneclub:  { name: 'Костяная дубина', type: 'melee', atk: 1, dmg: [3, 6] },
+  boneknife: { name: 'Костяной нож', type: 'melee', atk: 0, dmg: [2, 3] },
+  bonecurse: { name: 'Порча', type: 'ranged', closePen: 0, range: 6, opt: 6, atk: 1, dmg: [2, 3], ignoreCover: true, magic: true, color: '#f0d040' },
   flame:     { name: 'Зелёное пламя', type: 'ranged', range: 8, opt: 8, atk: 1, dmg: [3, 5], ignoreCover: true, splash: [1, 2], magic: true },
 };
 
@@ -112,6 +118,7 @@ export interface UnitBase {
   ai?: 'melee' | 'ranged' | 'caster' | 'breath'; // breath — сперва дыхание, потом врукопашную
   leader?: boolean;
   demonic?: boolean;
+  howl?: boolean;        // колдун без бесов: вместо Шёпота Бездны — вой из темноты (шаман морлоков)
   boss?: boolean;
   courage0?: number;     // кураж в начале боя от талантов
   innate?: string[];     // оружие, которое не зависит от снаряжения (оккультное пламя Ферглоу)
@@ -244,6 +251,10 @@ export const ENEMIES: Record<string, UnitBase> = {
   dead_gren:    E('dead_gren', 'Мертвец-гренадер', 'dead_gren', 9, 3, ['deadgrenade', 'deadfist'], 'ranged', 1, 9),
   // штурмовик — единственный быстрый мертвец: каска, маска, траншейная дубинка
   dead_storm:   E('dead_storm', 'Траншейный штурмовик', 'dead_storm', 12, 5, ['trenchclub'], 'melee', 3, 11, { armor: 1 }),
+  // морлоки — одичавшие люди из пещер у южных гор Винферда: быстрые, жестокие, стаей
+  morlock_sling:  E('morlock_sling', 'Морлок-пращник', 'morlock_sling', 7, 5, ['sling', 'boneknife'], 'ranged', 3, 11),
+  morlock_war:    E('morlock_war', 'Морлок-воин', 'morlock_war', 12, 5, ['boneclub'], 'melee', 3, 11),
+  morlock_shaman: E('morlock_shaman', 'Морлок-шаман', 'morlock_shaman', 9, 4, ['bonecurse', 'boneknife'], 'caster', 3, 11, { howl: true }),
   // культисты траншейного моря — бывшие солдаты Империи в обносках, что служат демонам; ходят с ними одной сворой
   cultist:      E('cultist', 'Культист', 'cult_k', 8, 4, ['bayonet', 'knife'], 'melee', 2, 10),
   cultist_gun:  E('cultist_gun', 'Культист с винтовкой', 'cult_g', 8, 4, ['rifle', 'bayonet'], 'ranged', 2, 10),
@@ -252,7 +263,8 @@ export const ENEMIES: Record<string, UnitBase> = {
 export interface BattleDef {
   id: string;
   title: string;
-  theme: 'road' | 'factory' | 'trench' | 'forest';
+  theme: 'road' | 'factory' | 'trench' | 'forest' | 'rocks';
+  dark?: boolean; // темно — свет только у отряда и в редких бликах
   map: string[];
   players: [number, number][];
   /** ammo — сколько зарядов на бой (иначе — без счёта), extra — добавочное оружие, move — поправка хода */
@@ -268,6 +280,7 @@ export interface BattleDef {
  *  T  мёртвое дерево     m  станок    P  колонна   (полное укрытие)
  *  c  ящики/бочки/обломки  f  забор                (половинное укрытие)
  *  w  лужа нефти (непроходимо, обзор не закрывает)
+ *  R  валун (полное укрытие)   r  россыпь камней (половинное укрытие)
  *  o  ритуальный круг (проходимо)
  *  x  колючая проволока (непроходимо, обзор не закрывает)
  */
@@ -377,6 +390,31 @@ export function battleDef(id: string, _flags: Record<string, boolean | undefined
     const ammo: Record<string, Record<string, number>> = { bandit_gun: { rifle: 4 }, bandit_shot: { sawnoff: 2 }, bandit_boss: { revolver: 6 }, deserter: { rifle: 5 }, deserter_mg: { mg: 9 }, deserter_sgt: { revolver: 6 } };
     const des = kinds.some((k) => k.startsWith('deserter'));
     return { ...w, id, title: des ? 'Дезертиры' : 'Бандиты в пустоши', enemies: kinds.map((t, i) => ({ t, ...pos[i], ammo: ammo[t] })) };
+  }
+  if (id.startsWith('morl_')) { // морлоки — у подножия гор: валуны, осыпи, чёрные зевы пещер; темно
+    const kinds = id.slice(5).split('+');
+    const pos = [{ x: 19, y: 4 }, { x: 18, y: 9 }, { x: 21, y: 6 }, { x: 20, y: 11 }, { x: 16, y: 6 }];
+    return { id, title: 'Морлоки', theme: 'rocks', dark: true,
+      map: [
+        '####RR####..####RRR#####',
+        '##R....RR.....R.....RR##',
+        '#R..r......r......R...R#',
+        '.....R..........r.......',
+        '..r.......RR.........r..',
+        '.......r.......R........',
+        '...R..........r....R....',
+        '.........R.........r....',
+        '.....r.......RR.........',
+        '.......R..r.........R...',
+        '...........r.....r......',
+        '..R..r..........R.......',
+        '.........R..r.......r...',
+        '....r...........R.......',
+      ],
+      players: [[3, 7], [3, 9], [2, 6], [2, 8]],
+      enemies: kinds.map((t, i) => ({ t, ...pos[i % pos.length] })),
+      lights: [[9, 0, 90, '#6a6a5a'], [3, 8, 120, '#e8c070']],
+    };
   }
   if (id.startsWith('hungry')) { // голодные бандиты — на карте засады в пустоши
     const w = battleDef('waste', _flags), n = +(id.slice(6) || 2);

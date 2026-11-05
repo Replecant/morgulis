@@ -21,7 +21,8 @@ interface Style {
   horns?: string; eyes?: string; // рога (цвет) и горящие глаза — у демонов и ведьм ковена
   puttees?: string; webbing?: string; respirator?: boolean; tabs?: string; number?: boolean; // number — нашивка с номером (заключённые) // военная форма: обмотки, ремни с подсумками, противогаз, петлицы
   limbs?: Partial<Record<string, string>>; // утраченные части тела и протезы (prosthetics.ts) — видны на фигурке // траншейные мертвецы: гнилая кожа, светящиеся глаза; газовые баллоны за спиной
-  weapon?: 'saber' | 'rifle' | 'fork' | 'musket' | 'hammer' | 'staff' | 'pole' | 'bottle' | 'book' | 'wrench' | 'bag' | 'knife' | 'pistol' | 'goad' | 'shovel' | 'sawnoff' | 'shotgun' | 'mg' | 'grenade';
+  weapon?: 'saber' | 'rifle' | 'fork' | 'musket' | 'hammer' | 'staff' | 'pole' | 'bottle' | 'book' | 'wrench' | 'bag' | 'knife' | 'pistol' | 'goad' | 'shovel' | 'sawnoff' | 'shotgun' | 'mg' | 'grenade' | 'sling' | 'club' | 'totem';
+  gaunt?: boolean; bones?: boolean; // gaunt — тощий: рёбра проступают, босые ноги; bones — ожерелье из костей (шаман морлоков)
   scale?: number;
   // надетое снаряжение (слоты лица, тела, рук и ног) — у бойцов отряда; body: 'none' — без одежды поверх рубахи
   gear?: { face?: string; body?: string; hands?: string; legs?: string };
@@ -170,6 +171,10 @@ export const STYLES: Record<string, Style> = {
   crone: { coat: '#2a2622', dress: true, apron: '#3a3226', skin: '#a8a494', hair: '#d0ccc0', longHair: true, eyes: '#c8ff60', weapon: 'staff' },
   crone2: { coat: '#1e1c1e', dress: true, hood: true, weapon: 'staff' },
   crone3: { coat: '#2e2a24', dress: true, skin: '#9a9a8a', hair: '#8a8a80', longHair: true, eyes: '#c8ff60', weapon: 'bag' },
+  // морлоки — одичавшие люди из пещер у южных гор: серая кожа, жёлтые глаза, набедренные повязки
+  morlock_sling:  { bare: true, gaunt: true, skin: '#86887f', eyes: '#f0d040', belt: '#3a2e22', hair: '#2a2824', weapon: 'sling' },
+  morlock_war:    { bare: true, gaunt: true, skin: '#7a7c74', eyes: '#f0d040', belt: '#2e241a', hair: '#1e1c18', weapon: 'club', scale: 1.08 },
+  morlock_shaman: { bare: true, gaunt: true, bones: true, skin: '#8e9088', eyes: '#ffe060', belt: '#4a3a2a', hair: '#6a6a64', beard: '#5a5a54', weapon: 'totem' },
   demon: { bare: true, belt: '#2a1a14', skin: '#6e2a22', horns: '#d0c4a8', eyes: '#ffb040', scale: 1.15 }, // без одежды: голое красное тело, набедренная повязка
   demon2: { bare: true, belt: '#1e1416', skin: '#4e2a2e', horns: '#c0b498', eyes: '#ff7030', scale: 1.15, weapon: 'staff' },
   // знахари — народные колдуны

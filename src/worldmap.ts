@@ -177,6 +177,16 @@ const DEAD_START: [string, string[], number, number][] = [
 // голодные бандиты: оборванцы бродят вглубь земли Олдриджа — слабые и медленные
 interface Hungry { id: number; kinds: string[]; x: number; y: number; tx: number; ty: number; alive: boolean; respawn: number; calm: number; seen: boolean; chasing?: boolean }
 const HUNGRY_START: [number, number][] = [[640, 560], [1330, 640], [1100, 1150]];
+// морлоки: стаи у подножия южных гор Винферда, каждая — у своей пещеры
+interface Morl { id: number; kinds: string[]; x: number; y: number; tx: number; ty: number; alive: boolean; respawn: number; calm: number; seen: boolean; chasing?: boolean }
+export const MORL_START: [number, number, string[]][] = [
+  [-1800, 2230, ['morlock_war', 'morlock_sling', 'morlock_sling']],
+  [-1000, 2240, ['morlock_war', 'morlock_war', 'morlock_shaman', 'morlock_sling']],
+  [900, 2230, ['morlock_war', 'morlock_sling', 'morlock_shaman']],
+  [1650, 2210, ['morlock_war', 'morlock_war', 'morlock_sling']],
+];
+/** Где бродят морлоки: предгорья южных гор, подальше от форта Винферда и Айронклиффа. */
+const morlLand = (q: Pt) => q.y > 2110 && q.y < WH - 150 && q.x > WX0 + 150 && q.x < HELL_X - 150 && dist(q, { x: -250, y: 2050 }) > 330 && dist(q, { x: 300, y: 2330 }) > 260;
 // морские демоны: двое бродят по берегу озера баронессы
 interface LakeDemon { id: number; x: number; y: number; tx: number; ty: number; alive: boolean; respawn: number; calm: number; seen: boolean; a: number }
 const lakeRing = (a: number, k: number) => ({ x: -1650 + Math.cos(a) * 250 * k, y: 420 + Math.sin(a) * 140 * k });
@@ -387,6 +397,9 @@ export const World = {
   onDemon: () => {},
   hungryHit: null as Hungry | null,
   onHungry: () => {},
+  morlocks: [] as Morl[],
+  morlHit: null as Morl | null,
+  onMorlock: () => {},
   deadHit: null as DeadGroup | null,
   patrols: [] as Patrol[],
   onDay: () => {},
@@ -404,6 +417,7 @@ export const World = {
       x, y, r: 70 + ((i * 37) % 50), vx: 9 + (i % 3) * 3, vy: ((i % 2) * 2 - 1) * 2, seed: i * 1.9 }));
     this.inGas = false; this.gasDose = 0; this.filterUse = 0; this.clashes = []; this.clashHit = null;
     this.demons = [0.6, 3.6].map((a, i) => { const q = lakeRing(a, 1.1); return { id: i, x: q.x, y: q.y, tx: q.x, ty: q.y, alive: true, respawn: 0, calm: 0, seen: false, a }; });
+    this.morlocks = MORL_START.map(([x, y, kinds], i) => ({ id: i, kinds, x, y, tx: x, ty: y, alive: true, respawn: 0, calm: 0, seen: false }));
     this.hungry = HUNGRY_START.map(([x, y], i) => ({ id: i, kinds: i % 2 ? ['hungry2', 'hungry', 'hungry'] : ['hungry', 'hungry2'], x, y, tx: x, ty: y, alive: true, respawn: 0, calm: 0, seen: false }));
     this.dead = [...DEAD_START.map(([id, kinds, x, y]) => ({ id, kinds, x, y, tx: x, ty: y, alive: true, respawn: 0, calm: 0, seen: false })),
       ...HELL_DEAD_START.map(([x, y], i) => ({ id: 'hell' + i, kinds: hellDeadRoll(), x, y, tx: x, ty: y, alive: true, respawn: 0, calm: 0, seen: false, hell: true }))];
@@ -533,6 +547,7 @@ export const World = {
       this.updateClouds(dt);
       this.updateBand(dt);
       this.updateHungry(dt);
+      this.updateMorlocks(dt);
       this.updateDemons(dt);
       this.updateLoyal(dt);
       this.updateDsq(dt);
@@ -702,6 +717,38 @@ export const World = {
       if (dd > 0.5) { g.x += ((g.tx - g.x) / dd) * Math.min(sp, dd); g.y += ((g.ty - g.y) / dd) * Math.min(sp, dd); }
       if (chase && d < 20) { p.moving = false; this.pending = null; G.keys.clear(); this.hungryHit = g; this.onHungry(); return; }
     }
+  },
+  /** Морлоки: бродят у своих пещер в предгорьях; заметив отряд в предгорьях — бегут на него быстрее голодных. Патрулей сторонятся. */
+  updateMorlocks(dt: number) {
+    const p = this.party, hours = dt * HOURS_PER_SEC;
+    for (const g of this.morlocks) {
+      const [hx, hy] = MORL_START[g.id];
+      if (!g.alive) {
+        if (G.clock >= g.respawn && dist({ x: hx, y: hy }, p) > 450) { g.alive = true; g.x = g.tx = hx; g.y = g.ty = hy; }
+        continue;
+      }
+      const d = dist(g, p), patrolNear = this.nearPatrol(g, 200);
+      g.seen = d < 300;
+      const chase = !Debug.invisible && d < 190 && G.clock >= g.calm && !patrolNear && morlLand(p);
+      g.chasing = chase;
+      if (chase) { g.tx = p.x; g.ty = p.y; }
+      else if (dist(g, { x: g.tx, y: g.ty }) < 4 || !morlLand({ x: g.tx, y: g.ty })) {
+        for (let k = 0; k < 10; k++) {
+          const a = Math.random() * TAU, rr = 60 + Math.random() * 200, t = { x: hx + Math.cos(a) * rr, y: hy + Math.sin(a) * rr * 0.5 };
+          if (morlLand(t)) { g.tx = t.x; g.ty = t.y; break; }
+        }
+      }
+      const sp = (chase ? 46 : 18) * hours, dd = dist(g, { x: g.tx, y: g.ty });
+      if (dd > 0.5) { g.x += ((g.tx - g.x) / dd) * Math.min(sp, dd); g.y += ((g.ty - g.y) / dd) * Math.min(sp, dd); }
+      if (chase && d < 20) { p.moving = false; this.pending = null; G.keys.clear(); this.morlHit = g; this.onMorlock(); return; }
+    }
+  },
+  killMorlocks() { const g = this.morlHit; if (g) { g.alive = false; g.respawn = G.clock + 60; } this.morlHit = null; },
+  /** Стая отступила в темноту: на время не преследует, уходит к пещере. */
+  calmMorlocks(hours: number) {
+    const g = this.morlHit; if (!g) return;
+    g.calm = G.clock + hours; g.tx = MORL_START[g.id][0]; g.ty = MORL_START[g.id][1];
+    this.morlHit = null;
   },
   /** Морские демоны: бродят кругом по берегу; заметив отряд у воды — идут к нему, но от озера не отходят. */
   updateDemons(dt: number) {
@@ -1022,6 +1069,19 @@ export const World = {
       const fl = g.tx < g.x;
       g.kinds.forEach((k, i) => mini(k, X(g.x) + (i - 1) * 7, Y(g.y) + (i % 2) * 3, fl, fr(pm0, i * 1.1), pm0 && up(g)));
     }
+    // пещеры морлоков у подножия гор — чёрные зевы в скале (видны вблизи)
+    for (const [hx, hy] of MORL_START) {
+      if (dist({ x: hx, y: hy }, p) > 520) continue;
+      const cx = Math.round(X(hx)), cy = Math.round(Y(hy + 40));
+      pellipse(lc, cx, cy - 2, 9, 6, '#4a463e'); pellipse(lc, cx, cy - 1, 7, 4, '#1a1816'); pellipse(lc, cx, cy, 5, 3, '#050404');
+      ppx(lc, cx - 6, cy + 3, '#c8c0aa'); ppx(lc, cx + 5, cy + 4, '#c8c0aa'); ppx(lc, cx + 2, cy + 5, '#b8b09a'); // кости у входа
+    }
+    // морлоки — серые фигуры стаей
+    for (const g of this.morlocks) {
+      if (!g.alive || !g.seen) continue;
+      const fl = g.tx < g.x, mv = dist(g, { x: g.tx, y: g.ty }) > 1;
+      g.kinds.forEach((k, i) => mini(k, X(g.x) + (i - (g.kinds.length - 1) / 2) * 7, Y(g.y) + (i % 2) * 3, fl, fr(mv && pm0, i * 1.5), mv && pm0 && up(g)));
+    }
     // голодные бандиты — плетутся кучкой
     for (const g of this.hungry) {
       if (!g.alive || !g.seen) continue;
@@ -1138,6 +1198,13 @@ export const World = {
       const lbl = chl ? 'Лоялисты — уходят от погони' : G.clock < g.calm ? 'Лоялисты (скрылись)' : dist(g, p) < 150 && !onRoad(p) ? 'Лоялисты — выходят к вам' : 'Лоялисты';
       c.font = 'italic 12px "Old Standard TT", serif'; c.textAlign = 'center';
       tag(lbl, g.x - cx, g.y - cy - 40, '#a8b0d0');
+      c.textAlign = 'left';
+    }
+    for (const g of this.morlocks) {
+      if (!g.alive || !g.seen) continue;
+      const lbl = G.clock < g.calm ? 'Морлоки (ушли в темноту)' : g.chasing ? 'Морлоки — бегут к вам' : 'Морлоки';
+      c.font = 'italic 12px "Old Standard TT", serif'; c.textAlign = 'center';
+      tag(lbl, g.x - cx, g.y - cy - 40, '#d8c860');
       c.textAlign = 'left';
     }
     for (const g of this.hungry) {

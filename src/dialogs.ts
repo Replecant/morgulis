@@ -3,7 +3,7 @@
 //  go — следующий узел, act — действие, do — эффект.
 //  Вариант может требовать проверку навыка: check { skill, dc, ok, fail }.
 // ============================================================
-import { G, hasRepairKit, alexSawAll, ALEX_SIGHTS, arthurIn, ivyIn, ferglowIn, undeadCompanion, aliveCompanion, arthurAlive } from './state';
+import { G, hasRepairKit, hasTool, alexSawAll, ALEX_SIGHTS, arthurIn, ivyIn, ferglowIn, undeadCompanion, aliveCompanion, arthurAlive } from './state';
 import type { SkillKey } from './rules';
 import { pendingTalent, pendingMove, mastery, MAX_LEVEL, PROFESSIONS, COURAGE } from './rules';
 import { addWound, addWoundId, folkHeal } from './wounds';
@@ -98,6 +98,7 @@ export const SPEAKERS: Record<string, { name: string; kind: string | null }> = {
   scav: { name: 'Бандит', kind: 'bandit_gun' },
   deserter: { name: 'Дезертир', kind: 'deserter' },
   hungry: { name: 'Голодный бандит', kind: 'hungry' },
+  morlock: { name: 'Морлок', kind: 'morlock_war' },
   ash_sgt: { name: 'Сержант заставы', kind: 'ashsoldier' },
   ragged: { name: 'Оборванец', kind: 'militia_gun' },
   guard: { name: 'Стражник у ворот', kind: 'guard' },
@@ -707,7 +708,7 @@ const WORLD_DIALOGS: Record<string, DTree> = {
     a: { s: 'wf_steiger', t: 'Штейгер в шахтёрской каске отмечает в журнале выработку. — Айронклифф. Руда, уголь, немного меди. Работаем посменно, спускаемся по номеркам — кто не поднялся, того видно сразу.', c: [
       { t: '[Торговать] Что у вас есть?', act: 'trade:ironcliff' }, { t: 'Что там, в горах?', go: 'mount' }, { t: 'Бывай.', go: 'bye' },
     ] },
-    mount: { s: 'wf_steiger', go: 'a', t: '— Камень и камень. Дальше на юг не ходим — нечего там. Барон хочет новую штольню, уже третий год согласовывают.' },
+    mount: { s: 'wf_steiger', go: 'a', t: '— Камень и камень. Дальше на юг не ходим. У подножия, в пещерах, живут серые — морлоки. Одичали в темноте, глаза жёлтые, как у кошки, и на свет щурятся. Пращой бьют не хуже солдата. Людей таскают, а что с ними потом — лучше не думать. Фонарь держите под рукой. Барон хочет новую штольню, уже третий год согласовывают.' },
     bye: { s: 'wf_steiger', t: '— Бывай. В шахту — только с номерком.' },
   } },
   wf_resclerk: { start: 'a', nodes: {
@@ -1570,6 +1571,19 @@ const WORLD_DIALOGS: Record<string, DTree> = {
     scared: { s: 'hungry', t: 'Оборванцы переглядываются. Сил у них нет даже на злость. — Ладно… ладно. — Они бредут прочь.', act: 'hungry_calm' },
     fight: { s: 'hungry', t: '— Всё равно помирать! — Оборванец поднимает нож дрожащей рукой.', act: 'battle_hungry' },
     away: { s: 'nar', t: 'Вы уходите быстрым шагом. Голодные плетутся следом, но быстро отстают.', act: 'hungry_lose' },
+  } },
+  enc_morlock: { start: 'a', nodes: {
+    a: { s: 'morlock', t: 'Из-за камней поднимаются серые фигуры — голые, тощие, в грязных повязках на бёдрах. Глаза светятся жёлтым, как у кошек в подвале. Один раскручивает над головой пращу, другой скалится и стучит костью о камень. Разговора не будет: они смотрят на вас как на добычу.', c: [
+      { t: 'Драться', act: 'battle_morlock' },
+      { t: '[Фонарь] Поднять фонарь повыше', go: 'lamp', if: () => hasTool('oillamp') || hasTool('elamp') },
+      { t: '[Атлетика] Бежать к дороге', check: { skill: 'athletics', dc: 13, ok: 'ran', fail: 'caught' } },
+    ] },
+    lamp: { s: 'nar', t: 'Вы выкручиваете фитиль и вскидываете фонарь. Свет режет им глаза: серые шипят, закрываются руками и пятятся за камни. Ещё миг — и предгорья пусты, только где-то в скалах затихает вой.', act: 'morlock_calm' },
+    ran: { s: 'nar', t: 'Вы бежите не оглядываясь. Камни свистят над головой, босые ноги шлёпают следом — но у дороги морлоки отстают и растворяются в сумраке предгорий.', act: 'morlock_lose' },
+    caught: { s: 'morlock', t: 'Они быстрее, чем кажутся. Серые обходят с боков, отрезая дорогу, и бросаются разом.', act: 'battle_morlock' },
+  } },
+  after_morlock: { start: 'a', nodes: {
+    a: { s: 'nar', t: 'Серые тела лежат среди камней. Ни денег, ни железа — только костяные ножи, пращи да пустые глазницы черепов на ремешках. У входа в пещеру — обглоданные кости, и не только звериные: рваный ботинок горняка, ржавая каска, пара медяков в золе. (Получено: 3 шиллинга.)', do: (g) => { g.money += 3; } },
   } },
   after_hungry: { start: 'a', nodes: {
     a: { s: 'nar', t: 'Оборванцы лежат в пыли. У них почти ничего нет — нож с выщербленным лезвием и горсть медяков. (Получено: 2 шиллинга.)', do: (g) => { g.money += 2; } },

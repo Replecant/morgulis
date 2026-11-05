@@ -30,6 +30,7 @@ const TILE: Record<string, { walk?: boolean; cover?: number; los?: boolean }> = 
   '.': { walk: true }, ',': { walk: true }, 'o': { walk: true },
   '#': { cover: 40, los: true }, 'm': { cover: 40, los: true }, 'P': { cover: 40, los: true }, 'T': { cover: 40, los: true },
   'c': { cover: 25 }, 'f': { cover: 25 }, 'w': {}, 'x': {},
+  'R': { cover: 40, los: true }, 'r': { cover: 25 }, // валун и россыпь камней (предгорья)
 };
 
 export interface Unit {
@@ -994,7 +995,7 @@ export const Combat = {
   async aiCaster(u: Unit) {
     u.cd.summon--; u.cd.whisper--;
     const imps = this.alive('enemy').filter((e) => e.kind === 'imp').length;
-    if (u.cd.summon <= 0 && imps < 2) {
+    if (u.cd.summon <= 0 && imps < 2 && !u.base.howl) { // шаман морлоков бесов не зовёт
       const spot = this.freeNear(u, 2);
       if (spot) { await this.summon(u, spot); u.ap--; u.cd.summon = 3; }
     }
@@ -1067,7 +1068,7 @@ export const Combat = {
     if (w.type === 'ranged') Sfx.shot(wkey);
     if (a.emptyNote && a.ammo[wkey] === 0) { this.hooks.log(a.emptyNote); a.emptyNote = undefined; }
     if (w.type === 'melee') await this.lunge(a, t);
-    else if (w.magic) { await this.projectile(a, t, '#9fef6a', 320); this.burst(t.px, t.py - 12, '#9fef6a', 26, 90); }
+    else if (w.magic) { const col = w.color ?? '#9fef6a'; await this.projectile(a, t, col, 320); this.burst(t.px, t.py - 12, col, 26, 90); }
     else { this.muzzle(a, t, hit); await sleep(140); }
     if (hit && w.gas && t.gas) { // противогаз держит газ целиком
       this.float(t, 'Противогаз', '#a8b860');
@@ -1302,18 +1303,19 @@ export const Combat = {
   },
 
   async whisper(u: Unit, t: Unit) {
-    this.float(u, '«Смотри в Око…»', '#b58cff');
-    await this.projectile(u, t, '#b58cff', 500);
+    const howl = !!u.base.howl; // шаман морлоков: не Око, а вой из темноты — тот же ужас
+    this.float(u, howl ? '«Ы-ы-ыхх!»' : '«Смотри в Око…»', howl ? '#f0d040' : '#b58cff');
+    await this.projectile(u, t, howl ? '#f0d040' : '#b58cff', 500);
     const save = check(t.horror + (G.flags.salts ? 4 : 0) + (t.st.ward ? 4 : 0), 12);
     if (!save.success) {
       t.terror = true;
       if (t.courage) this.hooks.log(`Ужас гасит кураж: ${t.name} теряет его.`);
       t.courage = 0;
       this.float(t, 'Ужас!', '#b58cff');
-      this.hooks.log(`Шёпот Бездны: ${t.name} охвачен ужасом (в следующем ходу 1 ОД).`);
+      this.hooks.log(howl ? `Вой из темноты: ${t.name} охвачен ужасом (в следующем ходу 1 ОД).` : `Шёпот Бездны: ${t.name} охвачен ужасом (в следующем ходу 1 ОД).`);
     } else {
       this.float(t, 'Устоял', '#ddd');
-      this.hooks.log(`${t.name} устоял перед Шёпотом Бездны.`);
+      this.hooks.log(howl ? `${t.name} устоял перед воем шамана.` : `${t.name} устоял перед Шёпотом Бездны.`);
     }
     await sleep(300);
   },
@@ -1514,11 +1516,12 @@ export const Combat = {
       if (u.team === 'player') lights.push({ x: u.px / PS, y: u.py / PS, r: 44, a: 0.7 });
       else if (u.kind === 'cultist') lights.push({ x: u.px / PS + (u.flip ? -5 : 5), y: u.py / PS - 14, r: 46, a: 0.9, color: '#9fef6a' });
       else if (u.kind === 'imp') lights.push({ x: u.px / PS, y: u.py / PS - 6, r: 20, a: 0.5, color: '#e8ff6a' });
+      else if (u.kind.startsWith('morlock')) lights.push({ x: u.px / PS, y: u.py / PS - 22, r: 14, a: 0.9, color: '#f0d040' }); // жёлтые глаза во тьме
     }
     for (const f of this.fx) if (f.type === 'proj') lights.push({ x: lerp(f.x1, f.x2, f.k!) / PS, y: lerp(f.y1, f.y2, f.k!) / PS, r: 36, a: 1, color: f.color });
     for (let i = 0; i < 30; i++) ppx(lc, (i * 97 + t * (6 + (i % 4) * 3)) % lw, (i * 53 + t * (9 + (i % 3) * 4)) % lh, '#8a8c7a');
     const wl = Weather.light([0.84, 1, 0.78], 0.25);
-    applyLight(lc, lw, lh, lights, wl.ambient, wl.tint, wl.vig);
+    applyLight(lc, lw, lh, lights, this.def.dark ? wl.ambient * 0.78 : wl.ambient, wl.tint, this.def.dark ? Math.max(wl.vig, 0.5) : wl.vig);
     Weather.draw(lc, lw, lh, t);
 
     c.save();
@@ -1665,7 +1668,7 @@ export const Combat = {
     const cv = document.createElement('canvas'); cv.width = LWb; cv.height = LHb;
     const c = cv.getContext('2d')!;
     const r = pseed(this.def.id === 'road' ? 42 : this.def.id === 'waste' ? 91 : 77);
-    const factory = this.def.theme === 'factory', trench = this.def.theme === 'trench', forest = this.def.theme === 'forest';
+    const factory = this.def.theme === 'factory', trench = this.def.theme === 'trench', forest = this.def.theme === 'forest', rocks = this.def.theme === 'rocks';
     // пол
     for (let y = 0; y < CH; y++) for (let x = 0; x < CW; x++) {
       const X = x * T, Y = y * T;
@@ -1674,6 +1677,11 @@ export const Combat = {
         prect(c, X, Y, T, 1, '#2a2a24'); prect(c, X, Y, 1, T, '#2a2a24');
         for (const [a, b] of [[2, 2], [17, 2], [2, 17], [17, 17]]) ppx(c, X + a, Y + b, '#5a5a50');
         if (r() < 0.2) pellipse(c, X + 4 + r() * 12, Y + 4 + r() * 12, 4, 2, '#344a2c');
+      } else if (rocks) { // каменистое подножие гор: серая щебёнка, трещины, осыпи
+        prect(c, X, Y, T, T, r() < 0.5 ? '#34322e' : '#302e2a');
+        for (let k = 0; k < 7; k++) ppx(c, X + r() * T, Y + r() * T, r() < 0.5 ? '#46443e' : '#24221f');
+        if (r() < 0.15) pline(c, X + r() * T, Y + r() * T, X + r() * T, Y + r() * T, '#1e1c19');
+        if (r() < 0.1) pellipse(c, X + 4 + r() * 12, Y + 6 + r() * 10, 2, 1, '#d0c8b4'); // обглоданная кость
       } else if (trench) { // изрытая грязь ничейной земли
         prect(c, X, Y, T, T, r() < 0.5 ? '#3a3328' : '#362f25');
         for (let k = 0; k < 5; k++) ppx(c, X + r() * T, Y + r() * T, r() < 0.5 ? '#2a241b' : '#4a4234');
@@ -1684,10 +1692,18 @@ export const Combat = {
     if (trench) { // газ стелется по земле — бледные пятна растром
       for (let i = 0; i < 900; i++) { const gx = r() * LWb, gy = r() * LHb; if (Math.sin(gx / 37) + Math.cos(gy / 23) > 1.1) ppx(c, gx, gy, '#5a6e3a'); }
     }
-    if (!factory && !trench && !forest) { // разбитая дорога через поле боя
+    if (!factory && !trench && !forest && !rocks) { // разбитая дорога через поле боя
       for (let x = 0; x < LWb; x++) {
         const yc = 7 * T + Math.round(Math.sin(x / 40) * 10);
         for (let y = yc - 10; y < yc + 10; y++) if (r() < 0.55) ppx(c, x, y, (x + y) % 7 ? '#4a4436' : '#5a5040');
+      }
+    }
+    if (rocks) { // зевы пещер в проходах скальной стены у верхнего края — оттуда и вылезли
+      for (let x = 0; x < CW; x++) if (this.map[0][x] !== '#' && this.map[0][x] !== 'R' && this.map[0][x - 1] !== '.' && this.map[0][x] === '.') {
+        let w = 0; while (this.map[0][x + w] === '.') w++;
+        const cx = (x + w / 2) * T, cy = 6;
+        pellipse(c, cx, cy, w * T / 2 + 2, 9, '#1a1816'); pellipse(c, cx, cy - 1, w * T / 2 - 1, 7, '#050404');
+        for (let k = 0; k < 4; k++) ppx(c, cx - w * 6 + k * w * 4, cy + 9, '#c8c0aa'); // кости у входа
       }
     }
     // ритуальный круг
@@ -1717,6 +1733,11 @@ export const Combat = {
             prect(c, Math.max(X, bx), by, Math.min(7, X + T - Math.max(X, bx)), 1, '#8a7a58');
           }
           break;
+        } else if (rocks) { // скальная стена гор: зубчатый верх, трещины
+          prect(c, X, Y - 6, T, T + 6, '#46423c');
+          for (let k = 0; k < T; k += 3) prect(c, X + k, Y - 8 + ((x * 7 + k) % 5), 3, 3, '#5a564e');
+          pline(c, X + 5 + (x % 3) * 3, Y - 4, X + 8 + (x % 2) * 4, Y + T - 2, '#2a2723'); prect(c, X + T - 2, Y - 6, 2, T + 6, '#34312c');
+          break;
         } else {
           const col = factory ? '#6a3a2c' : '#6a665a', dark = shade(col, -0.3);
           prect(c, X, Y - 6, T, T + 6, col);
@@ -1730,6 +1751,15 @@ export const Combat = {
           for (const [a, b] of [[6, 5], [10, 13], [17, 9]]) { ppx(c, X + a, Y + b, '#b0b0a8'); ppx(c, X + a + 1, Y + b - 1, '#b0b0a8'); }
           break;
         case 'T': spr(forest ? 'pine' : 'tree', x, y); break;
+        case 'R': { // валун; у верхнего края — скала с чёрным зевом пещеры
+          const col = '#5a5650', dark = '#3a3732', lite = '#7a756c';
+          pellipse(c, X + 10, Y + 9, 10, 9, dark); pellipse(c, X + 9, Y + 7, 9, 8, col); pellipse(c, X + 7, Y + 4, 4, 3, lite);
+          pline(c, X + 6, Y + 9, X + 12, Y + 13, dark); prect(c, X + 2, Y + 17, 17, 2, 'rgba(0,0,0,0.45)');
+          break;
+        }
+        case 'r': // россыпь камней по колено
+          for (const [a, b, s] of [[4, 12, 3], [11, 9, 4], [16, 14, 3], [8, 15, 2]]) { pellipse(c, X + a, Y + b + 1, s, s - 1, '#2a2824'); pellipse(c, X + a, Y + b, s, s - 1, '#5a5650'); ppx(c, X + a - 1, Y + b - 1, '#7a756c'); }
+          break;
         case 'c':
           if (r() < 0.4) spr('barrel', x, y);
           else { prect(c, X + 3, Y + 4, 14, 13, '#6a4c2c'); prect(c, X + 3, Y + 2, 14, 3, '#82603a'); pline(c, X + 3, Y + 5, X + 16, Y + 16, '#3a2a18'); prect(c, X + 3, Y + 4, 14, 1, '#3a2a18'); prect(c, X + 2, Y + 17, 16, 1, 'rgba(0,0,0,0.5)'); }

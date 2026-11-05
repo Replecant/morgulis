@@ -48,7 +48,7 @@ export function drawSprite(c: Ctx, kind: string, x: number, y: number, o: Sprite
 
 // ============================================================ сборка персонажа
 /** Оружие, которое в бою держат «на изготовку» — так его легче различить. */
-const AIM = new Set(['rifle', 'musket', 'shotgun', 'sawnoff', 'pistol', 'knife', 'mg']);
+const AIM = new Set(['rifle', 'musket', 'shotgun', 'sawnoff', 'pistol', 'knife', 'mg', 'sling']);
 /** Вид фигурки для боя: стрелки и бойцы с ножом — в стойке с оружием на изготовку (ключ с суффиксом «#aim»). */
 export function combatKind(kind: string) { const st = STYLES[kind]; return st && st.weapon && AIM.has(st.weapon) && st.limbs?.armR !== 'lost' ? kind + '#aim' : kind; }
 
@@ -74,7 +74,7 @@ function buildChar(kind0: string, frame: number): HTMLCanvasElement {
   const LEATHER = '#5a3a22', slv = GR.body === 'leather' ? LEATHER : coat, slvD = shade(slv, -0.38);   // рукава: у кожанки — кожаные
   const glove = GR.hands === 'gloves' ? '#3e2a1a' : GR.hands === 'shootgloves' ? '#6a4a2e' : '';
   const skin = st.skin ?? '#c8a684', skinD = shade(skin, -0.3);
-  const legs = st.bare ? shade(skin, -0.12) : st.legs ?? '#24221c', legsD = shade(legs, -0.3), boot = st.bare ? shade(skin, -0.6) : '#141210'; // у демонов — копыта
+  const legs = st.bare ? shade(skin, -0.12) : st.legs ?? '#24221c', legsD = shade(legs, -0.3), boot = st.bare ? shade(skin, st.horns ? -0.6 : -0.28) : '#141210'; // у демонов — копыта, у морлоков — босые ступни
   const LB = st.limbs ?? {};
   const COPPER = '#b06a3a', SPARK = '#d8ff70';
   const bob = frame === 1 || frame === 3 ? -1 : 0;
@@ -159,6 +159,13 @@ function buildChar(kind0: string, frame: number): HTMLCanvasElement {
     R(11, sy(tTop + 1), 1, tBot - tTop - 2, shade(coat, -0.25));
     const lc = st.belt ?? '#2a1a14';
     R(tx0, sy(tBot - 1), tx1 - tx0 + 1, 2, lc); R(10, sy(tBot + 1), 4, 3, lc);
+  } else if (st.bare && st.gaunt) { // тощий голый торс: ключицы, проступающие рёбра, впалый живот, набедренная повязка
+    R(tx0 + 1, sy(tTop + 1), 3, 1, coatL); R(tx1 - 3, sy(tTop + 1), 3, 1, coatL);
+    for (const yy of [3, 5, 7]) { R(tx0 + 1, sy(tTop + yy), 3, 1, coatD); R(tx1 - 3, sy(tTop + yy), 3, 1, coatD); }
+    R(12, sy(tTop + 2), 1, 7, shade(coat, -0.22)); R(tx0 + 3, sy(tTop + 9), tx1 - tx0 - 5, 1, shade(coat, -0.18));
+    const lc = st.belt ?? '#2a1a14';
+    R(tx0, sy(tBot - 1), tx1 - tx0 + 1, 2, lc); R(10, sy(tBot + 1), 4, 3, lc); P(10, sy(tBot + 4), shade(lc, -0.3)); P(13, sy(tBot + 3), shade(lc, -0.3)); // рваная повязка
+    if (st.bones) { for (let x = tx0 + 2; x <= tx1 - 2; x += 2) P(x, sy(tTop + 1), '#d8d0b8'); R(11, sy(tTop + 2), 2, 2, '#d8d0b8'); P(11, sy(tTop + 2), INK); P(12, sy(tTop + 2), INK); } // ожерелье из костей и черепок
   } else if (st.bare) { // голый торс: грудь, рёбра-мышцы, набедренная повязка вместо подола
     R(tx0 + 2, sy(tTop + 3), 3, 1, coatD); R(tx1 - 4, sy(tTop + 3), 3, 1, coatD);
     for (const yy of [5, 7]) { R(tx0 + 3, sy(tTop + yy), 2, 1, shade(coat, -0.22)); R(tx1 - 4, sy(tTop + yy), 2, 1, shade(coat, -0.22)); }
@@ -208,7 +215,7 @@ function buildChar(kind0: string, frame: number): HTMLCanvasElement {
   }
   if (slungW && back) drawSlung();
   else if (slungW) pline(c, tx1 - 1, sy(tTop), tx0 + 1, sy(tTop + 9), '#3a2a1a');   // ружейный ремень через грудь
-  if (st.belt) { R(tx0, sy(tTop + 7), tx1 - tx0 + 1, 1, st.belt); if (!back) R(11, sy(tTop + 7), 2, 1, BRASS); }
+  if (st.belt && !st.gaunt) { R(tx0, sy(tTop + 7), tx1 - tx0 + 1, 1, st.belt); if (!back) R(11, sy(tTop + 7), 2, 1, BRASS); }
   if (st.webbing) { // накладные нагрудные карманы, перекрещенные ремни и подсумки
     if (!back) { R(tx0 + 1, sy(tTop + 2), 3, 2, shade(coat, -0.18)); R(tx1 - 3, sy(tTop + 2), 3, 2, shade(coat, -0.18)); P(tx0 + 2, sy(tTop + 2), BRASS); P(tx1 - 2, sy(tTop + 2), BRASS); }
     pline(c, tx0 + 1, sy(tTop), tx1 - 1, sy(tTop + 6), st.webbing); pline(c, tx1 - 1, sy(tTop), tx0 + 1, sy(tTop + 6), st.webbing);
@@ -429,6 +436,13 @@ function buildChar(kind0: string, frame: number): HTMLCanvasElement {
         sleeve(ax, ay + 1, 4); hand2(ax + 4, ay + 1);
         R(ax + 5, ay, 4, 2, dark); R(ax + 5, ay, 4, 1, STEEL_L); P(ax + 9, ay, '#f0f4ea'); R(ax + 4, ay + 3, 2, 2, wood);
         break;
+      case 'sling': { // праща: рука вскинута над головой, ремень с камнем крутится петлёй
+        R(ax, ay - 6, 2, 7, slv); R(ax + 1, ay - 6, 1, 7, slvD); hand2(ax, ay - 8);
+        const cx = ax + 2, cy = ay - 12;
+        for (let k = 0; k < 14; k++) { const a = (k / 14) * Math.PI * 2; P(Math.round(cx + Math.cos(a) * 4), Math.round(cy + Math.sin(a) * 2), '#7a6a4a'); }
+        R(cx + 3, cy - 1, 2, 2, '#a8a294'); P(cx + 3, cy - 1, '#d0ccc0');
+        break;
+      }
       case 'knife': // рука в сторону-вниз, широкий светлый клинок вперёд-вверх
         pline(c, ax, ay + 1, ax + 3, ay + 5, slv, 2); hand2(ax + 3, ay + 5);
         R(ax + 4, ay + 4, 1, 3, BRASS);
@@ -473,6 +487,19 @@ function buildChar(kind0: string, frame: number): HTMLCanvasElement {
     case 'pole': pline(c, hx + 1, SH - 1, hx + 3, 1, WOOD); P(hx + 3, 0, '#f0a040'); hand(); break;
     case 'staff':
       R(hx + 1, 4, 1, SH - 4, '#2a2018'); R(hx, 1, 3, 3, '#7ad050'); P(hx + 1, 2, '#e8ffc0'); hand();
+      break;
+    case 'totem': // посох шамана: кривая палка, череп сверху, связки костей и перьев
+      R(hx + 1, 4, 1, SH - 4, '#3a2e22'); R(hx, 1, 3, 3, '#d8d0b8'); P(hx, 2, INK); P(hx + 2, 2, INK); R(hx, 3, 3, 1, '#b8b098');
+      P(hx - 1, 5, '#d8d0b8'); P(hx - 1, 6, '#8a6a3a'); P(hx + 3, 6, '#d8d0b8'); P(hx + 3, 7, '#5a4a3a'); hand();
+      break;
+    case 'sling': // праща свисает из кулака, камень в кожаном кармане
+      pline(c, hx + 1, hy2 + 1, hx + 1, hy2 + 5, '#7a6a4a'); pline(c, hx, hy2 + 1, hx, hy2 + 4, '#5a4a32');
+      R(hx, hy2 + 5, 2, 2, '#5a4a32'); P(hx + 1, hy2 + 5, '#a8a294'); hand();
+      R(tx0 - 1, sy(tBot - 2), 2, 3, '#4a3a28');                                  // мешочек с камнями на повязке
+      break;
+    case 'club': // костяная дубина: бедренная кость с набалдашником, опущена вдоль ноги
+      pline(c, hx + 1, hy2 + 1, hx + 3, hy2 + 7, '#b8ac90', 2); R(hx + 2, hy2 + 7, 3, 3, '#d8d0b8'); P(hx + 4, hy2 + 9, '#8a8070'); P(hx + 2, hy2 + 9, '#8a8070');
+      hand();
       break;
     case 'hammer':
       pline(c, hx + 1, hy2 + 1, hx + 2, hy2 - 9, WOOD); R(hx - 1, hy2 - 12, 6, 3, '#4a4a48'); R(hx - 1, hy2 - 12, 6, 1, '#6a6a68'); hand();
@@ -775,6 +802,9 @@ export function miniSprite(kind: string, frame = 0, back = false): HTMLCanvasEle
   switch (st.weapon) {
     case 'fork': case 'staff': case 'pole': case 'goad': R(10, 1, 1, 13, WOOD); if (st.weapon === 'fork') { R(9, 0, 1, 2, STEEL); R(10, 0, 1, 1, STEEL); R(11, 0, 1, 2, STEEL); } if (st.weapon === 'staff') R(10, 0, 1, 2, '#7ad050'); break;
     case 'saber': R(10, 10, 1, 4, STEEL_L); R(9, 10, 1, 1, BRASS); break;
+    case 'sling': R(10, 10, 1, 3, '#7a6a4a'); R(10, 13, 1, 1, '#a8a294'); break;
+    case 'club': R(10, 10, 1, 3, '#b8ac90'); R(10, 12, 2, 2, '#d8d0b8'); break;
+    case 'totem': R(10, 2, 1, 12, '#3a2e22'); R(9, 0, 3, 2, '#d8d0b8'); break;
     case 'hammer': case 'wrench': case 'shovel': R(10, 6, 1, 5, WOOD); R(10, 5, 2, 2, STEEL); break;
     case 'bag': R(9, 10, 2, 3, '#6a5a3a'); break;
     case 'grenade': R(10, 6, 1, 4, WOOD); R(10, 4, 2, 2, '#4a4e40'); break;

@@ -25,7 +25,7 @@ export interface SaveData {
 }
 
 /** Состояние, которое меняется во время игры и должно пережить перезагрузку. */
-const WORLD_KEYS = ['bands', 'hungry', 'demons', 'dead', 'dsq', 'loyal', 'clouds', 'lastDay', 'inGas', 'gasDose', 'filterUse'] as const;
+const WORLD_KEYS = ['bands', 'hungry', 'morlocks', 'demons', 'dead', 'dsq', 'loyal', 'clouds', 'lastDay', 'inGas', 'gasDose', 'filterUse'] as const;
 
 /** Можно ли сохраниться прямо сейчас (не в бою, не в диалоге, игра идёт). */
 export const canSave = () => (G.mode === 'world' || G.mode === 'explore') && !!G.pc;

@@ -136,6 +136,7 @@ Combat.hooks = {
       Dialog.start('after_band');
     }
     if (id.startsWith('hungry')) { World.killHungry(); Dialog.start('after_hungry'); }
+    if (id.startsWith('morl_')) { World.killMorlocks(); Dialog.start('after_morlock'); }
     if (id === 'lake') { World.killDemon(); Dialog.start('after_demon'); }
     if (id.startsWith('loyal')) { World.killLoyal(); Dialog.start('after_loyal'); }
     if (id === 'coven') Dialog.start('after_coven');
@@ -227,6 +228,7 @@ World.onDsq = () => Dialog.start(World.dsqHit?.hell ? 'enc_cult' : 'enc_dsq');
 World.onDiscover = (l) => { const n = l.kind === 'poi' ? XP.poi : XP.place; toast(`Замечено: ${l.name} (+${n} опыта)`); gainXp(n); };
 World.onDead = () => Dialog.start(World.deadHit?.hell ? 'enc_hdead' : 'enc_dead');
 World.onHungry = () => Dialog.start('enc_hungry');
+World.onMorlock = () => Dialog.start('enc_morlock');
 World.onDemon = () => Dialog.start('enc_demon');
 World.onGas = (msg) => { toast(msg); refreshHud(); };
 /** Плотяная рука: раз в 3 дня нужен тканевый раствор, иначе отторжение. */
@@ -300,6 +302,9 @@ Dialog.onAction = (act) => {
   else if (act === 'battle_demon') startBattle('lake');
   else if (act === 'demon_lose') World.calmDemon(12);
   else if (act === 'battle_hungry') startBattle('hungry' + (World.hungryHit?.kinds.length ?? 2));
+  else if (act === 'battle_morlock') startBattle('morl_' + (World.morlHit?.kinds.join('+') ?? 'morlock_war+morlock_sling'));
+  else if (act === 'morlock_calm') World.calmMorlocks(24);
+  else if (act === 'morlock_lose') World.calmMorlocks(4);
   else if (act === 'hungry_calm') World.calmHungry(48);
   else if (act === 'battle_coven') startBattle('coven');
   else if (act === 'battle_dsq') startBattle((World.dsqHit?.hell ? 'dsqh_' : 'dsq_') + (World.dsqHit?.kinds.join('+') ?? 'imp+hound'));
